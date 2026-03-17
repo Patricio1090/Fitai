@@ -26,7 +26,7 @@ input, select, textarea { font-family: 'DM Sans', sans-serif; color-scheme: dark
 
 #app { min-height: 100vh; padding-bottom: 72px; }
 
-/* ── AUTH / PAYWALL SCREENS ── */
+/* --- AUTH / PAYWALL SCREENS --- */
 .screen {
   min-height: 100vh; display: flex; flex-direction: column;
   align-items: center; justify-content: center;
@@ -62,7 +62,7 @@ textarea { resize: none; height: 72px; }
 .err.show { display: block; }
 .link-btn { background: none; border: none; color: var(--purple); cursor: pointer; font-size: 13px; font-family: 'DM Sans', sans-serif; text-decoration: underline; padding: 0; }
 
-/* ── PAYWALL ── */
+/* --- PAYWALL --- */
 .paywall-card { background: var(--surface); border: 2px solid var(--lime); border-radius: 24px; padding: 36px 28px; width: 100%; max-width: 420px; margin-top: 20px; text-align: center; position: relative; overflow: hidden; }
 .paywall-card::before { content: ''; position: absolute; top: -60px; left: -60px; width: 200px; height: 200px; border-radius: 50%; background: radial-gradient(circle, #b8ff5712, transparent 70%); }
 .paywall-price { font-family: 'Syne', sans-serif; font-size: 72px; font-weight: 900; color: var(--lime); line-height: 1; margin: 16px 0 4px; }
@@ -74,7 +74,7 @@ textarea { resize: none; height: 72px; }
 .stripe-element.StripeElement--focus { border-color: var(--purple); }
 .secure-badge { font-size: 11px; color: var(--muted); margin-top: 12px; display: flex; align-items: center; justify-content: center; gap: 6px; }
 
-/* ── MAIN APP ── */
+/* --- MAIN APP --- */
 .header { background: linear-gradient(160deg, #14083a 0%, #080810 60%); padding: 20px 16px 14px; border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 40; }
 .header-inner { display: flex; justify-content: space-between; align-items: center; max-width: 600px; margin: 0 auto; }
 .logo { font-family: 'Syne', sans-serif; font-size: 20px; font-weight: 800; background: linear-gradient(135deg, var(--purple), var(--blue), var(--green)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
@@ -144,10 +144,10 @@ textarea { resize: none; height: 72px; }
 <div id="app"></div>
 
 <script>
-// ════════════════════════════════════════════════════════════
-// ════════════════════════════════════════════════════════════
-// CONFIGURACIÓN — PEGA AQUÍ TUS CREDENCIALES DE MERCADOPAGO
-// ════════════════════════════════════════════════════════════
+// ---
+// ---
+// CONFIGURACIÓN - PEGA AQUÍ TUS CREDENCIALES DE MERCADOPAGO
+// ---
 const CONFIG = {
   // 1. Tu Public Key de MercadoPago (empieza con APP_USR-)
   //    La encuentras en: mercadopago.cl/developers/panel → tu app → Credenciales
@@ -156,11 +156,11 @@ const CONFIG = {
   // 2. URL de tu backend en Netlify
   PAYMENT_ENDPOINT: 'https://remarkable-elf-c56569.netlify.app/.netlify/functions/create-preference',
 
-  // 3. Precio y moneda — $990 CLP
+  // 3. Precio y moneda - $990 CLP
   AMOUNT: 990,
   CURRENCY: 'CLP',
 };
-// ════════════════════════════════════════════════════════════
+// ---
 
 const STORAGE_KEY = 'fitai_v3';
 let mp = null;
@@ -192,7 +192,7 @@ let STATE = {
   showUserMenu: false,
 };
 
-// ── PERSISTENCE ──────────────────────────────────────────────
+// --- PERSISTENCE ---
 function save() {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
@@ -218,11 +218,11 @@ function loadSaved() {
 }
 loadSaved();
 
-// ── DETECTA RETORNO DESDE MERCADOPAGO ────────────────────────
+// --- DETECTA RETORNO DESDE MERCADOPAGO ---
 const _urlParams = new URLSearchParams(window.location.search);
 const _paymentStatus = _urlParams.get('payment');
 if (_paymentStatus === 'success' || _urlParams.get('collection_status') === 'approved') {
-  // MP aprobó el pago — recupera usuario y marca como pagado
+  // MP aprobó el pago - recupera usuario y marca como pagado
   const pendingUser = localStorage.getItem('fitai_pending_user');
   if (pendingUser && !STATE.user) {
     STATE.user = JSON.parse(pendingUser);
@@ -250,7 +250,7 @@ function getInitialScreen() {
 }
 STATE.screen = getInitialScreen();
 
-// ── CLAUDE API ───────────────────────────────────────────────
+// --- CLAUDE API ---
 const SYS = `Eres un experto en ciencias del deporte, nutrición y metabolismo basado en las últimas investigaciones de Harvard Medical School, Harvard T.H. Chan School of Public Health, y el American College of Sports Medicine. Tu enfoque integra periodización del entrenamiento, nutrición de precisión, metabolismo energético, HIIT y entrenamiento de fuerza para composición corporal. SIEMPRE responde en español. Sé específico, científico pero accesible. Usa emojis estratégicamente.`;
 
 async function claude(messages, max=1000) {
@@ -262,10 +262,10 @@ async function claude(messages, max=1000) {
   return d.content?.map(b=>b.text||'').join('\n')||'';
 }
 
-// ── AUTH (simulado con localStorage — en producción usa tu backend) ──
+// --- AUTH (simulado con localStorage - en producción usa tu backend) ---
 // En producción real, reemplaza estas funciones con llamadas a tu API de auth
 function authRegister(email, password, name) {
-  // Simula registro — en producción: POST /api/register
+  // Simula registro - en producción: POST /api/register
   const users = JSON.parse(localStorage.getItem('fitai_users')||'{}');
   if (users[email]) throw new Error('Este email ya está registrado.');
   const user = { email, name, paid: false, token: btoa(email+':'+Date.now()) };
@@ -274,7 +274,7 @@ function authRegister(email, password, name) {
   return user;
 }
 function authLogin(email, password) {
-  // Simula login — en producción: POST /api/login
+  // Simula login - en producción: POST /api/login
   const users = JSON.parse(localStorage.getItem('fitai_users')||'{}');
   const u = users[email];
   if (!u) throw new Error('Email no encontrado.');
@@ -288,7 +288,7 @@ function markAsPaid(email) {
   save();
 }
 
-// ── MERCADOPAGO PAYMENT ──────────────────────────────────────
+// --- MERCADOPAGO PAYMENT ---
 async function processPayment() {
   STATE.payLoading = true;
   STATE.payError = '';
@@ -323,7 +323,7 @@ async function processPayment() {
     localStorage.setItem('fitai_pending_email', STATE.user.email);
     localStorage.setItem('fitai_pending_user', JSON.stringify(STATE.user));
 
-    // Redirige a MercadoPago — el usuario paga y vuelve automáticamente
+    // Redirige a MercadoPago - el usuario paga y vuelve automáticamente
     window.location.href = data.initPoint || data.sandboxInitPoint;
 
   } catch(e) {
@@ -333,7 +333,7 @@ async function processPayment() {
   }
 }
 
-// ── PROGRESS CALC ────────────────────────────────────────────
+// --- PROGRESS CALC ---
 function calcProgress() {
   const logs = STATE.dailyLogs;
   const sw = parseFloat(STATE.profile?.weight)||0;
@@ -346,7 +346,7 @@ function calcProgress() {
   return { lost:lost.toFixed(1), pct:pct.toFixed(0), days:logs.length, trend, lw:lw||sw };
 }
 
-// ── RENDER ───────────────────────────────────────────────────
+// --- RENDER ---
 function render() {
   const root = document.getElementById('app');
   root.innerHTML = '';
@@ -390,7 +390,7 @@ function render() {
   }
 }
 
-// ── AUTH SCREEN ──────────────────────────────────────────────
+// --- AUTH SCREEN ---
 function renderAuth() {
   const div = document.createElement('div');
   div.className = 'screen';
@@ -418,8 +418,10 @@ function renderAuth() {
 
   div.querySelector('#tab-login').onclick = () => { STATE.authMode='login'; STATE.authError=''; render(); };
   div.querySelector('#tab-reg').onclick = () => { STATE.authMode='register'; STATE.authError=''; render(); };
-  div.querySelector('#to-reg')?.onclick = () => { STATE.authMode='register'; STATE.authError=''; render(); };
-  div.querySelector('#to-login')?.onclick = () => { STATE.authMode='login'; STATE.authError=''; render(); };
+  const toReg = div.querySelector('#to-reg');
+  if (toReg) toReg.onclick = () => { STATE.authMode='register'; STATE.authError=''; render(); };
+  const toLogin = div.querySelector('#to-login');
+  if (toLogin) toLogin.onclick = () => { STATE.authMode='login'; STATE.authError=''; render(); };
 
   div.querySelector('#btn-auth').onclick = async () => {
     const email = div.querySelector('#auth-email')?.value?.trim();
@@ -447,7 +449,7 @@ function renderAuth() {
   return div;
 }
 
-// ── PAYWALL SCREEN ───────────────────────────────────────────
+// --- PAYWALL SCREEN ---
 function renderPaywall() {
   const isDemo = CONFIG.MP_PUBLIC_KEY === 'APP_USR-TU-PUBLIC-KEY-AQUI';
   const div = document.createElement('div');
@@ -497,7 +499,7 @@ function renderPaywall() {
   return div;
 }
 
-// ── SETUP FLOW ───────────────────────────────────────────────
+// --- SETUP FLOW ---
 const STEPS = [
   {key:'name',q:'¿Cuál es tu nombre?',type:'text',ph:'Tu nombre'},
   {key:'age',q:'¿Cuántos años tienes?',type:'number',ph:'Ej: 28'},
@@ -576,7 +578,7 @@ function renderSetup() {
   return wrap;
 }
 
-// ── HEADER ───────────────────────────────────────────────────
+// --- HEADER ---
 function renderHeader() {
   const p=STATE.profile;
   const tabNames=['Dashboard','Entrenamiento','Nutrición','Registro','Progreso'];
@@ -593,7 +595,7 @@ function renderHeader() {
   return h;
 }
 
-// ── TAB BAR ──────────────────────────────────────────────────
+// --- TAB BAR ---
 function renderTabBar() {
   const icons=['🏠','💪','🥗','📝','📈'], labels=['Inicio','Entrena','Nutrición','Registro','Progreso'];
   const tb=document.createElement('div'); tb.className='tabbar';
@@ -606,7 +608,7 @@ function renderTabBar() {
   return tb;
 }
 
-// ── DASHBOARD ────────────────────────────────────────────────
+// --- DASHBOARD ---
 function renderDashboard() {
   const prog=calcProgress();
   const div=document.createElement('div');
@@ -636,7 +638,7 @@ function renderMiniChart(trend) {
   return `<div class="card"><div class="card-sh">📉 Tendencia de peso</div><div class="mini-chart">${trend.map(t=>{const h=Math.round(((t.w-mn)/(mx-mn))*40+8);return`<div class="bar-wrap"><div class="bar" style="height:${h}px"></div><div class="bar-lbl">${(t.date||'').slice(0,5)}</div></div>`;}).join('')}</div></div>`;
 }
 
-// ── WORKOUT ──────────────────────────────────────────────────
+// --- WORKOUT ---
 function renderWorkout() {
   const div=document.createElement('div');
   div.innerHTML=`
@@ -652,7 +654,7 @@ function renderWorkout() {
   return div;
 }
 
-// ── NUTRITION ─────────────────────────────────────────────────
+// --- NUTRITION ---
 function renderNutrition() {
   const div=document.createElement('div');
   div.innerHTML=`
@@ -668,7 +670,7 @@ function renderNutrition() {
   return div;
 }
 
-// ── DAILY LOG ─────────────────────────────────────────────────
+// --- DAILY LOG ---
 function renderLog() {
   const div=document.createElement('div');
   const today=new Date().toLocaleDateString('es-CL',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
@@ -696,7 +698,7 @@ function renderLog() {
   return div;
 }
 
-// ── PROGRESS ──────────────────────────────────────────────────
+// --- PROGRESS ---
 function renderProgress() {
   const prog=calcProgress();
   const div=document.createElement('div');
@@ -718,13 +720,13 @@ function renderProgress() {
   return div;
 }
 
-// ── SERVICE WORKER ────────────────────────────────────────────
+// --- SERVICE WORKER ---
 if ('serviceWorker' in navigator) {
   const sw=`const C='fitai-v2';self.addEventListener('install',e=>e.waitUntil(caches.open(C).then(c=>c.addAll(['./']))));self.addEventListener('fetch',e=>{if(e.request.url.includes('api.anthropic.com')||e.request.url.includes('sdk.mercadopago.com'))return;e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request)));});`;
   navigator.serviceWorker.register(URL.createObjectURL(new Blob([sw],{type:'application/javascript'}))).catch(()=>{});
 }
 
-// ── INIT ──────────────────────────────────────────────────────
+// --- INIT ---
 render();
 </script>
 </body>
