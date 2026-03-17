@@ -1,0 +1,731 @@
+DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<meta name="theme-color" content="#080810"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-title" content="FitAI Pro"/>
+<title>FitAI Pro</title>
+<link rel="manifest" href="manifest.json"/>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet"/>
+<!-- MercadoPago SDK -->
+<script src="https://sdk.mercadopago.com/js/v2"></script>
+<style>
+:root {
+  --bg: #080810; --surface: #10101c; --surface2: #16162a;
+  --border: #1e1e38; --text: #eeeef8; --muted: #6b7280;
+  --purple: #a78bfa; --blue: #60a5fa; --green: #34d399;
+  --amber: #fbbf24; --lime: #b8ff57;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; overflow-x: hidden; }
+h1,h2,h3 { font-family: 'Syne', sans-serif; }
+input, select, textarea { font-family: 'DM Sans', sans-serif; color-scheme: dark; }
+::-webkit-scrollbar { width: 3px; } ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+#app { min-height: 100vh; padding-bottom: 72px; }
+
+/* ── AUTH / PAYWALL SCREENS ── */
+.screen {
+  min-height: 100vh; display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 30px 20px; background: var(--bg);
+}
+.screen-logo { font-size: 56px; margin-bottom: 12px; }
+.screen-title { font-family: 'Syne', sans-serif; font-size: 28px; font-weight: 800; background: linear-gradient(135deg, var(--lime), var(--blue)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-align: center; }
+.screen-sub { font-size: 13px; color: var(--muted); margin-top: 6px; text-align: center; line-height: 1.6; }
+.auth-card { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 28px 24px; width: 100%; max-width: 400px; margin-top: 24px; }
+.auth-tabs { display: flex; background: var(--surface2); border-radius: 12px; padding: 4px; margin-bottom: 24px; }
+.auth-tab { flex: 1; padding: 9px; border: none; border-radius: 9px; background: none; color: var(--muted); font-size: 14px; font-weight: 600; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.2s; }
+.auth-tab.active { background: var(--surface); color: var(--text); box-shadow: 0 1px 6px #00000040; }
+.field { margin-bottom: 14px; }
+.field label { font-size: 12px; color: var(--muted); margin-bottom: 5px; display: block; }
+input[type=text], input[type=email], input[type=password], input[type=number], select, textarea {
+  background: var(--surface2); border: 1px solid var(--border); border-radius: 10px;
+  padding: 12px 14px; color: var(--text); font-size: 14px; width: 100%; outline: none;
+  transition: border-color 0.2s;
+}
+input:focus, select:focus { border-color: var(--purple); }
+textarea { resize: none; height: 72px; }
+.btn { border: none; border-radius: 12px; padding: 13px 20px; font-size: 14px; font-weight: 700; cursor: pointer; width: 100%; margin-top: 8px; font-family: 'Syne', sans-serif; transition: transform 0.1s, opacity 0.2s; }
+.btn:active { transform: scale(0.97); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-lime { background: var(--lime); color: #000; }
+.btn-purple { background: linear-gradient(135deg, var(--purple), #7c3aed); color: #fff; }
+.btn-green  { background: linear-gradient(135deg, var(--green), #059669); color: #fff; }
+.btn-amber  { background: linear-gradient(135deg, var(--amber), #d97706); color: #000; }
+.btn-blue   { background: linear-gradient(135deg, var(--blue), #2563eb); color: #fff; }
+.btn-ghost  { background: var(--surface2); color: var(--muted); }
+.btn-sm     { padding: 9px 16px; font-size: 13px; width: auto; margin-top: 0; }
+.err { background: #f8717115; border: 1px solid #f8717130; border-radius: 10px; padding: 10px 14px; font-size: 13px; color: #f87171; margin-bottom: 12px; display: none; }
+.err.show { display: block; }
+.link-btn { background: none; border: none; color: var(--purple); cursor: pointer; font-size: 13px; font-family: 'DM Sans', sans-serif; text-decoration: underline; padding: 0; }
+
+/* ── PAYWALL ── */
+.paywall-card { background: var(--surface); border: 2px solid var(--lime); border-radius: 24px; padding: 36px 28px; width: 100%; max-width: 420px; margin-top: 20px; text-align: center; position: relative; overflow: hidden; }
+.paywall-card::before { content: ''; position: absolute; top: -60px; left: -60px; width: 200px; height: 200px; border-radius: 50%; background: radial-gradient(circle, #b8ff5712, transparent 70%); }
+.paywall-price { font-family: 'Syne', sans-serif; font-size: 72px; font-weight: 900; color: var(--lime); line-height: 1; margin: 16px 0 4px; }
+.paywall-period { font-size: 13px; color: var(--muted); margin-bottom: 24px; }
+.paywall-features { text-align: left; margin-bottom: 28px; }
+.paywall-feat { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 10px; font-size: 13px; color: var(--muted); }
+.paywall-feat::before { content: '✓'; color: var(--lime); font-weight: 800; flex-shrink: 0; }
+.stripe-element { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 14px; margin-bottom: 16px; }
+.stripe-element.StripeElement--focus { border-color: var(--purple); }
+.secure-badge { font-size: 11px; color: var(--muted); margin-top: 12px; display: flex; align-items: center; justify-content: center; gap: 6px; }
+
+/* ── MAIN APP ── */
+.header { background: linear-gradient(160deg, #14083a 0%, #080810 60%); padding: 20px 16px 14px; border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 40; }
+.header-inner { display: flex; justify-content: space-between; align-items: center; max-width: 600px; margin: 0 auto; }
+.logo { font-family: 'Syne', sans-serif; font-size: 20px; font-weight: 800; background: linear-gradient(135deg, var(--purple), var(--blue), var(--green)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.badge { border-radius: 20px; padding: 3px 12px; font-size: 11px; font-weight: 700; display: inline-block; }
+.content { padding: 16px; max-width: 600px; margin: 0 auto; }
+.tabbar { position: fixed; bottom: 0; left: 0; right: 0; background: #0d0d1a; border-top: 1px solid var(--border); display: flex; z-index: 50; padding-bottom: env(safe-area-inset-bottom); }
+.tab-btn { flex: 1; padding: 9px 4px 7px; background: none; border: none; color: var(--muted); font-size: 9.5px; font-weight: 600; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 3px; transition: color 0.2s; font-family: 'DM Sans', sans-serif; }
+.tab-btn.active { color: var(--purple); }
+.tab-btn .icon { font-size: 20px; line-height: 1; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 16px; margin-bottom: 12px; }
+.card-purple { background: linear-gradient(135deg, #a78bfa18, var(--surface)); border: 1px solid #a78bfa28; }
+.card-green  { background: linear-gradient(135deg, #34d39918, var(--surface)); border: 1px solid #34d39928; }
+.card-amber  { background: linear-gradient(135deg, #fbbf2418, var(--surface)); border: 1px solid #fbbf2428; }
+.card-blue   { background: linear-gradient(135deg, #60a5fa18, var(--surface)); border: 1px solid #60a5fa28; }
+.card-h { font-family: 'Syne', sans-serif; font-size: 16px; font-weight: 700; margin-bottom: 12px; }
+.card-sh { font-size: 12px; color: var(--muted); font-weight: 600; margin-bottom: 8px; }
+.stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
+.stats-grid2 { grid-template-columns: repeat(2, 1fr); }
+.stat-box { border-radius: 14px; padding: 12px; text-align: center; }
+.stat-icon { font-size: 22px; margin-bottom: 4px; }
+.stat-val  { font-family: 'Syne', sans-serif; font-size: 20px; font-weight: 800; }
+.stat-lbl  { font-size: 10px; color: var(--muted); margin-top: 2px; }
+.prog-wrap { height: 8px; background: var(--border); border-radius: 8px; overflow: hidden; margin: 6px 0; }
+.prog-fill { height: 100%; border-radius: 8px; transition: width 1s cubic-bezier(.4,0,.2,1); }
+.energy-row { display: flex; gap: 8px; }
+.energy-btn { flex: 1; padding: 10px 0; border-radius: 10px; border: 2px solid var(--border); background: var(--surface2); color: var(--muted); font-weight: 700; cursor: pointer; font-size: 15px; transition: all 0.15s; }
+.energy-btn.active { border-color: var(--amber); background: #fbbf2415; color: var(--amber); }
+.ai-text { font-size: 13px; color: #d1d5db; line-height: 1.75; white-space: pre-wrap; }
+.log-item { padding: 10px 0; border-bottom: 1px solid var(--border); }
+.log-item:last-child { border-bottom: none; }
+.log-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.log-date { font-size: 13px; font-weight: 700; }
+.tags { display: flex; flex-wrap: wrap; gap: 4px; }
+.tag { font-size: 10px; background: var(--surface2); border: 1px solid var(--border); color: var(--muted); border-radius: 6px; padding: 2px 8px; }
+.mini-chart { display: flex; align-items: flex-end; gap: 3px; height: 52px; padding: 0 2px; }
+.bar-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.bar { width: 100%; background: linear-gradient(180deg, #60a5fa, #3b82f680); border-radius: 4px 4px 0 0; }
+.bar-lbl { font-size: 8px; color: #374151; }
+.chat-msg { padding: 9px 12px; border-radius: 12px; font-size: 12px; line-height: 1.6; margin-bottom: 6px; }
+.chat-user { background: var(--surface2); color: var(--text); }
+.chat-ai   { background: #a78bfa12; color: #c4b5fd; border: 1px solid #a78bfa20; }
+.chat-row  { display: flex; gap: 8px; margin-top: 10px; }
+.chat-row input { flex: 1; }
+.chat-row button { background: var(--purple); color: #fff; border: none; border-radius: 10px; padding: 0 16px; font-size: 18px; cursor: pointer; }
+.loading-overlay { position: fixed; bottom: 84px; left: 50%; transform: translateX(-50%); background: var(--surface2); border: 1px solid #a78bfa30; border-radius: 24px; padding: 10px 20px; display: flex; align-items: center; gap: 8px; z-index: 100; }
+.dot { width: 6px; height: 6px; border-radius: 50%; background: var(--purple); animation: pulse 1.2s infinite; }
+.dot:nth-child(2) { animation-delay: .3s; }
+.dot:nth-child(3) { animation-delay: .6s; }
+.setup-wrap { min-height: 100vh; background: var(--bg); display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding: 30px 20px 100px; }
+.setup-card { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 24px 20px; width: 100%; max-width: 440px; margin-top: 20px; }
+.option-btn { width: 100%; text-align: left; background: var(--surface2); border: 2px solid var(--border); border-radius: 12px; padding: 12px 16px; color: var(--text); font-size: 14px; cursor: pointer; margin-bottom: 8px; transition: all 0.15s; font-family: 'DM Sans', sans-serif; }
+.option-btn.selected { border-color: var(--purple); background: #a78bfa15; color: var(--purple); font-weight: 600; }
+.user-menu { position: absolute; right: 16px; top: 60px; background: var(--surface2); border: 1px solid var(--border); border-radius: 14px; padding: 8px; z-index: 200; min-width: 160px; display: none; }
+.user-menu.open { display: block; }
+.user-menu-item { display: block; width: 100%; background: none; border: none; color: var(--text); font-size: 13px; padding: 10px 14px; text-align: left; cursor: pointer; border-radius: 8px; font-family: 'DM Sans', sans-serif; }
+.user-menu-item:hover { background: var(--border); }
+.avatar-btn { width: 34px; height: 34px; border-radius: 50%; border: 2px solid var(--border); background: linear-gradient(135deg, var(--purple), var(--blue)); cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; }
+
+@keyframes pulse { 0%,100%{opacity:.2}50%{opacity:1} }
+@keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+.fade-in { animation: fadeIn 0.3s ease; }
+* { -webkit-tap-highlight-color: transparent; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+// ════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════════
+// CONFIGURACIÓN — PEGA AQUÍ TUS CREDENCIALES DE MERCADOPAGO
+// ════════════════════════════════════════════════════════════
+const CONFIG = {
+  // 1. Tu Public Key de MercadoPago (empieza con APP_USR-)
+  //    La encuentras en: mercadopago.cl/developers/panel → tu app → Credenciales
+  MP_PUBLIC_KEY: 'TEST-3faf5463-43c3-42d2-a6af-9639411e78ea',
+
+  // 2. URL de tu backend en Netlify
+  PAYMENT_ENDPOINT: 'https://remarkable-elf-c56569.netlify.app/.netlify/functions/create-preference',
+
+  // 3. Precio y moneda — $990 CLP
+  AMOUNT: 990,
+  CURRENCY: 'CLP',
+};
+// ════════════════════════════════════════════════════════════
+
+const STORAGE_KEY = 'fitai_v3';
+let mp = null;
+
+let STATE = {
+  // Auth
+  authMode: 'login', // 'login' | 'register'
+  user: null,        // { email, name, paid, token }
+  authLoading: false,
+  authError: '',
+
+  // Payment
+  screen: 'auth',    // 'auth' | 'paywall' | 'setup' | 'app'
+  payLoading: false,
+  payError: '',
+
+  // App
+  profile: null,
+  dailyLogs: [],
+  plan: null,
+  nutrition: null,
+  chat: [],
+  setupStep: 0,
+  setupData: {},
+  tab: 0,
+  aiLoading: false,
+  aiMsg: '',
+  todayLog: { weight:'', bodyFat:'', calories:'', protein:'', sleep:'', water:'', training:'no', energy:'3', notes:'' },
+  showUserMenu: false,
+};
+
+// ── PERSISTENCE ──────────────────────────────────────────────
+function save() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      user: STATE.user,
+      profile: STATE.profile,
+      dailyLogs: STATE.dailyLogs,
+      plan: STATE.plan,
+      nutrition: STATE.nutrition,
+      chat: STATE.chat,
+    }));
+  } catch{}
+}
+function loadSaved() {
+  try {
+    const d = JSON.parse(localStorage.getItem(STORAGE_KEY)||'{}');
+    if (d.user) STATE.user = d.user;
+    if (d.profile) STATE.profile = d.profile;
+    if (d.dailyLogs) STATE.dailyLogs = d.dailyLogs;
+    if (d.plan) STATE.plan = d.plan;
+    if (d.nutrition) STATE.nutrition = d.nutrition;
+    if (d.chat) STATE.chat = d.chat;
+  } catch{}
+}
+loadSaved();
+
+// ── DETECTA RETORNO DESDE MERCADOPAGO ────────────────────────
+const _urlParams = new URLSearchParams(window.location.search);
+const _paymentStatus = _urlParams.get('payment');
+if (_paymentStatus === 'success' || _urlParams.get('collection_status') === 'approved') {
+  // MP aprobó el pago — recupera usuario y marca como pagado
+  const pendingUser = localStorage.getItem('fitai_pending_user');
+  if (pendingUser && !STATE.user) {
+    STATE.user = JSON.parse(pendingUser);
+  }
+  if (STATE.user) {
+    markAsPaid(STATE.user.email);
+    STATE.screen = STATE.profile ? 'app' : 'setup';
+  }
+  localStorage.removeItem('fitai_pending_email');
+  localStorage.removeItem('fitai_pending_user');
+  // Limpia parámetros de la URL
+  window.history.replaceState({}, '', window.location.pathname);
+} else if (_paymentStatus === 'failure') {
+  STATE.screen = 'paywall';
+  STATE.payError = 'El pago no fue aprobado. Intenta con otro medio de pago.';
+  window.history.replaceState({}, '', window.location.pathname);
+}
+
+// Determine initial screen
+function getInitialScreen() {
+  if (!STATE.user) return 'auth';
+  if (!STATE.user.paid) return 'paywall';
+  if (!STATE.profile) return 'setup';
+  return 'app';
+}
+STATE.screen = getInitialScreen();
+
+// ── CLAUDE API ───────────────────────────────────────────────
+const SYS = `Eres un experto en ciencias del deporte, nutrición y metabolismo basado en las últimas investigaciones de Harvard Medical School, Harvard T.H. Chan School of Public Health, y el American College of Sports Medicine. Tu enfoque integra periodización del entrenamiento, nutrición de precisión, metabolismo energético, HIIT y entrenamiento de fuerza para composición corporal. SIEMPRE responde en español. Sé específico, científico pero accesible. Usa emojis estratégicamente.`;
+
+async function claude(messages, max=1000) {
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:max, system:SYS, messages })
+  });
+  const d = await res.json();
+  return d.content?.map(b=>b.text||'').join('\n')||'';
+}
+
+// ── AUTH (simulado con localStorage — en producción usa tu backend) ──
+// En producción real, reemplaza estas funciones con llamadas a tu API de auth
+function authRegister(email, password, name) {
+  // Simula registro — en producción: POST /api/register
+  const users = JSON.parse(localStorage.getItem('fitai_users')||'{}');
+  if (users[email]) throw new Error('Este email ya está registrado.');
+  const user = { email, name, paid: false, token: btoa(email+':'+Date.now()) };
+  users[email] = { ...user, passwordHash: btoa(password) };
+  localStorage.setItem('fitai_users', JSON.stringify(users));
+  return user;
+}
+function authLogin(email, password) {
+  // Simula login — en producción: POST /api/login
+  const users = JSON.parse(localStorage.getItem('fitai_users')||'{}');
+  const u = users[email];
+  if (!u) throw new Error('Email no encontrado.');
+  if (u.passwordHash !== btoa(password)) throw new Error('Contraseña incorrecta.');
+  return { email: u.email, name: u.name, paid: u.paid, token: u.token };
+}
+function markAsPaid(email) {
+  const users = JSON.parse(localStorage.getItem('fitai_users')||'{}');
+  if (users[email]) { users[email].paid = true; localStorage.setItem('fitai_users', JSON.stringify(users)); }
+  STATE.user.paid = true;
+  save();
+}
+
+// ── MERCADOPAGO PAYMENT ──────────────────────────────────────
+async function processPayment() {
+  STATE.payLoading = true;
+  STATE.payError = '';
+  render();
+
+  try {
+    // MODO DEMO: si aún no has puesto tu Public Key real
+    if (CONFIG.MP_PUBLIC_KEY === 'APP_USR-TU-PUBLIC-KEY-AQUI') {
+      await new Promise(r => setTimeout(r, 1800));
+      markAsPaid(STATE.user.email);
+      STATE.screen = 'setup';
+      STATE.payLoading = false;
+      render();
+      return;
+    }
+
+    // Llama al backend para crear la preferencia de pago en MP
+    const res = await fetch(CONFIG.PAYMENT_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: STATE.user.email,
+        amount: CONFIG.AMOUNT,
+        currency: CONFIG.CURRENCY,
+      })
+    });
+
+    const data = await res.json();
+    if (!data.initPoint && !data.sandboxInitPoint) throw new Error('No se pudo crear el pago.');
+
+    // Guarda el email para recuperarlo cuando MP redirija de vuelta
+    localStorage.setItem('fitai_pending_email', STATE.user.email);
+    localStorage.setItem('fitai_pending_user', JSON.stringify(STATE.user));
+
+    // Redirige a MercadoPago — el usuario paga y vuelve automáticamente
+    window.location.href = data.initPoint || data.sandboxInitPoint;
+
+  } catch(e) {
+    STATE.payError = e.message || 'Error al conectar con MercadoPago. Intenta de nuevo.';
+    STATE.payLoading = false;
+    render();
+  }
+}
+
+// ── PROGRESS CALC ────────────────────────────────────────────
+function calcProgress() {
+  const logs = STATE.dailyLogs;
+  const sw = parseFloat(STATE.profile?.weight)||0;
+  const tw = parseFloat(STATE.profile?.targetWeight)||sw;
+  const lw = logs.length ? (parseFloat(logs[0]?.weight)||sw) : sw;
+  const lost = sw - lw;
+  const total = sw - tw;
+  const pct = total > 0 ? Math.min(100, Math.max(0, (lost/total)*100)) : 0;
+  const trend = logs.slice(0,14).reverse().map(l=>({date:l.date,w:parseFloat(l.weight)||null})).filter(l=>l.w);
+  return { lost:lost.toFixed(1), pct:pct.toFixed(0), days:logs.length, trend, lw:lw||sw };
+}
+
+// ── RENDER ───────────────────────────────────────────────────
+function render() {
+  const root = document.getElementById('app');
+  root.innerHTML = '';
+  root.style.position = 'relative';
+
+  if (STATE.screen === 'auth') { root.appendChild(renderAuth()); return; }
+  if (STATE.screen === 'paywall') { root.appendChild(renderPaywall()); return; }
+  if (STATE.screen === 'setup' && !STATE.profile) { root.appendChild(renderSetup()); return; }
+
+  root.appendChild(renderHeader());
+  const content = document.createElement('div');
+  content.className = 'content fade-in';
+  const tabs = [renderDashboard, renderWorkout, renderNutrition, renderLog, renderProgress];
+  content.appendChild(tabs[STATE.tab]());
+  root.appendChild(content);
+  root.appendChild(renderTabBar());
+
+  if (STATE.showUserMenu) {
+    const menu = document.createElement('div');
+    menu.className = 'user-menu open';
+    menu.innerHTML = `
+      <div style="padding:8px 14px 8px;border-bottom:1px solid var(--border);margin-bottom:4px">
+        <div style="font-size:12px;font-weight:700">${STATE.user?.name||'Usuario'}</div>
+        <div style="font-size:11px;color:var(--muted)">${STATE.user?.email||''}</div>
+      </div>
+      <button class="user-menu-item" id="menu-reset">🔄 Reiniciar programa</button>
+      <button class="user-menu-item" id="menu-logout" style="color:#f87171">🚪 Cerrar sesión</button>`;
+    root.appendChild(menu);
+    menu.querySelector('#menu-reset').onclick = () => {
+      if(confirm('¿Reiniciar todo el programa?')) { STATE.profile=null; STATE.dailyLogs=[]; STATE.plan=null; STATE.nutrition=null; STATE.chat=[]; STATE.setupStep=0; STATE.setupData={}; STATE.aiMsg=''; STATE.screen='setup'; STATE.showUserMenu=false; save(); render(); }
+    };
+    menu.querySelector('#menu-logout').onclick = () => { STATE.user=null; STATE.profile=null; STATE.dailyLogs=[]; STATE.plan=null; STATE.nutrition=null; STATE.chat=[]; STATE.screen='auth'; STATE.showUserMenu=false; save(); render(); };
+    document.addEventListener('click', function handler(e) { if(!menu.contains(e.target)) { STATE.showUserMenu=false; document.removeEventListener('click',handler); render(); } }, {once:true});
+  }
+
+  if (STATE.aiLoading) {
+    const ov = document.createElement('div');
+    ov.className = 'loading-overlay';
+    ov.innerHTML = '<div class="dot"></div><div class="dot"></div><div class="dot"></div><span style="font-size:12px;color:var(--purple)">Procesando con IA…</span>';
+    root.appendChild(ov);
+  }
+}
+
+// ── AUTH SCREEN ──────────────────────────────────────────────
+function renderAuth() {
+  const div = document.createElement('div');
+  div.className = 'screen';
+  div.innerHTML = `
+    <div class="screen-logo">⚡</div>
+    <div class="screen-title">FitAI Pro</div>
+    <div class="screen-sub">Tu entrenador personal con IA · Solo $990 CLP</div>
+    <div class="auth-card">
+      <div class="auth-tabs">
+        <button class="auth-tab ${STATE.authMode==='login'?'active':''}" id="tab-login">Ingresar</button>
+        <button class="auth-tab ${STATE.authMode==='register'?'active':''}" id="tab-reg">Crear cuenta</button>
+      </div>
+      <div class="err ${STATE.authError?'show':''}" id="auth-err">${STATE.authError}</div>
+      ${STATE.authMode==='register'?`
+        <div class="field"><label>Tu nombre</label><input type="text" id="auth-name" placeholder="Nombre completo"/></div>
+      `:''}
+      <div class="field"><label>Email</label><input type="email" id="auth-email" placeholder="tu@email.com"/></div>
+      <div class="field"><label>Contraseña</label><input type="password" id="auth-pass" placeholder="••••••••"/></div>
+      <button class="btn btn-lime" id="btn-auth" ${STATE.authLoading?'disabled':''}>
+        ${STATE.authLoading?'Cargando…':STATE.authMode==='login'?'Ingresar →':'Crear cuenta →'}
+      </button>
+      ${STATE.authMode==='login'?`<p style="text-align:center;margin-top:14px;font-size:12px;color:var(--muted)">¿No tienes cuenta? <button class="link-btn" id="to-reg">Regístrate aquí</button></p>`:`<p style="text-align:center;margin-top:14px;font-size:12px;color:var(--muted)">¿Ya tienes cuenta? <button class="link-btn" id="to-login">Ingresa aquí</button></p>`}
+    </div>
+    <p style="font-size:11px;color:var(--muted);margin-top:16px;text-align:center">🔒 Tus datos están seguros y cifrados</p>`;
+
+  div.querySelector('#tab-login').onclick = () => { STATE.authMode='login'; STATE.authError=''; render(); };
+  div.querySelector('#tab-reg').onclick = () => { STATE.authMode='register'; STATE.authError=''; render(); };
+  div.querySelector('#to-reg')?.onclick = () => { STATE.authMode='register'; STATE.authError=''; render(); };
+  div.querySelector('#to-login')?.onclick = () => { STATE.authMode='login'; STATE.authError=''; render(); };
+
+  div.querySelector('#btn-auth').onclick = async () => {
+    const email = div.querySelector('#auth-email')?.value?.trim();
+    const pass = div.querySelector('#auth-pass')?.value;
+    const name = div.querySelector('#auth-name')?.value?.trim();
+    if (!email || !pass) { STATE.authError='Completa todos los campos.'; render(); return; }
+    STATE.authLoading = true; STATE.authError = ''; render();
+    try {
+      if (STATE.authMode === 'register') {
+        if (!name) { throw new Error('Ingresa tu nombre.'); }
+        STATE.user = authRegister(email, pass, name);
+      } else {
+        STATE.user = authLogin(email, pass);
+      }
+      save();
+      STATE.screen = STATE.user.paid ? (STATE.profile ? 'app' : 'setup') : 'paywall';
+    } catch(e) {
+      STATE.authError = e.message;
+    }
+    STATE.authLoading = false;
+    render();
+  };
+
+  div.querySelector('#auth-pass')?.addEventListener('keydown', e => { if(e.key==='Enter') div.querySelector('#btn-auth')?.click(); });
+  return div;
+}
+
+// ── PAYWALL SCREEN ───────────────────────────────────────────
+function renderPaywall() {
+  const isDemo = CONFIG.MP_PUBLIC_KEY === 'APP_USR-TU-PUBLIC-KEY-AQUI';
+  const div = document.createElement('div');
+  div.className = 'screen';
+  div.innerHTML = `
+    <div class="screen-logo">🏆</div>
+    <div class="screen-title">Activa tu plan</div>
+    <div class="screen-sub">Hola, ${STATE.user?.name}. Un único pago para acceso completo de por vida.</div>
+    <div class="paywall-card">
+      <div style="display:inline-block;background:var(--lime);color:#000;border-radius:100px;padding:4px 16px;font-size:11px;font-weight:800;letter-spacing:1px;text-transform:uppercase;margin-bottom:12px">Acceso de por vida</div>
+      <div class="paywall-price">$990</div>
+      <div class="paywall-period">pesos chilenos · pago único · sin renovaciones</div>
+
+      <div class="paywall-features">
+        ${['Plan de entrenamiento semanal con IA','Plan de alimentación diario personalizado','Seguimiento de progreso diario','Análisis de IA y feedback científico','Coach IA disponible 24/7','App instalable en tu teléfono'].map(f=>`<div class="paywall-feat">${f}</div>`).join('')}
+      </div>
+
+      <!-- Métodos de pago disponibles en MP Chile -->
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:12px 16px;margin-bottom:16px;text-align:left">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:10px;font-weight:600;text-transform:uppercase;letter-spacing:1px">Medios de pago disponibles</div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px">
+          ${['💳 Débito / Crédito','🔵 Redcompra','💰 Saldo MercadoPago','🏦 Transferencia','🏪 Efectivo'].map(m=>`<span style="background:var(--border);color:var(--muted);border-radius:20px;padding:4px 12px;font-size:11px;font-weight:600">${m}</span>`).join('')}
+        </div>
+      </div>
+
+      <div class="err ${STATE.payError?'show':''}">${STATE.payError}</div>
+
+      <button class="btn btn-lime" id="btn-pay" ${STATE.payLoading?'disabled':''}>
+        ${STATE.payLoading
+          ? '⏳ Conectando con MercadoPago…'
+          : isDemo
+            ? '⚡ Pagar $990 CLP (modo demo)'
+            : '⚡ Ir a pagar $990 CLP →'}
+      </button>
+
+      ${isDemo ? `<div style="background:#fbbf2410;border:1px solid #fbbf2430;border-radius:10px;padding:10px;margin-top:10px;font-size:11px;color:var(--amber);text-align:center">⚠️ Modo demo activo. Agrega tu Public Key de MP para cobros reales.</div>` : ''}
+
+      <div class="secure-badge" style="margin-top:14px">
+        <img src="https://www.mercadopago.cl/favicon.ico" style="width:14px;height:14px;border-radius:3px" onerror="this.style.display='none'"/>
+        🔒 Pago 100% seguro con MercadoPago · Garantía 7 días
+      </div>
+    </div>
+    <button class="btn btn-ghost" style="max-width:420px;margin-top:8px" id="btn-logout-pay">← Cambiar cuenta</button>`;
+
+  div.querySelector('#btn-pay').onclick = processPayment;
+  div.querySelector('#btn-logout-pay').onclick = () => { STATE.user=null; STATE.screen='auth'; save(); render(); };
+  return div;
+}
+
+// ── SETUP FLOW ───────────────────────────────────────────────
+const STEPS = [
+  {key:'name',q:'¿Cuál es tu nombre?',type:'text',ph:'Tu nombre'},
+  {key:'age',q:'¿Cuántos años tienes?',type:'number',ph:'Ej: 28'},
+  {key:'gender',q:'¿Cuál es tu sexo biológico?',type:'select',opts:['Masculino','Femenino']},
+  {key:'weight',q:'¿Cuál es tu peso actual? (kg)',type:'number',ph:'Ej: 82'},
+  {key:'height',q:'¿Cuál es tu altura? (cm)',type:'number',ph:'Ej: 175'},
+  {key:'bodyFat',q:'¿Sabes tu % de grasa corporal? (opcional)',type:'number',ph:'Deja vacío si no sabes'},
+  {key:'goal',q:'¿Cuál es tu objetivo principal?',type:'select',opts:['🔥 Quemar grasa','💪 Ganar masa muscular','⚡ Ambos (recomposición)']},
+  {key:'targetWeight',q:'¿Cuál es tu peso objetivo? (kg)',type:'number',ph:'Ej: 72'},
+  {key:'targetBodyFat',q:'¿Cuál es tu % de grasa objetivo?',type:'number',ph:'Ej: 15'},
+  {key:'weeksGoal',q:'¿En cuántas semanas quieres lograrlo?',type:'number',ph:'Ej: 12'},
+  {key:'activityLevel',q:'¿Cuál es tu nivel de actividad actual?',type:'select',opts:['Sedentario (sin ejercicio)','Ligero (1-2 días/sem)','Moderado (3-4 días/sem)','Activo (5+ días/sem)','Atleta (2x/día)']},
+];
+
+function renderSetup() {
+  const wrap = document.createElement('div');
+  wrap.className = 'setup-wrap';
+
+  if (STATE.aiLoading) {
+    wrap.innerHTML = `<div style="text-align:center;padding-top:60px"><div style="font-size:56px;margin-bottom:16px">🧠</div><div style="font-family:Syne,sans-serif;font-size:22px;font-weight:800;color:var(--purple)">Generando tu plan…</div><div style="color:var(--muted);font-size:13px;margin-top:8px">Analizando con principios de Harvard</div><div style="display:flex;justify-content:center;gap:8px;margin-top:24px"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div></div>`;
+    return wrap;
+  }
+
+  const step = STEPS[STATE.setupStep];
+  const pct = (STATE.setupStep/STEPS.length)*100;
+
+  wrap.innerHTML = `
+    <div class="screen-logo">🏋️</div>
+    <div class="screen-title">Configura tu plan</div>
+    <div class="screen-sub">Hola ${STATE.user?.name}! Cuéntanos sobre ti.</div>
+    <div style="width:100%;max-width:440px;margin-top:20px">
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+        <span style="font-size:11px;color:var(--muted)">Configuración inicial</span>
+        <span style="font-size:11px;color:var(--purple)">${STATE.setupStep+1}/${STEPS.length}</span>
+      </div>
+      <div class="prog-wrap"><div class="prog-fill" style="width:${pct}%;background:linear-gradient(90deg,var(--purple),#7c3aed)"></div></div>
+    </div>
+    <div class="setup-card">
+      <div style="font-size:12px;color:var(--purple);font-weight:700;margin-bottom:14px">Paso ${STATE.setupStep+1}</div>
+      <div style="font-family:Syne,sans-serif;font-size:17px;font-weight:700;margin-bottom:20px;line-height:1.4">${step.q}</div>
+      <div id="step-inp"></div>
+      <button class="btn btn-purple" id="btn-next" style="margin-top:16px">${STATE.setupStep===STEPS.length-1?'🚀 Generar mi plan':'Continuar →'}</button>
+      ${STATE.setupStep>0?`<button class="btn btn-ghost" id="btn-back">← Atrás</button>`:''}
+    </div>`;
+
+  const inp = wrap.querySelector('#step-inp');
+  if (step.type==='select') {
+    step.opts.forEach(o => {
+      const b=document.createElement('button'); b.className='option-btn'+(STATE.setupData[step.key]===o?' selected':''); b.textContent=o;
+      b.onclick=()=>{STATE.setupData[step.key]=o;render();};
+      inp.appendChild(b);
+    });
+  } else {
+    const el=document.createElement('input'); el.type=step.type; el.placeholder=step.ph; el.value=STATE.setupData[step.key]||''; el.style.cssText='width:100%';
+    el.oninput=e=>STATE.setupData[step.key]=e.target.value;
+    el.onkeydown=e=>{if(e.key==='Enter')wrap.querySelector('#btn-next')?.click();};
+    inp.appendChild(el); setTimeout(()=>el.focus(),100);
+  }
+
+  wrap.querySelector('#btn-next').onclick = async () => {
+    const val=STATE.setupData[step.key];
+    if(step.key!=='bodyFat'&&!val){inp.querySelector('input,select')?.focus();return;}
+    if(STATE.setupStep<STEPS.length-1){STATE.setupStep++;render();}
+    else {
+      STATE.aiLoading=true; render();
+      const p=STATE.setupData;
+      const desc=`Usuario: ${p.name}, ${p.age}años, ${p.gender}\nPeso: ${p.weight}kg, Altura: ${p.height}cm, Grasa: ${p.bodyFat||'desconocida'}%\nObjetivo: ${p.goal}\nMeta: ${p.targetWeight}kg / ${p.targetBodyFat}% grasa en ${p.weeksGoal} semanas\nActividad: ${p.activityLevel}`;
+      const [planR,nutR]=await Promise.all([
+        claude([{role:'user',content:`Plan de entrenamiento semanal DETALLADO para: ${desc}. Ejercicios, series, reps, descansos. Máx 800 palabras.`}]),
+        claude([{role:'user',content:`Plan de alimentación diario Harvard para: ${desc}. Calorías, macros, 5 comidas con cantidades, timing. Máx 800 palabras.`}])
+      ]);
+      STATE.profile={...p,setup:true}; STATE.plan=planR; STATE.nutrition=nutR; STATE.aiLoading=false; STATE.screen='app'; save(); render();
+    }
+  };
+  wrap.querySelector('#btn-back')?.addEventListener('click',()=>{STATE.setupStep--;render();});
+  return wrap;
+}
+
+// ── HEADER ───────────────────────────────────────────────────
+function renderHeader() {
+  const p=STATE.profile;
+  const tabNames=['Dashboard','Entrenamiento','Nutrición','Registro','Progreso'];
+  const goal=p.goal?.includes('grasa')?'🔥 Fat Burn':p.goal?.includes('muscular')?'💪 Muscle':'⚡ Recomp';
+  const h=document.createElement('div'); h.className='header';
+  h.innerHTML=`<div class="header-inner">
+    <div><div class="logo">⚡ FitAI Pro</div><div class="sub">Hola, ${STATE.user?.name||p.name} · ${tabNames[STATE.tab]}</div></div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <span class="badge" style="background:#a78bfa20;color:var(--purple)">${goal}</span>
+      <button class="avatar-btn" id="btn-user">👤</button>
+    </div>
+  </div>`;
+  h.querySelector('#btn-user').onclick=(e)=>{e.stopPropagation();STATE.showUserMenu=!STATE.showUserMenu;render();};
+  return h;
+}
+
+// ── TAB BAR ──────────────────────────────────────────────────
+function renderTabBar() {
+  const icons=['🏠','💪','🥗','📝','📈'], labels=['Inicio','Entrena','Nutrición','Registro','Progreso'];
+  const tb=document.createElement('div'); tb.className='tabbar';
+  icons.forEach((ic,i)=>{
+    const b=document.createElement('button'); b.className='tab-btn'+(STATE.tab===i?' active':'');
+    b.innerHTML=`<span class="icon">${ic}</span><span>${labels[i]}</span>`;
+    b.onclick=()=>{STATE.tab=i;STATE.aiMsg='';STATE.showUserMenu=false;render();};
+    tb.appendChild(b);
+  });
+  return tb;
+}
+
+// ── DASHBOARD ────────────────────────────────────────────────
+function renderDashboard() {
+  const prog=calcProgress();
+  const div=document.createElement('div');
+  div.innerHTML=`
+    <div class="stats-grid">
+      <div class="stat-box" style="background:#60a5fa12;border:1px solid #60a5fa25"><div class="stat-icon">🗓️</div><div class="stat-val" style="color:var(--blue)">${prog.days}</div><div class="stat-lbl">Días activo</div></div>
+      <div class="stat-box" style="background:#34d39912;border:1px solid #34d39925"><div class="stat-icon">⚖️</div><div class="stat-val" style="color:var(--green)">${Math.max(0,prog.lost)}kg</div><div class="stat-lbl">Kg perdidos</div></div>
+      <div class="stat-box" style="background:#a78bfa12;border:1px solid #a78bfa25"><div class="stat-icon">🎯</div><div class="stat-val" style="color:var(--purple)">${prog.pct}%</div><div class="stat-lbl">Progreso</div></div>
+    </div>
+    <div class="card card-purple">
+      <div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:14px;font-weight:700">🎯 Meta: ${STATE.profile.targetWeight}kg</span><span style="color:var(--purple);font-weight:800">${prog.pct}%</span></div>
+      <div class="prog-wrap"><div class="prog-fill" style="width:${prog.pct}%;background:linear-gradient(90deg,var(--purple),#7c3aed80)"></div></div>
+      <div style="font-size:11px;color:var(--muted);margin-top:6px">Actual: ${prog.lw}kg → Meta: ${STATE.profile.targetWeight}kg · ${STATE.profile.weeksGoal} semanas</div>
+    </div>
+    ${prog.trend.length>1?renderMiniChart(prog.trend):''}
+    ${STATE.aiMsg?`<div class="card card-green"><div class="card-sh">🧠 Análisis de hoy</div><div class="ai-text">${STATE.aiMsg}</div></div>`:''}
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <button class="btn btn-blue" id="to-log">📝 Registrar hoy</button>
+      <button class="btn" style="background:linear-gradient(135deg,var(--green),#059669);color:#fff" id="to-nut">🥗 Nutrición</button>
+    </div>`;
+  div.querySelector('#to-log').onclick=()=>{STATE.tab=3;render();};
+  div.querySelector('#to-nut').onclick=()=>{STATE.tab=2;render();};
+  return div;
+}
+function renderMiniChart(trend) {
+  const weights=trend.map(t=>t.w),mn=Math.min(...weights)-1,mx=Math.max(...weights)+1;
+  return `<div class="card"><div class="card-sh">📉 Tendencia de peso</div><div class="mini-chart">${trend.map(t=>{const h=Math.round(((t.w-mn)/(mx-mn))*40+8);return`<div class="bar-wrap"><div class="bar" style="height:${h}px"></div><div class="bar-lbl">${(t.date||'').slice(0,5)}</div></div>`;}).join('')}</div></div>`;
+}
+
+// ── WORKOUT ──────────────────────────────────────────────────
+function renderWorkout() {
+  const div=document.createElement('div');
+  div.innerHTML=`
+    <div class="card card-purple"><div class="card-h">💪 Plan de Entrenamiento</div><div class="ai-text">${STATE.plan||'Cargando…'}</div></div>
+    <button class="btn btn-purple" id="btn-newplan">${STATE.aiLoading?'Generando…':'🔄 Nueva semana'}</button>
+    <div class="card" style="margin-top:8px"><div class="card-sh">💬 Pregunta al coach</div><div id="chat-w"></div>
+    <div class="chat-row"><input type="text" id="ci-w" placeholder="¿Cómo reemplazo las sentadillas?"/><button id="cs-w">→</button></div></div>`;
+  STATE.chat.slice(-4).forEach(m=>{const el=document.createElement('div');el.className='chat-msg '+(m.role==='user'?'chat-user':'chat-ai');el.innerHTML=`<strong>${m.role==='user'?'Tú:':'🤖 '}</strong> ${m.content.slice(0,220)}${m.content.length>220?'…':''}`;div.querySelector('#chat-w').appendChild(el);});
+  div.querySelector('#btn-newplan').onclick=async()=>{STATE.aiLoading=true;render();const r=await claude([{role:'user',content:`Plan entrenamiento variado para ${STATE.profile.name}, ${STATE.profile.goal}, nivel: ${STATE.profile.activityLevel}, ${calcProgress().days} días en programa. Máx 700 palabras.`}]);STATE.plan=r;STATE.aiLoading=false;save();render();};
+  const send=async()=>{const inp=div.querySelector('#ci-w');const txt=inp?.value.trim();if(!txt)return;STATE.chat.push({role:'user',content:txt});inp.value='';STATE.aiLoading=true;render();const msgs=STATE.chat.slice(-6).map(m=>({role:m.role,content:m.content}));msgs[0]={...msgs[0],content:`${STATE.profile.name},${STATE.profile.goal}\n${msgs[0].content}`};const r=await claude(msgs);STATE.chat.push({role:'assistant',content:r});STATE.aiLoading=false;save();render();};
+  div.querySelector('#cs-w').onclick=send;
+  div.querySelector('#ci-w').onkeydown=e=>{if(e.key==='Enter')send();};
+  return div;
+}
+
+// ── NUTRITION ─────────────────────────────────────────────────
+function renderNutrition() {
+  const div=document.createElement('div');
+  div.innerHTML=`
+    <div class="card card-green"><div class="card-h">🥗 Plan de Alimentación</div><div class="ai-text">${STATE.nutrition||'Cargando…'}</div></div>
+    <button class="btn btn-green" id="btn-newnut">${STATE.aiLoading?'Generando…':'🔄 Nuevo menú del día'}</button>
+    <div class="card" style="margin-top:8px"><div class="card-sh">💬 Consulta nutricional</div><div id="chat-n"></div>
+    <div class="chat-row"><input type="text" id="ci-n" placeholder="¿Puedo sustituir el pollo?"/><button id="cs-n" style="background:var(--green)">→</button></div></div>`;
+  STATE.chat.slice(-2).forEach(m=>{const el=document.createElement('div');el.className='chat-msg '+(m.role==='user'?'chat-user':'chat-ai');el.style.color=m.role==='assistant'?'#6ee7b7':'';el.innerHTML=`<strong>${m.role==='user'?'Tú:':'🤖 '}</strong> ${m.content.slice(0,200)}${m.content.length>200?'…':''}`;div.querySelector('#chat-n').appendChild(el);});
+  div.querySelector('#btn-newnut').onclick=async()=>{STATE.aiLoading=true;render();const p=STATE.profile;const r=await claude([{role:'user',content:`Plan alimentación VARIADO para ${p.name}, ${p.goal}, ${calcProgress().lw}kg, ${p.height}cm, ${p.gender}, ${p.age}años. Recetas sencillas. Harvard. Máx 700 palabras.`}]);STATE.nutrition=r;STATE.aiLoading=false;save();render();};
+  const send=async()=>{const inp=div.querySelector('#ci-n');const txt=inp?.value.trim();if(!txt)return;STATE.chat.push({role:'user',content:txt});inp.value='';STATE.aiLoading=true;render();const msgs=STATE.chat.slice(-4).map(m=>({role:m.role,content:m.content}));msgs[0]={...msgs[0],content:`${STATE.profile.name},${STATE.profile.goal}\n${msgs[0].content}`};const r=await claude(msgs);STATE.chat.push({role:'assistant',content:r});STATE.aiLoading=false;save();render();};
+  div.querySelector('#cs-n').onclick=send;
+  div.querySelector('#ci-n').onkeydown=e=>{if(e.key==='Enter')send();};
+  return div;
+}
+
+// ── DAILY LOG ─────────────────────────────────────────────────
+function renderLog() {
+  const div=document.createElement('div');
+  const today=new Date().toLocaleDateString('es-CL',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  const log=STATE.todayLog;
+  div.innerHTML=`
+    <div class="card card-amber" style="margin-bottom:12px"><div class="card-h">📝 Registro de Hoy</div><div style="font-size:12px;color:var(--amber)">${today}</div></div>
+    ${[{k:'weight',l:'⚖️ Peso actual (kg)',t:'number',p:'Ej: 79.5'},{k:'bodyFat',l:'📊 % Grasa corporal',t:'number',p:'Opcional'},{k:'calories',l:'🔥 Calorías consumidas',t:'number',p:'Ej: 1800'},{k:'protein',l:'🥩 Proteína (g)',t:'number',p:'Ej: 150'},{k:'sleep',l:'😴 Horas de sueño',t:'number',p:'Ej: 7.5'},{k:'water',l:'💧 Agua (litros)',t:'number',p:'Ej: 2.5'}].map(f=>`<div class="field"><label>${f.l}</label><input type="${f.t}" placeholder="${f.p}" data-key="${f.k}" value="${log[f.k]||''}"/></div>`).join('')}
+    <div class="field"><label>🏋️ ¿Entrenaste hoy?</label><select data-key="training"><option value="no" ${log.training==='no'?'selected':''}>No entrené</option><option value="si" ${log.training==='si'?'selected':''}>Sí, entrené</option><option value="activo" ${log.training==='activo'?'selected':''}>Descanso activo</option></select></div>
+    <div class="field"><label>⚡ Nivel de energía (1-5)</label><div class="energy-row">${[1,2,3,4,5].map(n=>`<button class="energy-btn ${log.energy==n?'active':''}" data-e="${n}">${n}</button>`).join('')}</div></div>
+    <div class="field"><label>📓 Notas</label><textarea placeholder="¿Cómo te sentiste hoy?">${log.notes||''}</textarea></div>
+    <button class="btn btn-amber" id="btn-save">${STATE.aiLoading?'⏳ Analizando…':'✅ Guardar y analizar'}</button>
+    ${STATE.aiMsg?`<div class="card card-green" style="margin-top:12px"><div class="card-sh">🧠 Análisis personalizado</div><div class="ai-text">${STATE.aiMsg}</div></div>`:''}`;
+  div.querySelectorAll('input[data-key],select[data-key]').forEach(el=>el.addEventListener('input',e=>{STATE.todayLog[e.target.dataset.key]=e.target.value;}));
+  div.querySelectorAll('textarea').forEach(el=>el.addEventListener('input',e=>{STATE.todayLog.notes=e.target.value;}));
+  div.querySelectorAll('.energy-btn').forEach(b=>b.addEventListener('click',()=>{STATE.todayLog.energy=b.dataset.e;render();}));
+  div.querySelector('#btn-save').onclick=async()=>{
+    const todayStr=new Date().toLocaleDateString('es-CL');
+    const newLog={date:todayStr,...STATE.todayLog};
+    STATE.dailyLogs=[newLog,...STATE.dailyLogs.filter(l=>l.date!==todayStr)].slice(0,90);
+    save(); STATE.aiLoading=true; render();
+    const prog=calcProgress();const p=STATE.profile;
+    const r=await claude([{role:'user',content:`Análisis de hoy de ${p.name} (máx 200 palabras):\nDatos: ${JSON.stringify(newLog)}\nProgreso: ${prog.lost}kg perdidos, ${prog.days} días\nObjetivo: ${p.goal}, meta ${p.targetWeight}kg`}]);
+    STATE.aiMsg=r; STATE.aiLoading=false; render();
+  };
+  return div;
+}
+
+// ── PROGRESS ──────────────────────────────────────────────────
+function renderProgress() {
+  const prog=calcProgress();
+  const div=document.createElement('div');
+  div.innerHTML=`
+    <div class="stats-grid stats-grid2">
+      ${[{l:'Días registrados',v:prog.days,i:'🗓️',c:'var(--blue)'},{l:'Kg perdidos',v:Math.max(0,prog.lost)+'kg',i:'🔥',c:'var(--amber)'},{l:'Progreso meta',v:prog.pct+'%',i:'🎯',c:'var(--purple)'},{l:'Peso actual',v:prog.lw+'kg',i:'⚖️',c:'var(--green)'}].map(s=>`<div class="stat-box" style="background:${s.c}12;border:1px solid ${s.c}25"><div class="stat-icon">${s.i}</div><div class="stat-val" style="color:${s.c}">${s.v}</div><div class="stat-lbl">${s.l}</div></div>`).join('')}
+    </div>
+    <div class="card card-purple">
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="font-weight:700">Progreso hacia la meta</span><span style="color:var(--purple);font-weight:800">${prog.pct}%</span></div>
+      <div class="prog-wrap"><div class="prog-fill" style="width:${prog.pct}%;background:linear-gradient(90deg,var(--purple),#7c3aed80)"></div></div>
+      <div style="display:flex;justify-content:space-between;margin-top:6px"><span style="font-size:11px;color:var(--muted)">Inicio: ${STATE.profile.weight}kg</span><span style="font-size:11px;color:var(--muted)">Meta: ${STATE.profile.targetWeight}kg</span></div>
+    </div>
+    <div class="card"><div class="card-h">📋 Historial reciente</div>
+      ${!STATE.dailyLogs.length?'<div style="color:var(--muted);font-size:13px;text-align:center;padding:20px">Sin registros aún 💪</div>':STATE.dailyLogs.slice(0,7).map(l=>`<div class="log-item"><div class="log-row"><span class="log-date">${l.date}</span><span class="badge" style="background:${l.training==='si'?'#34d39920':'#1e1e3a'};color:${l.training==='si'?'var(--green)':'var(--muted)'}">${l.training==='si'?'💪 Entrenó':l.training==='activo'?'🚶 Activo':'😴 Descanso'}</span></div><div class="tags">${l.weight?`<span class="tag">⚖️ ${l.weight}kg</span>`:''} ${l.calories?`<span class="tag">🔥 ${l.calories}kcal</span>`:''} ${l.protein?`<span class="tag">🥩 ${l.protein}g</span>`:''} ${l.sleep?`<span class="tag">😴 ${l.sleep}h</span>`:''} ${l.energy?`<span class="tag">⚡ ${l.energy}/5</span>`:''}</div></div>`).join('')}
+    </div>
+    <button class="btn btn-blue" id="btn-weekly">${STATE.aiLoading?'⏳ Analizando…':'🧠 Análisis semanal con IA'}</button>
+    ${STATE.aiMsg?`<div class="card card-blue" style="margin-top:12px"><div class="card-sh">📊 Informe de progreso</div><div class="ai-text">${STATE.aiMsg}</div></div>`:''}`;
+  div.querySelector('#btn-weekly').onclick=async()=>{STATE.aiLoading=true;render();const p=STATE.profile;const prog2=calcProgress();const r=await claude([{role:'user',content:`Análisis de progreso de ${p.name} (300 palabras):\nPerfil: ${JSON.stringify(p)}\nRegistros: ${JSON.stringify(STATE.dailyLogs.slice(0,7))}\nProgreso: ${prog2.lost}kg en ${prog2.days} días\nIncluye tasa de progreso, adherencia, recomendaciones.`}]);STATE.aiMsg=r;STATE.aiLoading=false;render();};
+  return div;
+}
+
+// ── SERVICE WORKER ────────────────────────────────────────────
+if ('serviceWorker' in navigator) {
+  const sw=`const C='fitai-v2';self.addEventListener('install',e=>e.waitUntil(caches.open(C).then(c=>c.addAll(['./']))));self.addEventListener('fetch',e=>{if(e.request.url.includes('api.anthropic.com')||e.request.url.includes('js.stripe.com'))return;e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request)));});`;
+  navigator.serviceWorker.register(URL.createObjectURL(new Blob([sw],{type:'application/javascript'}))).catch(()=>{});
+}
+
+// ── INIT ──────────────────────────────────────────────────────
+render();
+</script>
+</body>
+</html>
