@@ -151,13 +151,13 @@ textarea { resize: none; height: 72px; }
 const CONFIG = {
   // 1. Tu Public Key de MercadoPago (empieza con APP_USR-)
   //    La encuentras en: mercadopago.cl/developers/panel → tu app → Credenciales
-  MP_PUBLIC_KEY: 'APP_USR-ade94a33-3e1d-416d-9241-689ff63cba23',
+  MP_PUBLIC_KEY: 'TEST-3faf5463-43c3-42d2-a6af-9639411e78ea',
 
   // 2. URL de tu backend en Netlify
   PAYMENT_ENDPOINT: 'https://remarkable-elf-c56569.netlify.app/.netlify/functions/create-preference',
 
-  // 3. Precio y moneda - $990 CLP
-  AMOUNT: 990,
+  // 3. Precio y moneda - $4.4.990 CLP
+  AMOUNT: 4990,
   CURRENCY: 'CLP',
 };
 // ---
@@ -165,7 +165,530 @@ const CONFIG = {
 const STORAGE_KEY = 'fitai_v3';
 let mp = null;
 
+// ════════════════════════════════════════════════════════════
+// SISTEMA DE IDIOMAS / LANGUAGE SYSTEM
+// ════════════════════════════════════════════════════════════
+const TRANSLATIONS = {
+  es: {
+    // App general
+    appName: 'FitAI Pro',
+    appSub: 'Tu entrenador personal con IA · Solo $4.4.990 CLP',
+    secureData: '🔒 Tus datos están seguros y cifrados',
+    // Auth
+    login: 'Ingresar',
+    register: 'Crear cuenta',
+    email: 'Email',
+    emailPh: 'tu@email.com',
+    password: 'Contraseña',
+    passwordPh: '••••••••',
+    yourName: 'Tu nombre',
+    namePh: 'Nombre completo',
+    loginBtn: 'Ingresar →',
+    registerBtn: 'Crear cuenta →',
+    loading: 'Cargando…',
+    noAccount: '¿No tienes cuenta?',
+    registerHere: 'Regístrate aquí',
+    haveAccount: '¿Ya tienes cuenta?',
+    loginHere: 'Ingresa aquí',
+    fillFields: 'Completa todos los campos.',
+    enterName: 'Ingresa tu nombre.',
+    emailExists: 'Este email ya está registrado.',
+    emailNotFound: 'Email no encontrado.',
+    wrongPass: 'Contraseña incorrecta.',
+    // Paywall
+    activatePlan: 'Activa tu plan',
+    activateSub: 'Un único pago para acceso completo de por vida.',
+    lifeAccess: 'ACCESO DE POR VIDA',
+    clpPeriod: 'pesos chilenos · pago único · sin renovaciones',
+    feat1: 'Plan de entrenamiento semanal con IA',
+    feat2: 'Plan de alimentación diario personalizado',
+    feat3: 'Seguimiento de progreso diario',
+    feat4: 'Análisis de IA y feedback científico',
+    feat5: 'Coach IA disponible 24/7',
+    feat6: 'App instalable en tu teléfono',
+    payMethods: 'MEDIOS DE PAGO DISPONIBLES',
+    payBtn: t('payBtn'),
+    payBtnDemo: t('payBtnDemo'),
+    payLoading: t('payLoading'),
+    securePay: '🔒 Pago 100% seguro con MercadoPago · Garantía 7 días',
+    changeAccount: '← Cambiar cuenta',
+    // Setup
+    setupTitle: 'Configura tu plan',
+    setupSub: 'Cuéntanos sobre ti.',
+    initialSetup: 'Configuración inicial',
+    step: 'Paso',
+    continueBtn: 'Continuar →',
+    generateBtn: '🚀 Generar mi plan',
+    backBtn: t('backBtn'),
+    generatingPlan: 'Generando tu plan…',
+    analyzingHarvard: 'Analizando con principios de Harvard',
+    // Setup steps
+    q_name: '¿Cuál es tu nombre?',
+    q_age: '¿Cuántos años tienes?',
+    q_gender: '¿Cuál es tu sexo biológico?',
+    q_weight: '¿Cuál es tu peso actual? (kg)',
+    q_height: '¿Cuál es tu altura? (cm)',
+    q_bodyFat: '¿Sabes tu % de grasa corporal? (opcional)',
+    q_goal: '¿Cuál es tu objetivo principal?',
+    q_targetWeight: '¿Cuál es tu peso objetivo? (kg)',
+    q_targetBodyFat: '¿Cuál es tu % de grasa objetivo?',
+    q_weeksGoal: '¿En cuántas semanas quieres lograrlo?',
+    q_activityLevel: '¿Cuál es tu nivel de actividad actual?',
+    ph_name: 'Tu nombre',
+    ph_age: 'Ej: 28',
+    ph_weight: 'Ej: 82',
+    ph_height: 'Ej: 175',
+    ph_bodyFat: 'Deja vacío si no sabes',
+    ph_targetWeight: 'Ej: 72',
+    ph_targetBodyFat: 'Ej: 15',
+    ph_weeksGoal: 'Ej: 12',
+    opt_male: 'Masculino',
+    opt_female: 'Femenino',
+    opt_fat: '🔥 Quemar grasa',
+    opt_muscle: '💪 Ganar masa muscular',
+    opt_both: '⚡ Ambos (recomposición)',
+    opt_sed: 'Sedentario (sin ejercicio)',
+    opt_light: 'Ligero (1-2 días/sem)',
+    opt_mod: 'Moderado (3-4 días/sem)',
+    opt_active: 'Activo (5+ días/sem)',
+    opt_athlete: 'Atleta (2x/día)',
+    // Header
+    hello: 'Hola',
+    goalFat: '🔥 Fat Burn',
+    goalMuscle: '💪 Muscle',
+    goalBoth: '⚡ Recomp',
+    // Tabs
+    tab0: 'Inicio', tab1: 'Entrena', tab2: 'Nutrición', tab3: 'Registro', tab4: t('progress'),
+    tabIcon0: '🏠', tabIcon1: '💪', tabIcon2: '🥗', tabIcon3: '📝', tabIcon4: '📈',
+    // Dashboard
+    daysActive: t('daysActive'),
+    kgLost: t('kgLost'),
+    progress: 'Progreso',
+    goalLabel: t('goalLabel'),
+    current: 'Actual',
+    goal: 'Meta',
+    weeks: 'semanas',
+    weightTrend: '📉 Tendencia de peso',
+    aiAnalysis: '🧠 Análisis de hoy',
+    logToday: t('logToday'),
+    viewNutrition: t('viewNutrition'),
+    resetProgram: t('resetProgram'),
+    confirmReset: t('confirmReset'),
+    // Workout
+    workoutPlan: '💪 Plan de Entrenamiento',
+    newWeek: '🔄 Nueva semana',
+    generating: 'Generando…',
+    askCoach: '💬 Pregunta al coach',
+    workoutPh: t('workoutPh'),
+    // Nutrition
+    nutritionPlan: t('nutritionPlan'),
+    newMenu: '🔄 Nuevo menú del día',
+    nutritionConsult: '💬 Consulta nutricional',
+    nutritionPh: t('nutritionPh'),
+    // Log
+    logTitle: '📝 Registro de Hoy',
+    weightLabel: t('weightLabel'),
+    bodyFatLabel: t('bodyFatLabel'),
+    caloriesLabel: t('caloriesLabel'),
+    proteinLabel: t('proteinLabel'),
+    sleepLabel: t('sleepLabel'),
+    waterLabel: t('waterLabel'),
+    trainingLabel: '🏋️ ¿Entrenaste hoy?',
+    noTrain: 'No entrené',
+    yesTrain: 'Sí, entrené',
+    activRest: 'Descanso activo',
+    energyLabel: '⚡ Nivel de energía (1-5)',
+    notesLabel: '📓 Notas',
+    notesPh: t('notesPh'),
+    saveBtn: '✅ Guardar y analizar',
+    savingBtn: '⏳ Analizando…',
+    aiPersonal: '🧠 Análisis personalizado',
+    // Progress
+    daysLogged: t('daysLogged'),
+    goalProgress: t('goalProgress'),
+    currentWeight: t('currentWeight'),
+    progressTitle: 'Progreso hacia la meta',
+    start: 'Inicio',
+    recentHistory: '📋 Historial reciente',
+    noRecords: t('noRecords'),
+    trained: t('trained'),
+    activeRest: t('activeRest'),
+    rest: t('rest'),
+    weeklyAnalysis: '🧠 Análisis semanal con IA',
+    analyzingBtn: '⏳ Analizando…',
+    progressReport: '📊 Informe de progreso',
+    // User menu
+    resetProg: t('resetProg'),
+    logout: t('logout'),
+    // AI prompts
+    aiSys: `Eres un experto en ciencias del deporte, nutrición y metabolismo basado en las últimas investigaciones de Harvard Medical School, Harvard T.H. Chan School of Public Health, y el American College of Sports Medicine. SIEMPRE responde en español. Sé específico, científico pero accesible. Usa emojis estratégicamente.`,
+    aiWorkoutPrompt: (p, prog) => `Plan entrenamiento variado para ${p.name}, ${p.goal}, nivel: ${p.activityLevel}, ${prog.days} días en programa. Máx 700 palabras. Responde en español.`,
+    aiNutPrompt: (p, lw) => `Plan alimentación VARIADO para ${p.name}, ${p.goal}, ${lw}kg, ${p.height}cm, ${p.gender}, ${p.age}años. Recetas sencillas. Base Harvard. Máx 700 palabras. Responde en español.`,
+    aiLogPrompt: (p, log, prog) => `Análisis de hoy de ${p.name} (máx 200 palabras):\nDatos: ${JSON.stringify(log)}\nProgreso: ${prog.lost}kg perdidos, ${prog.days} días\nObjetivo: ${p.goal}, meta ${p.targetWeight}kg. Responde en español.`,
+    aiWeeklyPrompt: (p, logs, prog) => `Análisis de progreso de ${p.name} (300 palabras):\nPerfil: ${JSON.stringify(p)}\nRegistros: ${JSON.stringify(logs)}\nProgreso: ${prog.lost}kg en ${prog.days} días. Responde en español.`,
+    aiSetupWorkout: (desc) => `Plan de entrenamiento semanal DETALLADO para: ${desc}. Ejercicios, series, reps, descansos. Máx 800 palabras. Responde en español.`,
+    aiSetupNut: (desc) => `Plan de alimentación diario Harvard para: ${desc}. Calorías, macros, 5 comidas con cantidades, timing. Máx 800 palabras. Responde en español.`,
+  },
+  en: {
+    appName: 'FitAI Pro',
+    appSub: 'Your AI Personal Trainer · Only $4.4.990 CLP',
+    secureData: '🔒 Your data is safe and encrypted',
+    login: 'Log in',
+    register: 'Create account',
+    email: 'Email',
+    emailPh: 'you@email.com',
+    password: 'Password',
+    passwordPh: '••••••••',
+    yourName: 'Your name',
+    namePh: 'Full name',
+    loginBtn: 'Log in →',
+    registerBtn: 'Create account →',
+    loading: 'Loading…',
+    noAccount: "Don't have an account?",
+    registerHere: 'Sign up here',
+    haveAccount: 'Already have an account?',
+    loginHere: 'Log in here',
+    fillFields: 'Please fill in all fields.',
+    enterName: 'Please enter your name.',
+    emailExists: 'This email is already registered.',
+    emailNotFound: 'Email not found.',
+    wrongPass: 'Wrong password.',
+    activatePlan: 'Activate your plan',
+    activateSub: 'One single payment for lifetime access.',
+    lifeAccess: 'LIFETIME ACCESS',
+    clpPeriod: 'Chilean pesos · one-time payment · no renewals',
+    feat1: 'Weekly AI training plan',
+    feat2: 'Daily personalized nutrition plan',
+    feat3: 'Daily progress tracking',
+    feat4: 'AI analysis and scientific feedback',
+    feat5: 'AI Coach available 24/7',
+    feat6: 'Installable app on your phone',
+    payMethods: 'AVAILABLE PAYMENT METHODS',
+    payBtn: '⚡ Pay $4.4.990 CLP →',
+    payBtnDemo: '⚡ Pay $4.4.990 CLP (demo mode)',
+    payLoading: '⏳ Connecting to MercadoPago…',
+    securePay: '🔒 100% secure payment with MercadoPago · 7-day guarantee',
+    changeAccount: '← Change account',
+    setupTitle: 'Set up your plan',
+    setupSub: 'Tell us about yourself.',
+    initialSetup: 'Initial setup',
+    step: 'Step',
+    continueBtn: 'Continue →',
+    generateBtn: '🚀 Generate my plan',
+    backBtn: '← Back',
+    generatingPlan: 'Generating your plan…',
+    analyzingHarvard: 'Analyzing with Harvard principles',
+    q_name: "What's your name?",
+    q_age: 'How old are you?',
+    q_gender: 'What is your biological sex?',
+    q_weight: 'What is your current weight? (kg)',
+    q_height: 'What is your height? (cm)',
+    q_bodyFat: 'Do you know your body fat %? (optional)',
+    q_goal: 'What is your main goal?',
+    q_targetWeight: 'What is your target weight? (kg)',
+    q_targetBodyFat: 'What is your target body fat %?',
+    q_weeksGoal: 'In how many weeks do you want to achieve it?',
+    q_activityLevel: 'What is your current activity level?',
+    ph_name: 'Your name',
+    ph_age: 'e.g: 28',
+    ph_weight: 'e.g: 82',
+    ph_height: 'e.g: 175',
+    ph_bodyFat: 'Leave empty if you don\'t know',
+    ph_targetWeight: 'e.g: 72',
+    ph_targetBodyFat: 'e.g: 15',
+    ph_weeksGoal: 'e.g: 12',
+    opt_male: 'Male',
+    opt_female: 'Female',
+    opt_fat: '🔥 Burn fat',
+    opt_muscle: '💪 Gain muscle mass',
+    opt_both: '⚡ Both (recomposition)',
+    opt_sed: 'Sedentary (no exercise)',
+    opt_light: 'Light (1-2 days/week)',
+    opt_mod: 'Moderate (3-4 days/week)',
+    opt_active: 'Active (5+ days/week)',
+    opt_athlete: 'Athlete (2x/day)',
+    hello: 'Hello',
+    goalFat: '🔥 Fat Burn', goalMuscle: '💪 Muscle', goalBoth: '⚡ Recomp',
+    tab0: 'Home', tab1: 'Train', tab2: 'Nutrition', tab3: 'Log', tab4: 'Progress',
+    tabIcon0: '🏠', tabIcon1: '💪', tabIcon2: '🥗', tabIcon3: '📝', tabIcon4: '📈',
+    daysActive: 'Active days', kgLost: 'Kg lost', progress: 'Progress',
+    goalLabel: '🎯 Goal:', current: 'Current', goal: 'Goal', weeks: 'weeks',
+    weightTrend: '📉 Weight trend', aiAnalysis: '🧠 Today\'s analysis',
+    logToday: '📝 Log today', viewNutrition: '🥗 Nutrition',
+    resetProgram: '🔄 Reset program', confirmReset: 'Reset entire program?',
+    workoutPlan: '💪 Training Plan', newWeek: '🔄 New week',
+    generating: 'Generating…', askCoach: '💬 Ask the coach',
+    workoutPh: 'How do I replace squats?',
+    nutritionPlan: '🥗 Nutrition Plan', newMenu: '🔄 New daily menu',
+    nutritionConsult: '💬 Nutrition consultation', nutritionPh: 'Can I substitute chicken?',
+    logTitle: '📝 Today\'s Log',
+    weightLabel: '⚖️ Current weight (kg)', bodyFatLabel: '📊 Body fat %',
+    caloriesLabel: '🔥 Calories consumed', proteinLabel: '🥩 Protein (g)',
+    sleepLabel: '😴 Hours of sleep', waterLabel: '💧 Water (liters)',
+    trainingLabel: '🏋️ Did you train today?',
+    noTrain: 'Did not train', yesTrain: 'Yes, I trained', activRest: 'Active rest',
+    energyLabel: '⚡ Energy level (1-5)', notesLabel: '📓 Notes',
+    notesPh: 'How did you feel today?', saveBtn: '✅ Save and analyze',
+    savingBtn: '⏳ Analyzing…', aiPersonal: '🧠 Personalized analysis',
+    daysLogged: 'Days logged', goalProgress: 'Goal progress', currentWeight: 'Current weight',
+    progressTitle: 'Progress toward goal', start: 'Start',
+    recentHistory: '📋 Recent history', noRecords: 'No records yet. Start today! 💪',
+    trained: '💪 Trained', activeRest: '🚶 Active', rest: '😴 Rest',
+    weeklyAnalysis: '🧠 Weekly AI analysis', analyzingBtn: '⏳ Analyzing…',
+    progressReport: '📊 Progress report',
+    resetProg: '🔄 Reset program', logout: '🚪 Log out',
+    aiSys: `You are an expert in sports science, nutrition and metabolism based on the latest research from Harvard Medical School, Harvard T.H. Chan School of Public Health, and the American College of Sports Medicine. ALWAYS respond in English. Be specific, scientific but accessible. Use emojis strategically.`,
+    aiWorkoutPrompt: (p, prog) => `Varied training plan for ${p.name}, ${p.goal}, level: ${p.activityLevel}, ${prog.days} days in program. Max 700 words. Respond in English.`,
+    aiNutPrompt: (p, lw) => `VARIED daily nutrition plan for ${p.name}, ${p.goal}, ${lw}kg, ${p.height}cm, ${p.gender}, ${p.age}yrs. Simple recipes. Harvard basis. Max 700 words. Respond in English.`,
+    aiLogPrompt: (p, log, prog) => `Analyze today's log for ${p.name} (max 200 words):\nData: ${JSON.stringify(log)}\nProgress: ${prog.lost}kg lost, ${prog.days} days\nGoal: ${p.goal}, target ${p.targetWeight}kg. Respond in English.`,
+    aiWeeklyPrompt: (p, logs, prog) => `Progress analysis for ${p.name} (300 words):\nProfile: ${JSON.stringify(p)}\nLogs: ${JSON.stringify(logs)}\nProgress: ${prog.lost}kg in ${prog.days} days. Respond in English.`,
+    aiSetupWorkout: (desc) => `Detailed weekly training plan for: ${desc}. Exercises, sets, reps, rest. Max 800 words. Respond in English.`,
+    aiSetupNut: (desc) => `Daily Harvard nutrition plan for: ${desc}. Calories, macros, 5 meals with quantities, timing. Max 800 words. Respond in English.`,
+  },
+  fr: {
+    appName: 'FitAI Pro',
+    appSub: 'Votre coach IA personnel · Seulement $4.4.990 CLP',
+    secureData: '🔒 Vos données sont sécurisées et chiffrées',
+    login: 'Se connecter',
+    register: 'Créer un compte',
+    email: 'Email',
+    emailPh: 'vous@email.com',
+    password: 'Mot de passe',
+    passwordPh: '••••••••',
+    yourName: 'Votre nom',
+    namePh: 'Nom complet',
+    loginBtn: 'Se connecter →',
+    registerBtn: 'Créer un compte →',
+    loading: 'Chargement…',
+    noAccount: "Pas de compte?",
+    registerHere: "S'inscrire ici",
+    haveAccount: 'Déjà un compte?',
+    loginHere: 'Se connecter ici',
+    fillFields: 'Veuillez remplir tous les champs.',
+    enterName: 'Veuillez entrer votre nom.',
+    emailExists: 'Cet email est déjà enregistré.',
+    emailNotFound: 'Email introuvable.',
+    wrongPass: 'Mot de passe incorrect.',
+    activatePlan: 'Activez votre plan',
+    activateSub: 'Un seul paiement pour un accès à vie.',
+    lifeAccess: 'ACCÈS À VIE',
+    clpPeriod: 'pesos chiliens · paiement unique · sans renouvellements',
+    feat1: "Plan d'entraînement hebdomadaire IA",
+    feat2: 'Plan nutritionnel quotidien personnalisé',
+    feat3: 'Suivi des progrès quotidien',
+    feat4: 'Analyse IA et retour scientifique',
+    feat5: 'Coach IA disponible 24h/7j',
+    feat6: 'Application installable sur votre téléphone',
+    payMethods: 'MOYENS DE PAIEMENT DISPONIBLES',
+    payBtn: '⚡ Payer $4.4.990 CLP →',
+    payBtnDemo: '⚡ Payer $4.4.990 CLP (mode démo)',
+    payLoading: '⏳ Connexion à MercadoPago…',
+    securePay: '🔒 Paiement 100% sécurisé avec MercadoPago · Garantie 7 jours',
+    changeAccount: '← Changer de compte',
+    setupTitle: 'Configurez votre plan',
+    setupSub: 'Parlez-nous de vous.',
+    initialSetup: 'Configuration initiale',
+    step: 'Étape',
+    continueBtn: 'Continuer →',
+    generateBtn: '🚀 Générer mon plan',
+    backBtn: '← Retour',
+    generatingPlan: 'Génération de votre plan…',
+    analyzingHarvard: 'Analyse avec les principes Harvard',
+    q_name: 'Quel est votre nom?',
+    q_age: 'Quel âge avez-vous?',
+    q_gender: 'Quel est votre sexe biologique?',
+    q_weight: 'Quel est votre poids actuel? (kg)',
+    q_height: 'Quelle est votre taille? (cm)',
+    q_bodyFat: 'Connaissez-vous votre % de graisse corporelle? (optionnel)',
+    q_goal: 'Quel est votre objectif principal?',
+    q_targetWeight: 'Quel est votre poids cible? (kg)',
+    q_targetBodyFat: 'Quel est votre % de graisse cible?',
+    q_weeksGoal: 'En combien de semaines voulez-vous y arriver?',
+    q_activityLevel: "Quel est votre niveau d'activité actuel?",
+    ph_name: 'Votre nom',
+    ph_age: 'Ex: 28',
+    ph_weight: 'Ex: 82',
+    ph_height: 'Ex: 175',
+    ph_bodyFat: 'Laissez vide si vous ne savez pas',
+    ph_targetWeight: 'Ex: 72',
+    ph_targetBodyFat: 'Ex: 15',
+    ph_weeksGoal: 'Ex: 12',
+    opt_male: 'Masculin',
+    opt_female: 'Féminin',
+    opt_fat: '🔥 Brûler les graisses',
+    opt_muscle: '💪 Gagner de la masse musculaire',
+    opt_both: '⚡ Les deux (recomposition)',
+    opt_sed: 'Sédentaire (sans exercice)',
+    opt_light: 'Léger (1-2 jours/sem)',
+    opt_mod: 'Modéré (3-4 jours/sem)',
+    opt_active: 'Actif (5+ jours/sem)',
+    opt_athlete: 'Athlète (2x/jour)',
+    hello: 'Bonjour',
+    goalFat: '🔥 Brûle-graisse', goalMuscle: '💪 Muscle', goalBoth: '⚡ Recomp',
+    tab0: 'Accueil', tab1: 'Entraîn.', tab2: 'Nutrition', tab3: 'Journal', tab4: 'Progrès',
+    tabIcon0: '🏠', tabIcon1: '💪', tabIcon2: '🥗', tabIcon3: '📝', tabIcon4: '📈',
+    daysActive: 'Jours actifs', kgLost: 'Kg perdus', progress: 'Progrès',
+    goalLabel: '🎯 Objectif:', current: 'Actuel', goal: 'Objectif', weeks: 'semaines',
+    weightTrend: '📉 Tendance du poids', aiAnalysis: "🧠 Analyse d'aujourd'hui",
+    logToday: "📝 Journal d'aujourd'hui", viewNutrition: '🥗 Nutrition',
+    resetProgram: '🔄 Réinitialiser', confirmReset: 'Réinitialiser tout le programme?',
+    workoutPlan: "💪 Plan d'entraînement", newWeek: '🔄 Nouvelle semaine',
+    generating: 'Génération…', askCoach: '💬 Demandez au coach',
+    workoutPh: 'Comment remplacer les squats?',
+    nutritionPlan: '🥗 Plan Nutritionnel', newMenu: '🔄 Nouveau menu du jour',
+    nutritionConsult: '💬 Consultation nutritionnelle', nutritionPh: 'Puis-je remplacer le poulet?',
+    logTitle: "📝 Journal d'aujourd'hui",
+    weightLabel: '⚖️ Poids actuel (kg)', bodyFatLabel: '📊 % Graisse corporelle',
+    caloriesLabel: '🔥 Calories consommées', proteinLabel: '🥩 Protéines (g)',
+    sleepLabel: '😴 Heures de sommeil', waterLabel: '💧 Eau (litres)',
+    trainingLabel: "🏋️ Avez-vous fait de l'exercice?",
+    noTrain: "Pas d'entraînement", yesTrain: "Oui, je me suis entraîné(e)", activRest: 'Repos actif',
+    energyLabel: "⚡ Niveau d'énergie (1-5)", notesLabel: '📓 Notes',
+    notesPh: "Comment vous êtes-vous senti(e) aujourd'hui?", saveBtn: '✅ Sauvegarder et analyser',
+    savingBtn: '⏳ Analyse…', aiPersonal: '🧠 Analyse personnalisée',
+    daysLogged: 'Jours enregistrés', goalProgress: "Progrès vers l'objectif", currentWeight: 'Poids actuel',
+    progressTitle: "Progrès vers l'objectif", start: 'Début',
+    recentHistory: '📋 Historique récent', noRecords: "Pas encore d'enregistrements. Commencez aujourd'hui! 💪",
+    trained: '💪 Entraîné(e)', activeRest: '🚶 Actif', rest: '😴 Repos',
+    weeklyAnalysis: '🧠 Analyse hebdomadaire IA', analyzingBtn: '⏳ Analyse…',
+    progressReport: '📊 Rapport de progrès',
+    resetProg: '🔄 Réinitialiser', logout: '🚪 Se déconnecter',
+    aiSys: `Vous êtes un expert en sciences du sport, nutrition et métabolisme basé sur les dernières recherches de Harvard Medical School. TOUJOURS répondre en français. Soyez spécifique, scientifique mais accessible. Utilisez des emojis stratégiquement.`,
+    aiWorkoutPrompt: (p, prog) => `Plan d'entraînement varié pour ${p.name}, ${p.goal}, niveau: ${p.activityLevel}, ${prog.days} jours dans le programme. Max 700 mots. Réponds en français.`,
+    aiNutPrompt: (p, lw) => `Plan alimentaire quotidien VARIÉ pour ${p.name}, ${p.goal}, ${lw}kg, ${p.height}cm, ${p.gender}, ${p.age}ans. Recettes simples. Base Harvard. Max 700 mots. Réponds en français.`,
+    aiLogPrompt: (p, log, prog) => `Analyse du journal d'aujourd'hui de ${p.name} (max 200 mots):\nDonnées: ${JSON.stringify(log)}\nProgrès: ${prog.lost}kg perdus, ${prog.days} jours\nObjectif: ${p.goal}. Réponds en français.`,
+    aiWeeklyPrompt: (p, logs, prog) => `Analyse des progrès de ${p.name} (300 mots):\nProfil: ${JSON.stringify(p)}\nJournaux: ${JSON.stringify(logs)}\nProgrès: ${prog.lost}kg en ${prog.days} jours. Réponds en français.`,
+    aiSetupWorkout: (desc) => `Plan d'entraînement hebdomadaire détaillé pour: ${desc}. Exercices, séries, répétitions, repos. Max 800 mots. Réponds en français.`,
+    aiSetupNut: (desc) => `Plan nutritionnel quotidien Harvard pour: ${desc}. Calories, macros, 5 repas avec quantités, timing. Max 800 mots. Réponds en français.`,
+  },
+  pt: {
+    appName: 'FitAI Pro',
+    appSub: 'Seu treinador pessoal com IA · Apenas $4.4.990 CLP',
+    secureData: '🔒 Seus dados estão seguros e criptografados',
+    login: 'Entrar',
+    register: 'Criar conta',
+    email: 'Email',
+    emailPh: 'voce@email.com',
+    password: 'Senha',
+    passwordPh: '••••••••',
+    yourName: 'Seu nome',
+    namePh: 'Nome completo',
+    loginBtn: 'Entrar →',
+    registerBtn: 'Criar conta →',
+    loading: 'Carregando…',
+    noAccount: 'Não tem conta?',
+    registerHere: 'Cadastre-se aqui',
+    haveAccount: 'Já tem conta?',
+    loginHere: 'Entre aqui',
+    fillFields: 'Preencha todos os campos.',
+    enterName: 'Digite seu nome.',
+    emailExists: 'Este email já está registrado.',
+    emailNotFound: 'Email não encontrado.',
+    wrongPass: 'Senha incorreta.',
+    activatePlan: 'Ative seu plano',
+    activateSub: 'Um único pagamento para acesso vitalício.',
+    lifeAccess: 'ACESSO VITALÍCIO',
+    clpPeriod: 'pesos chilenos · pagamento único · sem renovações',
+    feat1: 'Plano de treino semanal com IA',
+    feat2: 'Plano alimentar diário personalizado',
+    feat3: 'Acompanhamento de progresso diário',
+    feat4: 'Análise de IA e feedback científico',
+    feat5: 'Coach IA disponível 24/7',
+    feat6: 'App instalável no seu telefone',
+    payMethods: 'MEIOS DE PAGAMENTO DISPONÍVEIS',
+    payBtn: '⚡ Pagar $4.4.990 CLP →',
+    payBtnDemo: '⚡ Pagar $4.4.990 CLP (modo demo)',
+    payLoading: '⏳ Conectando ao MercadoPago…',
+    securePay: '🔒 Pagamento 100% seguro com MercadoPago · Garantia 7 dias',
+    changeAccount: '← Trocar conta',
+    setupTitle: 'Configure seu plano',
+    setupSub: 'Conte-nos sobre você.',
+    initialSetup: 'Configuração inicial',
+    step: 'Passo',
+    continueBtn: 'Continuar →',
+    generateBtn: '🚀 Gerar meu plano',
+    backBtn: '← Voltar',
+    generatingPlan: 'Gerando seu plano…',
+    analyzingHarvard: 'Analisando com princípios de Harvard',
+    q_name: 'Qual é o seu nome?',
+    q_age: 'Quantos anos você tem?',
+    q_gender: 'Qual é o seu sexo biológico?',
+    q_weight: 'Qual é o seu peso atual? (kg)',
+    q_height: 'Qual é a sua altura? (cm)',
+    q_bodyFat: 'Você sabe seu % de gordura corporal? (opcional)',
+    q_goal: 'Qual é o seu objetivo principal?',
+    q_targetWeight: 'Qual é o seu peso alvo? (kg)',
+    q_targetBodyFat: 'Qual é o seu % de gordura alvo?',
+    q_weeksGoal: 'Em quantas semanas quer alcançar?',
+    q_activityLevel: 'Qual é o seu nível de atividade atual?',
+    ph_name: 'Seu nome',
+    ph_age: 'Ex: 28',
+    ph_weight: 'Ex: 82',
+    ph_height: 'Ex: 175',
+    ph_bodyFat: 'Deixe vazio se não souber',
+    ph_targetWeight: 'Ex: 72',
+    ph_targetBodyFat: 'Ex: 15',
+    ph_weeksGoal: 'Ex: 12',
+    opt_male: 'Masculino',
+    opt_female: 'Feminino',
+    opt_fat: '🔥 Queimar gordura',
+    opt_muscle: '💪 Ganhar massa muscular',
+    opt_both: '⚡ Ambos (recomposição)',
+    opt_sed: 'Sedentário (sem exercício)',
+    opt_light: 'Leve (1-2 dias/sem)',
+    opt_mod: 'Moderado (3-4 dias/sem)',
+    opt_active: 'Ativo (5+ dias/sem)',
+    opt_athlete: 'Atleta (2x/dia)',
+    hello: 'Olá',
+    goalFat: '🔥 Queima Gordura', goalMuscle: '💪 Músculo', goalBoth: '⚡ Recomp',
+    tab0: 'Início', tab1: 'Treino', tab2: 'Nutrição', tab3: 'Registro', tab4: 'Progresso',
+    tabIcon0: '🏠', tabIcon1: '💪', tabIcon2: '🥗', tabIcon3: '📝', tabIcon4: '📈',
+    daysActive: 'Dias ativos', kgLost: 'Kg perdidos', progress: 'Progresso',
+    goalLabel: '🎯 Meta:', current: 'Atual', goal: 'Meta', weeks: 'semanas',
+    weightTrend: '📉 Tendência de peso', aiAnalysis: '🧠 Análise de hoje',
+    logToday: '📝 Registrar hoje', viewNutrition: '🥗 Nutrição',
+    resetProgram: '🔄 Reiniciar programa', confirmReset: 'Reiniciar todo o programa?',
+    workoutPlan: '💪 Plano de Treino', newWeek: '🔄 Nova semana',
+    generating: 'Gerando…', askCoach: '💬 Pergunte ao coach',
+    workoutPh: 'Como substituir agachamentos?',
+    nutritionPlan: '🥗 Plano Nutricional', newMenu: '🔄 Novo cardápio do dia',
+    nutritionConsult: '💬 Consulta nutricional', nutritionPh: 'Posso substituir o frango?',
+    logTitle: '📝 Registro de Hoje',
+    weightLabel: '⚖️ Peso atual (kg)', bodyFatLabel: '📊 % Gordura corporal',
+    caloriesLabel: '🔥 Calorias consumidas', proteinLabel: '🥩 Proteína (g)',
+    sleepLabel: '😴 Horas de sono', waterLabel: '💧 Água (litros)',
+    trainingLabel: '🏋️ Você treinou hoje?',
+    noTrain: 'Não treinei', yesTrain: 'Sim, treinei', activRest: 'Descanso ativo',
+    energyLabel: '⚡ Nível de energia (1-5)', notesLabel: '📓 Notas',
+    notesPh: 'Como você se sentiu hoje?', saveBtn: '✅ Salvar e analisar',
+    savingBtn: '⏳ Analisando…', aiPersonal: '🧠 Análise personalizada',
+    daysLogged: 'Dias registrados', goalProgress: 'Progresso da meta', currentWeight: 'Peso atual',
+    progressTitle: 'Progresso em direção à meta', start: 'Início',
+    recentHistory: '📋 Histórico recente', noRecords: 'Sem registros ainda. Comece hoje! 💪',
+    trained: '💪 Treinou', activeRest: '🚶 Ativo', rest: '😴 Descanso',
+    weeklyAnalysis: '🧠 Análise semanal com IA', analyzingBtn: '⏳ Analisando…',
+    progressReport: '📊 Relatório de progresso',
+    resetProg: '🔄 Reiniciar programa', logout: '🚪 Sair',
+    aiSys: `Você é um especialista em ciências do esporte, nutrição e metabolismo baseado nas pesquisas mais recentes da Harvard Medical School. SEMPRE responda em português. Seja específico, científico mas acessível. Use emojis estrategicamente.`,
+    aiWorkoutPrompt: (p, prog) => `Plano de treino variado para ${p.name}, ${p.goal}, nível: ${p.activityLevel}, ${prog.days} dias no programa. Máx 700 palavras. Responda em português.`,
+    aiNutPrompt: (p, lw) => `Plano alimentar diário VARIADO para ${p.name}, ${p.goal}, ${lw}kg, ${p.height}cm, ${p.gender}, ${p.age}anos. Receitas simples. Base Harvard. Máx 700 palavras. Responda em português.`,
+    aiLogPrompt: (p, log, prog) => `Análise do registro de hoje de ${p.name} (máx 200 palavras):\nDados: ${JSON.stringify(log)}\nProgresso: ${prog.lost}kg perdidos, ${prog.days} dias\nObjetivo: ${p.goal}. Responda em português.`,
+    aiWeeklyPrompt: (p, logs, prog) => `Análise de progresso de ${p.name} (300 palavras):\nPerfil: ${JSON.stringify(p)}\nRegistros: ${JSON.stringify(logs)}\nProgresso: ${prog.lost}kg em ${prog.days} dias. Responda em português.`,
+    aiSetupWorkout: (desc) => `Plano de treino semanal DETALHADO para: ${desc}. Exercícios, séries, reps, descansos. Máx 800 palavras. Responda em português.`,
+    aiSetupNut: (desc) => `Plano alimentar diário Harvard para: ${desc}. Calorias, macros, 5 refeições com quantidades, timing. Máx 800 palavras. Responda em português.`,
+  }
+};
+
+// Language helpers
+function getLang() { return STATE.lang || 'es'; }
+function t(key) { return TRANSLATIONS[getLang()]?.[key] || TRANSLATIONS['es'][key] || key; }
+function tf(key, ...args) { const fn = TRANSLATIONS[getLang()]?.[key] || TRANSLATIONS['es'][key]; return typeof fn === 'function' ? fn(...args) : key; }
+
+const LANG_FLAGS = { es: '🇪🇸', en: '🇬🇧', fr: '🇫🇷', pt: '🇧🇷' };
+const LANG_NAMES = { es: 'ES', en: 'EN', fr: 'FR', pt: 'PT' };
+
 let STATE = {
+  lang: 'es',
   // Auth
   authMode: 'login', // 'login' | 'register'
   user: null,        // { email, name, paid, token }
@@ -202,6 +725,7 @@ function save() {
       plan: STATE.plan,
       nutrition: STATE.nutrition,
       chat: STATE.chat,
+      lang: STATE.lang,
     }));
   } catch{}
 }
@@ -214,6 +738,7 @@ function loadSaved() {
     if (d.plan) STATE.plan = d.plan;
     if (d.nutrition) STATE.nutrition = d.nutrition;
     if (d.chat) STATE.chat = d.chat;
+    if (d.lang) STATE.lang = d.lang;
   } catch{}
 }
 loadSaved();
@@ -256,7 +781,7 @@ const SYS = `Eres un experto en ciencias del deporte, nutrición y metabolismo b
 async function claude(messages, max=1000) {
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:max, system:SYS, messages })
+    body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:max, system: t('aiSys'), messages })
   });
   const d = await res.json();
   return d.content?.map(b=>b.text||'').join('\n')||'';
@@ -397,24 +922,24 @@ function renderAuth() {
   div.innerHTML = `
     <div class="screen-logo">⚡</div>
     <div class="screen-title">FitAI Pro</div>
-    <div class="screen-sub">Tu entrenador personal con IA · Solo $990 CLP</div>
+    <div class="screen-sub">${t('appSub')}</div>
     <div class="auth-card">
       <div class="auth-tabs">
-        <button class="auth-tab ${STATE.authMode==='login'?'active':''}" id="tab-login">Ingresar</button>
-        <button class="auth-tab ${STATE.authMode==='register'?'active':''}" id="tab-reg">Crear cuenta</button>
+        <button class="auth-tab ${STATE.authMode==='login'?'active':''}" id="tab-login">${t('login')}</button>
+        <button class="auth-tab ${STATE.authMode==='register'?'active':''}" id="tab-reg">${t('register')}</button>
       </div>
       <div class="err ${STATE.authError?'show':''}" id="auth-err">${STATE.authError}</div>
       ${STATE.authMode==='register'?`
-        <div class="field"><label>Tu nombre</label><input type="text" id="auth-name" placeholder="Nombre completo"/></div>
+        <div class="field"><label>${t('yourName')}</label><input type="text" id="auth-name" placeholder="${t('namePh')}"/></div>
       `:''}
-      <div class="field"><label>Email</label><input type="email" id="auth-email" placeholder="tu@email.com"/></div>
-      <div class="field"><label>Contraseña</label><input type="password" id="auth-pass" placeholder="••••••••"/></div>
+      <div class="field"><label>${t('email')}</label><input type="email" id="auth-email" placeholder="${t('emailPh')}"/></div>
+      <div class="field"><label>${t('password')}</label><input type="password" id="auth-pass" placeholder="${t('passwordPh')}"/></div>
       <button class="btn btn-lime" id="btn-auth" ${STATE.authLoading?'disabled':''}>
-        ${STATE.authLoading?'Cargando…':STATE.authMode==='login'?'Ingresar →':'Crear cuenta →'}
+        ${STATE.authLoading?t('loading'):STATE.authMode==='login'?t('loginBtn'):t('registerBtn')}
       </button>
-      ${STATE.authMode==='login'?`<p style="text-align:center;margin-top:14px;font-size:12px;color:var(--muted)">¿No tienes cuenta? <button class="link-btn" id="to-reg">Regístrate aquí</button></p>`:`<p style="text-align:center;margin-top:14px;font-size:12px;color:var(--muted)">¿Ya tienes cuenta? <button class="link-btn" id="to-login">Ingresa aquí</button></p>`}
+      ${STATE.authMode==='login'?`<p style="text-align:center;margin-top:14px;font-size:12px;color:var(--muted)">${t('noAccount')} <button class="link-btn" id="to-reg">${t('registerHere')}</button></p>`:`<p style="text-align:center;margin-top:14px;font-size:12px;color:var(--muted)">${t('haveAccount')} <button class="link-btn" id="to-login">${t('loginHere')}</button></p>`}
     </div>
-    <p style="font-size:11px;color:var(--muted);margin-top:16px;text-align:center">🔒 Tus datos están seguros y cifrados</p>`;
+    <p style="font-size:11px;color:var(--muted);margin-top:16px;text-align:center">${t('secureData')}</p>`;
 
   div.querySelector('#tab-login').onclick = () => { STATE.authMode='login'; STATE.authError=''; render(); };
   div.querySelector('#tab-reg').onclick = () => { STATE.authMode='register'; STATE.authError=''; render(); };
@@ -427,11 +952,11 @@ function renderAuth() {
     const email = div.querySelector('#auth-email')?.value?.trim();
     const pass = div.querySelector('#auth-pass')?.value;
     const name = div.querySelector('#auth-name')?.value?.trim();
-    if (!email || !pass) { STATE.authError='Completa todos los campos.'; render(); return; }
+    if (!email || !pass) { STATE.authError=t('fillFields'); render(); return; }
     STATE.authLoading = true; STATE.authError = ''; render();
     try {
       if (STATE.authMode === 'register') {
-        if (!name) { throw new Error('Ingresa tu nombre.'); }
+        if (!name) { throw new Error(t('enterName')); }
         STATE.user = authRegister(email, pass, name);
       } else {
         STATE.user = authLogin(email, pass);
@@ -456,15 +981,15 @@ function renderPaywall() {
   div.className = 'screen';
   div.innerHTML = `
     <div class="screen-logo">🏆</div>
-    <div class="screen-title">Activa tu plan</div>
-    <div class="screen-sub">Hola, ${STATE.user?.name}. Un único pago para acceso completo de por vida.</div>
+    <div class="screen-title">${t('activatePlan')}</div>
+    <div class="screen-sub">${t('hello')}, ${STATE.user?.name}. ${t('activateSub')}</div>
     <div class="paywall-card">
       <div style="display:inline-block;background:var(--lime);color:#000;border-radius:100px;padding:4px 16px;font-size:11px;font-weight:800;letter-spacing:1px;text-transform:uppercase;margin-bottom:12px">Acceso de por vida</div>
-      <div class="paywall-price">$990</div>
+      <div class="paywall-price">$4.990</div>
       <div class="paywall-period">pesos chilenos · pago único · sin renovaciones</div>
 
       <div class="paywall-features">
-        ${['Plan de entrenamiento semanal con IA','Plan de alimentación diario personalizado','Seguimiento de progreso diario','Análisis de IA y feedback científico','Coach IA disponible 24/7','App instalable en tu teléfono'].map(f=>`<div class="paywall-feat">${f}</div>`).join('')}
+        ${[[t('feat1'),t('feat2'),t('feat3'),t('feat4'),t('feat5'),t('feat6')]].map(f=>`<div class="paywall-feat">${f}</div>`).join('')}
       </div>
 
       <!-- Métodos de pago disponibles en MP Chile -->
@@ -481,8 +1006,8 @@ function renderPaywall() {
         ${STATE.payLoading
           ? '⏳ Conectando con MercadoPago…'
           : isDemo
-            ? '⚡ Pagar $990 CLP (modo demo)'
-            : '⚡ Ir a pagar $990 CLP →'}
+            ? '⚡ Pagar $4.4.990 CLP (modo demo)'
+            : '⚡ Ir a pagar $4.4.990 CLP →'}
       </button>
 
       ${isDemo ? `<div style="background:#fbbf2410;border:1px solid #fbbf2430;border-radius:10px;padding:10px;margin-top:10px;font-size:11px;color:var(--amber);text-align:center">⚠️ Modo demo activo. Agrega tu Public Key de MP para cobros reales.</div>` : ''}
@@ -500,26 +1025,29 @@ function renderPaywall() {
 }
 
 // --- SETUP FLOW ---
-const STEPS = [
-  {key:'name',q:'¿Cuál es tu nombre?',type:'text',ph:'Tu nombre'},
-  {key:'age',q:'¿Cuántos años tienes?',type:'number',ph:'Ej: 28'},
-  {key:'gender',q:'¿Cuál es tu sexo biológico?',type:'select',opts:['Masculino','Femenino']},
-  {key:'weight',q:'¿Cuál es tu peso actual? (kg)',type:'number',ph:'Ej: 82'},
-  {key:'height',q:'¿Cuál es tu altura? (cm)',type:'number',ph:'Ej: 175'},
-  {key:'bodyFat',q:'¿Sabes tu % de grasa corporal? (opcional)',type:'number',ph:'Deja vacío si no sabes'},
-  {key:'goal',q:'¿Cuál es tu objetivo principal?',type:'select',opts:['🔥 Quemar grasa','💪 Ganar masa muscular','⚡ Ambos (recomposición)']},
-  {key:'targetWeight',q:'¿Cuál es tu peso objetivo? (kg)',type:'number',ph:'Ej: 72'},
-  {key:'targetBodyFat',q:'¿Cuál es tu % de grasa objetivo?',type:'number',ph:'Ej: 15'},
-  {key:'weeksGoal',q:'¿En cuántas semanas quieres lograrlo?',type:'number',ph:'Ej: 12'},
-  {key:'activityLevel',q:'¿Cuál es tu nivel de actividad actual?',type:'select',opts:['Sedentario (sin ejercicio)','Ligero (1-2 días/sem)','Moderado (3-4 días/sem)','Activo (5+ días/sem)','Atleta (2x/día)']},
-];
+function getSteps() {
+  return [
+    {key:'name',q:t('q_name'),type:'text',ph:t('ph_name')},
+    {key:'age',q:t('q_age'),type:'number',ph:t('ph_age')},
+    {key:'gender',q:t('q_gender'),type:'select',opts:[t('opt_male'),t('opt_female')]},
+    {key:'weight',q:t('q_weight'),type:'number',ph:t('ph_weight')},
+    {key:'height',q:t('q_height'),type:'number',ph:t('ph_height')},
+    {key:'bodyFat',q:t('q_bodyFat'),type:'number',ph:t('ph_bodyFat')},
+    {key:'goal',q:t('q_goal'),type:'select',opts:[t('opt_fat'),t('opt_muscle'),t('opt_both')]},
+    {key:'targetWeight',q:t('q_targetWeight'),type:'number',ph:t('ph_targetWeight')},
+    {key:'targetBodyFat',q:t('q_targetBodyFat'),type:'number',ph:t('ph_targetBodyFat')},
+    {key:'weeksGoal',q:t('q_weeksGoal'),type:'number',ph:t('ph_weeksGoal')},
+    {key:'activityLevel',q:t('q_activityLevel'),type:'select',opts:[t('opt_sed'),t('opt_light'),t('opt_mod'),t('opt_active'),t('opt_athlete')]},
+  ];
+}
 
 function renderSetup() {
+  const STEPS = getSteps();
   const wrap = document.createElement('div');
   wrap.className = 'setup-wrap';
 
   if (STATE.aiLoading) {
-    wrap.innerHTML = `<div style="text-align:center;padding-top:60px"><div style="font-size:56px;margin-bottom:16px">🧠</div><div style="font-family:Syne,sans-serif;font-size:22px;font-weight:800;color:var(--purple)">Generando tu plan…</div><div style="color:var(--muted);font-size:13px;margin-top:8px">Analizando con principios de Harvard</div><div style="display:flex;justify-content:center;gap:8px;margin-top:24px"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div></div>`;
+    wrap.innerHTML = `<div style="text-align:center;padding-top:60px"><div style="font-size:56px;margin-bottom:16px">🧠</div><div style="font-family:Syne,sans-serif;font-size:22px;font-weight:800;color:var(--purple)">${t('generatingPlan')}</div><div style="color:var(--muted);font-size:13px;margin-top:8px">${t('analyzingHarvard')}</div><div style="display:flex;justify-content:center;gap:8px;margin-top:24px"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div></div>`;
     return wrap;
   }
 
@@ -528,7 +1056,7 @@ function renderSetup() {
 
   wrap.innerHTML = `
     <div class="screen-logo">🏋️</div>
-    <div class="screen-title">Configura tu plan</div>
+    <div class="screen-title">${t('setupTitle')}</div>
     <div class="screen-sub">Hola ${STATE.user?.name}! Cuéntanos sobre ti.</div>
     <div style="width:100%;max-width:440px;margin-top:20px">
       <div style="display:flex;justify-content:space-between;margin-bottom:6px">
@@ -538,10 +1066,10 @@ function renderSetup() {
       <div class="prog-wrap"><div class="prog-fill" style="width:${pct}%;background:linear-gradient(90deg,var(--purple),#7c3aed)"></div></div>
     </div>
     <div class="setup-card">
-      <div style="font-size:12px;color:var(--purple);font-weight:700;margin-bottom:14px">Paso ${STATE.setupStep+1}</div>
+      <div style="font-size:12px;color:var(--purple);font-weight:700;margin-bottom:14px">${t('step')} ${STATE.setupStep+1}</div>
       <div style="font-family:Syne,sans-serif;font-size:17px;font-weight:700;margin-bottom:20px;line-height:1.4">${step.q}</div>
       <div id="step-inp"></div>
-      <button class="btn btn-purple" id="btn-next" style="margin-top:16px">${STATE.setupStep===STEPS.length-1?'🚀 Generar mi plan':'Continuar →'}</button>
+      <button class="btn btn-purple" id="btn-next" style="margin-top:16px">${STATE.setupStep===STEPS.length-1?t('generateBtn'):t('continueBtn')}</button>
       ${STATE.setupStep>0?`<button class="btn btn-ghost" id="btn-back">← Atrás</button>`:''}
     </div>`;
 
@@ -568,8 +1096,8 @@ function renderSetup() {
       const p=STATE.setupData;
       const desc=`Usuario: ${p.name}, ${p.age}años, ${p.gender}\nPeso: ${p.weight}kg, Altura: ${p.height}cm, Grasa: ${p.bodyFat||'desconocida'}%\nObjetivo: ${p.goal}\nMeta: ${p.targetWeight}kg / ${p.targetBodyFat}% grasa en ${p.weeksGoal} semanas\nActividad: ${p.activityLevel}`;
       const [planR,nutR]=await Promise.all([
-        claude([{role:'user',content:`Plan de entrenamiento semanal DETALLADO para: ${desc}. Ejercicios, series, reps, descansos. Máx 800 palabras.`}]),
-        claude([{role:'user',content:`Plan de alimentación diario Harvard para: ${desc}. Calorías, macros, 5 comidas con cantidades, timing. Máx 800 palabras.`}])
+        claude([{role:'user',content:tf('aiSetupWorkout',desc)}]),
+        claude([{role:'user',content:tf('aiSetupNut',desc)}])
       ]);
       STATE.profile={...p,setup:true}; STATE.plan=planR; STATE.nutrition=nutR; STATE.aiLoading=false; STATE.screen='app'; save(); render();
     }
@@ -581,23 +1109,29 @@ function renderSetup() {
 // --- HEADER ---
 function renderHeader() {
   const p=STATE.profile;
-  const tabNames=['Dashboard','Entrenamiento','Nutrición','Registro','Progreso'];
-  const goal=p.goal?.includes('grasa')?'🔥 Fat Burn':p.goal?.includes('muscular')?'💪 Muscle':'⚡ Recomp';
+  const tabNames=[t('tab0'),t('tab1'),t('tab2'),t('tab3'),t('tab4')];
+  const gl=p.goal||'';
+  const goal=gl.includes('grasa')||gl.includes('fat')||gl.includes('grais')||gl.includes('gordura')?t('goalFat'):gl.includes('muscul')||gl.includes('muscle')||gl.includes('massa')?t('goalMuscle'):t('goalBoth');
   const h=document.createElement('div'); h.className='header';
   h.innerHTML=`<div class="header-inner">
-    <div><div class="logo">⚡ FitAI Pro</div><div class="sub">Hola, ${STATE.user?.name||p.name} · ${tabNames[STATE.tab]}</div></div>
-    <div style="display:flex;align-items:center;gap:8px">
-      <span class="badge" style="background:#a78bfa20;color:var(--purple)">${goal}</span>
+    <div><div class="logo">⚡ FitAI Pro</div><div class="sub">${t('hello')}, ${STATE.user?.name||p.name} · ${tabNames[STATE.tab]}</div></div>
+    <div style="display:flex;align-items:center;gap:5px">
+      <div style="display:flex;gap:2px">
+        ${Object.keys(LANG_FLAGS).map(l=>`<button data-lang="${l}" style="background:${STATE.lang===l?'#a78bfa25':'none'};border:1px solid ${STATE.lang===l?'var(--purple)':'var(--border)'};border-radius:6px;padding:3px 6px;font-size:10px;font-weight:700;color:${STATE.lang===l?'var(--purple)':'var(--muted)'};cursor:pointer">${LANG_NAMES[l]}</button>`).join('')}
+      </div>
+      <span class="badge" style="background:#a78bfa20;color:var(--purple);font-size:10px">${goal}</span>
       <button class="avatar-btn" id="btn-user">👤</button>
     </div>
   </div>`;
+  h.querySelectorAll('[data-lang]').forEach(b=>b.onclick=(e)=>{e.stopPropagation();STATE.lang=b.dataset.lang;STATE.aiMsg='';save();render();});
   h.querySelector('#btn-user').onclick=(e)=>{e.stopPropagation();STATE.showUserMenu=!STATE.showUserMenu;render();};
   return h;
 }
 
 // --- TAB BAR ---
 function renderTabBar() {
-  const icons=['🏠','💪','🥗','📝','📈'], labels=['Inicio','Entrena','Nutrición','Registro','Progreso'];
+  const icons=[t('tabIcon0'),t('tabIcon1'),t('tabIcon2'),t('tabIcon3'),t('tabIcon4')];
+  const labels=[t('tab0'),t('tab1'),t('tab2'),t('tab3'),t('tab4')];
   const tb=document.createElement('div'); tb.className='tabbar';
   icons.forEach((ic,i)=>{
     const b=document.createElement('button'); b.className='tab-btn'+(STATE.tab===i?' active':'');
@@ -621,7 +1155,7 @@ function renderDashboard() {
     <div class="card card-purple">
       <div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:14px;font-weight:700">🎯 Meta: ${STATE.profile.targetWeight}kg</span><span style="color:var(--purple);font-weight:800">${prog.pct}%</span></div>
       <div class="prog-wrap"><div class="prog-fill" style="width:${prog.pct}%;background:linear-gradient(90deg,var(--purple),#7c3aed80)"></div></div>
-      <div style="font-size:11px;color:var(--muted);margin-top:6px">Actual: ${prog.lw}kg → Meta: ${STATE.profile.targetWeight}kg · ${STATE.profile.weeksGoal} semanas</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:6px">Actual: ${prog.lw}kg → Meta: ${STATE.profile.targetWeight}kg · ${STATE.profile.weeksGoal} ${t('weeks')}</div>
     </div>
     ${prog.trend.length>1?renderMiniChart(prog.trend):''}
     ${STATE.aiMsg?`<div class="card card-green"><div class="card-sh">🧠 Análisis de hoy</div><div class="ai-text">${STATE.aiMsg}</div></div>`:''}
@@ -643,11 +1177,11 @@ function renderWorkout() {
   const div=document.createElement('div');
   div.innerHTML=`
     <div class="card card-purple"><div class="card-h">💪 Plan de Entrenamiento</div><div class="ai-text">${STATE.plan||'Cargando…'}</div></div>
-    <button class="btn btn-purple" id="btn-newplan">${STATE.aiLoading?'Generando…':'🔄 Nueva semana'}</button>
+    <button class="btn btn-purple" id="btn-newplan">${STATE.aiLoading?t('generating'):t('newWeek')}</button>
     <div class="card" style="margin-top:8px"><div class="card-sh">💬 Pregunta al coach</div><div id="chat-w"></div>
     <div class="chat-row"><input type="text" id="ci-w" placeholder="¿Cómo reemplazo las sentadillas?"/><button id="cs-w">→</button></div></div>`;
   STATE.chat.slice(-4).forEach(m=>{const el=document.createElement('div');el.className='chat-msg '+(m.role==='user'?'chat-user':'chat-ai');el.innerHTML=`<strong>${m.role==='user'?'Tú:':'🤖 '}</strong> ${m.content.slice(0,220)}${m.content.length>220?'…':''}`;div.querySelector('#chat-w').appendChild(el);});
-  div.querySelector('#btn-newplan').onclick=async()=>{STATE.aiLoading=true;render();const r=await claude([{role:'user',content:`Plan entrenamiento variado para ${STATE.profile.name}, ${STATE.profile.goal}, nivel: ${STATE.profile.activityLevel}, ${calcProgress().days} días en programa. Máx 700 palabras.`}]);STATE.plan=r;STATE.aiLoading=false;save();render();};
+  div.querySelector('#btn-newplan').onclick=async()=>{STATE.aiLoading=true;render();const r=await claude([{role:'user',content:tf('aiWorkoutPrompt', STATE.profile, calcProgress())}]);STATE.plan=r;STATE.aiLoading=false;save();render();};
   const send=async()=>{const inp=div.querySelector('#ci-w');const txt=inp?.value.trim();if(!txt)return;STATE.chat.push({role:'user',content:txt});inp.value='';STATE.aiLoading=true;render();const msgs=STATE.chat.slice(-6).map(m=>({role:m.role,content:m.content}));msgs[0]={...msgs[0],content:`${STATE.profile.name},${STATE.profile.goal}\n${msgs[0].content}`};const r=await claude(msgs);STATE.chat.push({role:'assistant',content:r});STATE.aiLoading=false;save();render();};
   div.querySelector('#cs-w').onclick=send;
   div.querySelector('#ci-w').onkeydown=e=>{if(e.key==='Enter')send();};
@@ -658,12 +1192,12 @@ function renderWorkout() {
 function renderNutrition() {
   const div=document.createElement('div');
   div.innerHTML=`
-    <div class="card card-green"><div class="card-h">🥗 Plan de Alimentación</div><div class="ai-text">${STATE.nutrition||'Cargando…'}</div></div>
-    <button class="btn btn-green" id="btn-newnut">${STATE.aiLoading?'Generando…':'🔄 Nuevo menú del día'}</button>
+    <div class="card card-green"><div class="card-h">${t('nutritionPlan')}</div><div class="ai-text">${STATE.nutrition||'Cargando…'}</div></div>
+    <button class="btn btn-green" id="btn-newnut">${STATE.aiLoading?t('generating'):t('newMenu')}</button>
     <div class="card" style="margin-top:8px"><div class="card-sh">💬 Consulta nutricional</div><div id="chat-n"></div>
     <div class="chat-row"><input type="text" id="ci-n" placeholder="¿Puedo sustituir el pollo?"/><button id="cs-n" style="background:var(--green)">→</button></div></div>`;
   STATE.chat.slice(-2).forEach(m=>{const el=document.createElement('div');el.className='chat-msg '+(m.role==='user'?'chat-user':'chat-ai');el.style.color=m.role==='assistant'?'#6ee7b7':'';el.innerHTML=`<strong>${m.role==='user'?'Tú:':'🤖 '}</strong> ${m.content.slice(0,200)}${m.content.length>200?'…':''}`;div.querySelector('#chat-n').appendChild(el);});
-  div.querySelector('#btn-newnut').onclick=async()=>{STATE.aiLoading=true;render();const p=STATE.profile;const r=await claude([{role:'user',content:`Plan alimentación VARIADO para ${p.name}, ${p.goal}, ${calcProgress().lw}kg, ${p.height}cm, ${p.gender}, ${p.age}años. Recetas sencillas. Harvard. Máx 700 palabras.`}]);STATE.nutrition=r;STATE.aiLoading=false;save();render();};
+  div.querySelector('#btn-newnut').onclick=async()=>{STATE.aiLoading=true;render();const p=STATE.profile;const r=await claude([{role:'user',content:tf('aiNutPrompt', p, calcProgress().lw)}]);STATE.nutrition=r;STATE.aiLoading=false;save();render();};
   const send=async()=>{const inp=div.querySelector('#ci-n');const txt=inp?.value.trim();if(!txt)return;STATE.chat.push({role:'user',content:txt});inp.value='';STATE.aiLoading=true;render();const msgs=STATE.chat.slice(-4).map(m=>({role:m.role,content:m.content}));msgs[0]={...msgs[0],content:`${STATE.profile.name},${STATE.profile.goal}\n${msgs[0].content}`};const r=await claude(msgs);STATE.chat.push({role:'assistant',content:r});STATE.aiLoading=false;save();render();};
   div.querySelector('#cs-n').onclick=send;
   div.querySelector('#ci-n').onkeydown=e=>{if(e.key==='Enter')send();};
@@ -678,10 +1212,10 @@ function renderLog() {
   div.innerHTML=`
     <div class="card card-amber" style="margin-bottom:12px"><div class="card-h">📝 Registro de Hoy</div><div style="font-size:12px;color:var(--amber)">${today}</div></div>
     ${[{k:'weight',l:'⚖️ Peso actual (kg)',t:'number',p:'Ej: 79.5'},{k:'bodyFat',l:'📊 % Grasa corporal',t:'number',p:'Opcional'},{k:'calories',l:'🔥 Calorías consumidas',t:'number',p:'Ej: 1800'},{k:'protein',l:'🥩 Proteína (g)',t:'number',p:'Ej: 150'},{k:'sleep',l:'😴 Horas de sueño',t:'number',p:'Ej: 7.5'},{k:'water',l:'💧 Agua (litros)',t:'number',p:'Ej: 2.5'}].map(f=>`<div class="field"><label>${f.l}</label><input type="${f.t}" placeholder="${f.p}" data-key="${f.k}" value="${log[f.k]||''}"/></div>`).join('')}
-    <div class="field"><label>🏋️ ¿Entrenaste hoy?</label><select data-key="training"><option value="no" ${log.training==='no'?'selected':''}>No entrené</option><option value="si" ${log.training==='si'?'selected':''}>Sí, entrené</option><option value="activo" ${log.training==='activo'?'selected':''}>Descanso activo</option></select></div>
+    <div class="field"><label>🏋️ ¿Entrenaste hoy?</label><select data-key="training"><option value="no" ${log.training==='no'?'selected':''}>${t('noTrain')}</option><option value="si" ${log.training==='si'?'selected':''}>${t('yesTrain')}</option><option value="activo" ${log.training==='activo'?'selected':''}>${t('activRest')}</option></select></div>
     <div class="field"><label>⚡ Nivel de energía (1-5)</label><div class="energy-row">${[1,2,3,4,5].map(n=>`<button class="energy-btn ${log.energy==n?'active':''}" data-e="${n}">${n}</button>`).join('')}</div></div>
     <div class="field"><label>📓 Notas</label><textarea placeholder="¿Cómo te sentiste hoy?">${log.notes||''}</textarea></div>
-    <button class="btn btn-amber" id="btn-save">${STATE.aiLoading?'⏳ Analizando…':'✅ Guardar y analizar'}</button>
+    <button class="btn btn-amber" id="btn-save">${STATE.aiLoading?t('savingBtn'):t('saveBtn')}</button>
     ${STATE.aiMsg?`<div class="card card-green" style="margin-top:12px"><div class="card-sh">🧠 Análisis personalizado</div><div class="ai-text">${STATE.aiMsg}</div></div>`:''}`;
   div.querySelectorAll('input[data-key],select[data-key]').forEach(el=>el.addEventListener('input',e=>{STATE.todayLog[e.target.dataset.key]=e.target.value;}));
   div.querySelectorAll('textarea').forEach(el=>el.addEventListener('input',e=>{STATE.todayLog.notes=e.target.value;}));
@@ -709,12 +1243,12 @@ function renderProgress() {
     <div class="card card-purple">
       <div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="font-weight:700">Progreso hacia la meta</span><span style="color:var(--purple);font-weight:800">${prog.pct}%</span></div>
       <div class="prog-wrap"><div class="prog-fill" style="width:${prog.pct}%;background:linear-gradient(90deg,var(--purple),#7c3aed80)"></div></div>
-      <div style="display:flex;justify-content:space-between;margin-top:6px"><span style="font-size:11px;color:var(--muted)">Inicio: ${STATE.profile.weight}kg</span><span style="font-size:11px;color:var(--muted)">Meta: ${STATE.profile.targetWeight}kg</span></div>
+      <div style="display:flex;justify-content:space-between;margin-top:6px"><span style="font-size:11px;color:var(--muted)">${t('start')}: ${STATE.profile.weight}kg</span><span style="font-size:11px;color:var(--muted)">Meta: ${STATE.profile.targetWeight}kg</span></div>
     </div>
     <div class="card"><div class="card-h">📋 Historial reciente</div>
       ${!STATE.dailyLogs.length?'<div style="color:var(--muted);font-size:13px;text-align:center;padding:20px">Sin registros aún 💪</div>':STATE.dailyLogs.slice(0,7).map(l=>`<div class="log-item"><div class="log-row"><span class="log-date">${l.date}</span><span class="badge" style="background:${l.training==='si'?'#34d39920':'#1e1e3a'};color:${l.training==='si'?'var(--green)':'var(--muted)'}">${l.training==='si'?'💪 Entrenó':l.training==='activo'?'🚶 Activo':'😴 Descanso'}</span></div><div class="tags">${l.weight?`<span class="tag">⚖️ ${l.weight}kg</span>`:''} ${l.calories?`<span class="tag">🔥 ${l.calories}kcal</span>`:''} ${l.protein?`<span class="tag">🥩 ${l.protein}g</span>`:''} ${l.sleep?`<span class="tag">😴 ${l.sleep}h</span>`:''} ${l.energy?`<span class="tag">⚡ ${l.energy}/5</span>`:''}</div></div>`).join('')}
     </div>
-    <button class="btn btn-blue" id="btn-weekly">${STATE.aiLoading?'⏳ Analizando…':'🧠 Análisis semanal con IA'}</button>
+    <button class="btn btn-blue" id="btn-weekly">${STATE.aiLoading?t('analyzingBtn'):t('weeklyAnalysis')}</button>
     ${STATE.aiMsg?`<div class="card card-blue" style="margin-top:12px"><div class="card-sh">📊 Informe de progreso</div><div class="ai-text">${STATE.aiMsg}</div></div>`:''}`;
   div.querySelector('#btn-weekly').onclick=async()=>{STATE.aiLoading=true;render();const p=STATE.profile;const prog2=calcProgress();const r=await claude([{role:'user',content:`Análisis de progreso de ${p.name} (300 palabras):\nPerfil: ${JSON.stringify(p)}\nRegistros: ${JSON.stringify(STATE.dailyLogs.slice(0,7))}\nProgreso: ${prog2.lost}kg en ${prog2.days} días\nIncluye tasa de progreso, adherencia, recomendaciones.`}]);STATE.aiMsg=r;STATE.aiLoading=false;render();};
   return div;
