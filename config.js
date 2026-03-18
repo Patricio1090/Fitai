@@ -15,10 +15,10 @@ const FITAI_CONFIG = {
   PAYMENT_ENDPOINT: 'https://mysuperfitness.netlify.app/.netlify/functions/create-preference',
 
   // Precio que ve el usuario (solo para mostrar)
-  PRICE_DISPLAY: '$4.990',
+  PRICE_DISPLAY: '$990',
 
   // Precio real en pesos (número sin puntos)
-  PRICE_AMOUNT: 4990,
+  PRICE_AMOUNT: 990,
 
   // Moneda (CLP, USD, ARS, MXN, COP, BRL)
   CURRENCY: 'CLP',
