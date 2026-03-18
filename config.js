@@ -9,10 +9,10 @@ const FITAI_CONFIG = {
 
   // ── PAGOS ─────────────────────────────────────────────────
   // Tu Public Key de MercadoPago (producción empieza con APP_USR-)
-  MP_PUBLIC_KEY: 'APP_USR-TU-PUBLIC-KEY-AQUI',
+  MP_PUBLIC_KEY: 'APP_USR-ade94a33-3e1d-416d-9241-689ff63cba23',
 
   // URL de tu backend Netlify
-  PAYMENT_ENDPOINT: 'https://remarkable-elf-c56569.netlify.app/.netlify/functions/create-preference',
+  PAYMENT_ENDPOINT: 'https://mysuperfitness.netlify.app/.netlify/functions/create-preference',
 
   // Precio que ve el usuario (solo para mostrar)
   PRICE_DISPLAY: '$4.990',
