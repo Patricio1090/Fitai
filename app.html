@@ -278,7 +278,11 @@ function authRegister(email, password, name) {
   return user;
 }
 function authLogin(email, password) {
-  // Simula login - en producción: POST /api/login
+  // SUPERUSUARIO ADMIN - acceso sin pago para pruebas
+  if (email === 'admin@fitai.cl' && password === 'fitai2024admin') {
+    return { email: 'admin@fitai.cl', name: 'Admin', paid: true, token: 'admin-token' };
+  }
+  // Login normal
   const users = JSON.parse(localStorage.getItem('fitai_users')||'{}');
   const u = users[email];
   if (!u) throw new Error('Email no encontrado.');
