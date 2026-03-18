@@ -151,10 +151,10 @@ textarea { resize: none; height: 72px; }
 const CONFIG = {
   // 1. Tu Public Key de MercadoPago (empieza con APP_USR-)
   //    La encuentras en: mercadopago.cl/developers/panel → tu app → Credenciales
-  MP_PUBLIC_KEY: 'TEST-3faf5463-43c3-42d2-a6af-9639411e78ea',
+  MP_PUBLIC_KEY: FITAI_CONFIG.MP_PUBLIC_KEY,
 
   // 2. URL de tu backend en Netlify
-  PAYMENT_ENDPOINT: 'https://remarkable-elf-c56569.netlify.app/.netlify/functions/create-preference',
+  PAYMENT_ENDPOINT: 'https://mysuperfitness.netlify.app/.netlify/functions/create-preference',
 
   // 3. Precio y moneda - $990 CLP
   AMOUNT: 990,
