@@ -1056,10 +1056,10 @@ function renderSetup() {
   wrap.innerHTML = `
     <div class="screen-logo">🏋️</div>
     <div class="screen-title">${t('setupTitle')}</div>
-    <div class="screen-sub">Hola ${STATE.user?.name}! Cuéntanos sobre ti.</div>
+    <div class="screen-sub">${t('hello')} ${STATE.user?.name}! ${t('setupSub')}</div>
     <div style="width:100%;max-width:440px;margin-top:20px">
       <div style="display:flex;justify-content:space-between;margin-bottom:6px">
-        <span style="font-size:11px;color:var(--muted)">Configuración inicial</span>
+        <span style="font-size:11px;color:var(--muted)">${t('initialSetup')}</span>
         <span style="font-size:11px;color:var(--purple)">${STATE.setupStep+1}/${STEPS.length}</span>
       </div>
       <div class="prog-wrap"><div class="prog-fill" style="width:${pct}%;background:linear-gradient(90deg,var(--purple),#7c3aed)"></div></div>
@@ -1069,7 +1069,7 @@ function renderSetup() {
       <div style="font-family:Syne,sans-serif;font-size:17px;font-weight:700;margin-bottom:20px;line-height:1.4">${step.q}</div>
       <div id="step-inp"></div>
       <button class="btn btn-purple" id="btn-next" style="margin-top:16px">${STATE.setupStep===STEPS.length-1?t('generateBtn'):t('continueBtn')}</button>
-      ${STATE.setupStep>0?`<button class="btn btn-ghost" id="btn-back">← Atrás</button>`:''}
+      ${STATE.setupStep>0?`<button class="btn btn-ghost" id="btn-back">${t('backBtn')}</button>`:''}
     </div>`;
 
   const inp = wrap.querySelector('#step-inp');
