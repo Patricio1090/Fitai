@@ -145,53 +145,23 @@ textarea { resize: none; height: 72px; }
 
 <script>
 // ---
-// ---
-// CONFIGURACIÓN - PEGA AQUÍ TUS CREDENCIALES DE MERCADOPAGO
+// CONFIGURACION — edita estas lineas para cambiar precio y credenciales
 // ---
 const CONFIG = {
-  // 1. Tu Public Key de MercadoPago (empieza con APP_USR-)
-  //    La encuentras en: mercadopago.cl/developers/panel → tu app → Credenciales
-  MP_PUBLIC_KEY: FITAI_CONFIG.MP_PUBLIC_KEY,
-
-  // 2. URL de tu backend en Netlify
+  MP_PUBLIC_KEY: 'APP_USR-ade94a33-3e1d-416d-9241-1f744a93bc6f',
   PAYMENT_ENDPOINT: 'https://mysuperfitness.netlify.app/.netlify/functions/create-preference',
-
-  // 3. Precio y moneda - $990 CLP
   AMOUNT: 990,
   CURRENCY: 'CLP',
+  PRICE_DISPLAY: '$990',
 };
 // ---
 
-
-// ═══════════════════════════════════════════
-// CONFIGURACION - edita solo este bloque
-// ═══════════════════════════════════════════
-const FITAI_CONFIG = {
-  MP_PUBLIC_KEY: 'APP_USR-TU-PUBLIC-KEY-AQUI',
-  PAYMENT_ENDPOINT: 'https://mysuperfitness.netlify.app/.netlify/functions/create-preference',
-  PRICE_DISPLAY: '$990',
-  PRICE_AMOUNT: 990,
-  CURRENCY: 'CLP',
-  CURRENCY_NAME: 'pesos chilenos',
-  GUARANTEE_DAYS: 7,
-  DEFAULT_LANG: 'es',
-};
-// ═══════════════════════════════════════════
-
-
-// IDIOMAS
-const LANG = {
-  es: { name:'ES', flag:'ES', sys:'Responde siempre en español.' },
-  en: { name:'EN', flag:'EN', sys:'Always respond in English.' },
-  fr: { name:'FR', flag:'FR', sys:'Réponds toujours en français.' },
-  pt: { name:'PT', flag:'PT', sys:'Responda sempre em português.' },
-};
 
 const STORAGE_KEY = 'fitai_v3';
 let mp = null;
 
 let STATE = {
-  lang: FITAI_CONFIG.DEFAULT_LANG || 'es',
+  lang: 'es', // idioma: es, en, fr, pt
   // Auth
   authMode: 'login', // 'login' | 'register'
   user: null,        // { email, name, paid, token }
@@ -277,7 +247,15 @@ function getInitialScreen() {
 STATE.screen = getInitialScreen();
 
 // --- CLAUDE API ---
-function getSYS() { return `Eres un experto en ciencias del deporte, nutrición y metabolismo basado en las últimas investigaciones de Harvard Medical School. Sé específico, científico pero accesible. Usa emojis estratégicamente. ${LANG[STATE.lang]?.sys || 'Responde en español.'}`; }
+const LANG_SYS = {
+  es: 'Responde siempre en español.',
+  en: 'Always respond in English.',
+  fr: 'Réponds toujours en français.',
+  pt: 'Responda sempre em português.'
+};
+function getSYS() {
+  return `Eres un experto en ciencias del deporte, nutrición y metabolismo basado en las últimas investigaciones de Harvard Medical School. Sé específico, científico pero accesible. Usa emojis estratégicamente. ${LANG_SYS[STATE.lang] || LANG_SYS.es}`;
+}
 
 async function claude(messages, max=1000) {
   const res = await fetch('https://api.anthropic.com/v1/messages', {
@@ -322,7 +300,7 @@ async function processPayment() {
 
   try {
     // MODO DEMO: si aún no has puesto tu Public Key real
-    if (CONFIG.MP_PUBLIC_KEY === 'APP_USR-TU-PUBLIC-KEY-AQUI') {
+    if (!CONFIG.MP_PUBLIC_KEY || CONFIG.MP_PUBLIC_KEY === 'APP_USR-TU-PUBLIC-KEY-AQUI') {
       await new Promise(r => setTimeout(r, 1800));
       markAsPaid(STATE.user.email);
       STATE.screen = 'setup';
@@ -477,7 +455,7 @@ function renderAuth() {
 
 // --- PAYWALL SCREEN ---
 function renderPaywall() {
-  const isDemo = CONFIG.MP_PUBLIC_KEY === 'APP_USR-TU-PUBLIC-KEY-AQUI';
+  const isDemo = !CONFIG.MP_PUBLIC_KEY || CONFIG.MP_PUBLIC_KEY === 'APP_USR-TU-PUBLIC-KEY-AQUI';
   const div = document.createElement('div');
   div.className = 'screen';
   div.innerHTML = `
@@ -486,7 +464,7 @@ function renderPaywall() {
     <div class="screen-sub">Hola, ${STATE.user?.name}. Un único pago para acceso completo de por vida.</div>
     <div class="paywall-card">
       <div style="display:inline-block;background:var(--lime);color:#000;border-radius:100px;padding:4px 16px;font-size:11px;font-weight:800;letter-spacing:1px;text-transform:uppercase;margin-bottom:12px">Acceso de por vida</div>
-      <div class="paywall-price">$990</div>
+      <div class="paywall-price">${CONFIG.PRICE_DISPLAY}</div>
       <div class="paywall-period">pesos chilenos · pago único · sin renovaciones</div>
 
       <div class="paywall-features">
@@ -507,8 +485,8 @@ function renderPaywall() {
         ${STATE.payLoading
           ? '⏳ Conectando con MercadoPago…'
           : isDemo
-            ? '⚡ Pagar $990 CLP (demo)'
-            : '⚡ Ir a pagar $990 CLP →'}
+            ? '⚡ Pagar $990 CLP (modo demo)'
+            : `⚡ Ir a pagar ${CONFIG.PRICE_DISPLAY} ${CONFIG.CURRENCY} →`}
       </button>
 
       ${isDemo ? `<div style="background:#fbbf2410;border:1px solid #fbbf2430;border-radius:10px;padding:10px;margin-top:10px;font-size:11px;color:var(--amber);text-align:center">⚠️ Modo demo activo. Agrega tu Public Key de MP para cobros reales.</div>` : ''}
@@ -612,13 +590,13 @@ function renderHeader() {
   const h=document.createElement('div'); h.className='header';
   h.innerHTML=`<div class="header-inner">
     <div><div class="logo">⚡ FitAI Pro</div><div class="sub">Hola, ${STATE.user?.name||p.name} · ${tabNames[STATE.tab]}</div></div>
-    <div style="display:flex;align-items:center;gap:5px">
-      <div style="display:flex;gap:2px">${Object.keys(LANG).map(l=>`<button data-lang="${l}" style="background:${STATE.lang===l?'#a78bfa25':'none'};border:1px solid ${STATE.lang===l?'var(--purple)':'var(--border)'};border-radius:6px;padding:3px 7px;font-size:10px;font-weight:700;color:${STATE.lang===l?'var(--purple)':'var(--muted)'};cursor:pointer">${LANG[l].name}</button>`).join('')}</div>
-      <span class="badge" style="background:#a78bfa20;color:var(--purple);font-size:10px">${goal}</span>
+    <div style="display:flex;align-items:center;gap:4px">
+      ${['es','en','fr','pt'].map(l=>`<button data-l="${l}" style="background:${STATE.lang===l?'#a78bfa25':'none'};border:1px solid ${STATE.lang===l?'var(--purple)':'var(--border)'};border-radius:6px;padding:3px 6px;font-size:10px;font-weight:700;color:${STATE.lang===l?'var(--purple)':'var(--muted)'};cursor:pointer">${l.toUpperCase()}</button>`).join('')}
+      <span class="badge" style="background:#a78bfa20;color:var(--purple);font-size:10px;margin-left:2px">${goal}</span>
       <button class="avatar-btn" id="btn-user">👤</button>
     </div>
   </div>`;
-  h.querySelectorAll('[data-lang]').forEach(b=>b.onclick=(e)=>{e.stopPropagation();STATE.lang=b.dataset.lang;STATE.aiMsg='';render();});
+  h.querySelectorAll('[data-l]').forEach(b=>b.addEventListener('click',(e)=>{e.stopPropagation();STATE.lang=b.dataset.l;STATE.aiMsg='';render();}));
   h.querySelector('#btn-user').onclick=(e)=>{e.stopPropagation();STATE.showUserMenu=!STATE.showUserMenu;render();};
   return h;
 }
