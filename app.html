@@ -572,8 +572,8 @@ function renderSetup() {
       const p=STATE.setupData;
       const desc=`Usuario: ${p.name}, ${p.age}años, ${p.gender}\nPeso: ${p.weight}kg, Altura: ${p.height}cm, Grasa: ${p.bodyFat||'desconocida'}%\nObjetivo: ${p.goal}\nMeta: ${p.targetWeight}kg / ${p.targetBodyFat}% grasa en ${p.weeksGoal} semanas\nActividad: ${p.activityLevel}`;
       const [planR,nutR]=await Promise.all([
-        claude([{role:'user',content:`Plan de entrenamiento semanal DETALLADO para: ${desc}. Ejercicios, series, reps, descansos. Máx 800 palabras.`}]),
-        claude([{role:'user',content:`Plan de alimentación diario Harvard para: ${desc}. Calorías, macros, 5 comidas con cantidades, timing. Máx 800 palabras.`}])
+        claude([{role:'user',content:`Plan entrenamiento semanal para: ${desc}. Incluye días, ejercicios, series, reps. Máx 500 palabras.`}]),
+        claude([{role:'user',content:`Plan alimentación diario para: ${desc}. Calorías, macros, 5 comidas. Máx 500 palabras.`}])
       ]);
       STATE.profile={...p,setup:true}; STATE.plan=planR; STATE.nutrition=nutR; STATE.aiLoading=false; STATE.screen='app'; save(); render();
     }
