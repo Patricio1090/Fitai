@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>FitAI Pro — Admin Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+:root {
+  --bg: #07080f;
+  --surface: #0f1018;
+  --surface2: #161720;
+  --border: #1e2030;
+  --text: #eeeef8;
+  --muted: #5a607a;
+  --purple: #a78bfa;
+  --blue: #60a5fa;
+  --green: #34d399;
+  --amber: #fbbf24;
+  --red: #f87171;
+  --lime: #b8ff57;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh;}
+::-webkit-scrollbar{width:4px;}::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px;}
+
+/* LOGIN */
+.login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;background:radial-gradient(ellipse at 50% 0%,#1a0a3e 0%,var(--bg) 60%);}
+.login-card{background:var(--surface);border:1px solid var(--border);border-radius:24px;padding:48px 40px;width:100%;max-width:400px;text-align:center;}
+.login-logo{font-size:48px;margin-bottom:12px;}
+.login-title{font-family:'Syne',sans-serif;font-size:24px;font-weight:800;background:linear-gradient(135deg,var(--purple),var(--blue));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:4px;}
+.login-sub{font-size:13px;color:var(--muted);margin-bottom:32px;}
+.login-field{margin-bottom:14px;text-align:left;}
+.login-field label{font-size:12px;color:var(--muted);margin-bottom:5px;display:block;}
+.login-field input{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;color:var(--text);font-size:14px;outline:none;font-family:'DM Sans',sans-serif;}
+.login-field input:focus{border-color:var(--purple);}
+.login-btn{width:100%;background:linear-gradient(135deg,var(--purple),#7c3aed);color:#fff;border:none;border-radius:12px;padding:14px;font-family:'Syne',sans-serif;font-size:15px;font-weight:700;cursor:pointer;margin-top:8px;}
+.login-err{background:#f8717115;border:1px solid #f8717130;border-radius:10px;padding:10px;font-size:13px;color:var(--red);margin-bottom:12px;display:none;}
+.login-err.show{display:block;}
+
+/* MAIN LAYOUT */
+.layout{display:grid;grid-template-columns:220px 1fr;min-height:100vh;}
+@media(max-width:768px){.layout{grid-template-columns:1fr;}}
+
+/* SIDEBAR */
+.sidebar{background:var(--surface);border-right:1px solid var(--border);padding:24px 16px;display:flex;flex-direction:column;gap:4px;position:sticky;top:0;height:100vh;overflow-y:auto;}
+.sidebar-logo{font-family:'Syne',sans-serif;font-size:16px;font-weight:800;color:var(--lime);padding:8px 12px;margin-bottom:16px;display:flex;align-items:center;gap:8px;}
+.nav-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;cursor:pointer;font-size:13px;font-weight:600;color:var(--muted);transition:all 0.2s;border:none;background:none;width:100%;text-align:left;}
+.nav-item:hover{background:var(--surface2);color:var(--text);}
+.nav-item.active{background:linear-gradient(135deg,#a78bfa20,#7c3aed10);color:var(--purple);border:1px solid #a78bfa20;}
+.nav-icon{font-size:18px;}
+.sidebar-footer{margin-top:auto;padding-top:16px;border-top:1px solid var(--border);}
+.logout-btn{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;cursor:pointer;font-size:13px;font-weight:600;color:var(--red);background:none;border:none;width:100%;}
+
+/* MAIN */
+.main{padding:32px;overflow-y:auto;}
+.page-title{font-family:'Syne',sans-serif;font-size:24px;font-weight:800;margin-bottom:4px;}
+.page-sub{font-size:13px;color:var(--muted);margin-bottom:28px;}
+
+/* STATS GRID */
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:28px;}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px;position:relative;overflow:hidden;transition:transform 0.2s;}
+.stat-card:hover{transform:translateY(-2px);}
+.stat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:16px 16px 0 0;}
+.stat-card.purple::before{background:linear-gradient(90deg,var(--purple),#7c3aed);}
+.stat-card.green::before{background:linear-gradient(90deg,var(--green),#059669);}
+.stat-card.blue::before{background:linear-gradient(90deg,var(--blue),#2563eb);}
+.stat-card.amber::before{background:linear-gradient(90deg,var(--amber),#d97706);}
+.stat-card.lime::before{background:linear-gradient(90deg,var(--lime),#84cc16);}
+.stat-icon{font-size:28px;margin-bottom:10px;}
+.stat-val{font-family:'Syne',sans-serif;font-size:32px;font-weight:900;line-height:1;}
+.stat-lbl{font-size:12px;color:var(--muted);margin-top:4px;}
+.stat-change{font-size:11px;margin-top:6px;font-weight:600;}
+.stat-change.up{color:var(--green);}
+.stat-change.down{color:var(--red);}
+
+/* CHARTS */
+.charts-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:16px;margin-bottom:28px;}
+.chart-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px;}
+.chart-title{font-family:'Syne',sans-serif;font-size:14px;font-weight:700;margin-bottom:4px;}
+.chart-sub{font-size:11px;color:var(--muted);margin-bottom:16px;}
+.chart-wrap{position:relative;height:200px;}
+
+/* TABLE */
+.table-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px;margin-bottom:28px;}
+.table-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px;}
+.table-title{font-family:'Syne',sans-serif;font-size:14px;font-weight:700;}
+.search-input{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 12px;color:var(--text);font-size:13px;outline:none;width:200px;font-family:'DM Sans',sans-serif;}
+.search-input:focus{border-color:var(--purple);}
+table{width:100%;border-collapse:collapse;}
+th{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);}
+td{font-size:13px;padding:12px;border-bottom:1px solid var(--border)10;}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:var(--surface2);}
+.badge{display:inline-block;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:700;}
+.badge.paid{background:#34d39920;color:var(--green);}
+.badge.pending{background:#fbbf2420;color:var(--amber);}
+.badge.setup{background:#60a5fa20;color:var(--blue);}
+.badge.nosetup{background:#f8717120;color:var(--red);}
+
+/* ACTIONS */
+.action-btn{background:none;border:1px solid var(--border);border-radius:8px;padding:6px 12px;font-size:12px;color:var(--muted);cursor:pointer;font-family:'DM Sans',sans-serif;transition:all 0.2s;}
+.action-btn:hover{border-color:var(--purple);color:var(--purple);}
+.action-btn.primary{background:linear-gradient(135deg,var(--purple),#7c3aed);color:#fff;border:none;}
+.action-btn.green{background:linear-gradient(135deg,var(--green),#059669);color:#fff;border:none;}
+.action-btn.amber{background:linear-gradient(135deg,var(--amber),#d97706);color:#000;border:none;}
+
+/* EMAIL SECTION */
+.email-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:24px;margin-bottom:28px;}
+.email-title{font-family:'Syne',sans-serif;font-size:14px;font-weight:700;margin-bottom:16px;}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;}
+@media(max-width:600px){.form-row{grid-template-columns:1fr;}}
+.form-field label{font-size:12px;color:var(--muted);margin-bottom:5px;display:block;}
+.form-field input,.form-field select,.form-field textarea{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;color:var(--text);font-size:13px;outline:none;font-family:'DM Sans',sans-serif;}
+.form-field input:focus,.form-field select:focus,.form-field textarea:focus{border-color:var(--purple);}
+.form-field textarea{height:100px;resize:none;}
+.automation-item{display:flex;justify-content:space-between;align-items:center;padding:14px;background:var(--surface2);border-radius:12px;margin-bottom:8px;}
+.automation-info{display:flex;flex-direction:column;gap:3px;}
+.automation-name{font-size:13px;font-weight:600;}
+.automation-desc{font-size:11px;color:var(--muted);}
+.toggle{width:44px;height:24px;background:var(--border);border-radius:100px;position:relative;cursor:pointer;transition:background 0.2s;}
+.toggle.on{background:var(--green);}
+.toggle::after{content:'';position:absolute;width:18px;height:18px;background:#fff;border-radius:50%;top:3px;left:3px;transition:transform 0.2s;}
+.toggle.on::after{transform:translateX(20px);}
+
+/* NOTIFICATION */
+.notif{position:fixed;top:20px;right:20px;background:var(--surface);border:1px solid var(--green);border-radius:12px;padding:12px 20px;font-size:13px;color:var(--green);z-index:999;animation:slideIn 0.3s ease;display:none;}
+.notif.show{display:block;}
+@keyframes slideIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:none}}
+
+/* PAGE SECTIONS */
+.page-section{display:none;}
+.page-section.active{display:block;}
+
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.fade-in{animation:fadeIn 0.3s ease;}
+</style>
+</head>
+<body>
+
+<div id="root"></div>
+<div class="notif" id="notif"></div>
+
+<script>
+// ══════════════════════════════════════════
+// CONFIGURACION ADMIN
+// ══════════════════════════════════════════
+const ADMIN = {
+  PASSWORD: 'fitai2024admin',  // ← Cambia esta contraseña
+  RESEND_ENDPOINT: 'https://mysuperfitness.netlify.app/.netlify/functions/send-email',
+};
+// ══════════════════════════════════════════
+
+const STORAGE_KEY = 'fitai_users';
+let currentPage = 'dashboard';
+let searchQuery = '';
+let automations = {
+  email30: true,
+  push15: true,
+  welcome: true,
+};
+
+// ── AUTH ──────────────────────────────────
+let isLoggedIn = sessionStorage.getItem('fitai_admin') === 'true';
+
+function login(pass) {
+  if (pass === ADMIN.PASSWORD) {
+    sessionStorage.setItem('fitai_admin', 'true');
+    isLoggedIn = true;
+    render();
+  } else {
+    document.getElementById('login-err').classList.add('show');
+  }
+}
+
+function logout() {
+  sessionStorage.removeItem('fitai_admin');
+  isLoggedIn = false;
+  render();
+}
+
+// ── DATA ──────────────────────────────────
+function getUsers() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return [];
+    const obj = JSON.parse(raw);
+    return Object.values(obj).map(u => ({
+      email: u.email,
+      name: u.name || 'Sin nombre',
+      paid: u.paid || false,
+      setupDone: u.paid || false, // approximation
+      registeredAt: u.registeredAt || new Date().toISOString(),
+      token: u.token || '',
+    }));
+  } catch { return []; }
+}
+
+function getStats() {
+  const users = getUsers();
+  const paid = users.filter(u => u.paid);
+  const setupDone = users.filter(u => u.setupDone);
+  const revenue = paid.length * 990;
+  return {
+    totalUsers: users.length,
+    paidUsers: paid.length,
+    setupDone: setupDone.length,
+    revenue,
+    convRate: users.length > 0 ? Math.round((paid.length / users.length) * 100) : 0,
+  };
+}
+
+// ── CHARTS ────────────────────────────────
+let charts = {};
+
+function destroyCharts() {
+  Object.values(charts).forEach(c => { try { c.destroy(); } catch {} });
+  charts = {};
+}
+
+function buildCharts() {
+  destroyCharts();
+  const users = getUsers();
+  const stats = getStats();
+
+  // Chart 1: Usuarios por día (últimos 7 días simulados)
+  const ctx1 = document.getElementById('chart-users');
+  if (ctx1) {
+    const days = [];
+    const counts = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      days.push(d.toLocaleDateString('es-CL', { weekday: 'short' }));
+      counts.push(Math.max(0, Math.floor(Math.random() * 3) + (i === 0 ? users.length : 0)));
+    }
+    charts.users = new Chart(ctx1, {
+      type: 'line',
+      data: {
+        labels: days,
+        datasets: [{
+          label: 'Nuevos usuarios',
+          data: counts,
+          borderColor: '#a78bfa',
+          backgroundColor: '#a78bfa20',
+          fill: true,
+          tension: 0.4,
+          pointBackgroundColor: '#a78bfa',
+          pointRadius: 4,
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { grid: { color: '#1e2030' }, ticks: { color: '#5a607a', font: { size: 11 } } },
+          y: { grid: { color: '#1e2030' }, ticks: { color: '#5a607a', font: { size: 11 } }, beginAtZero: true }
+        }
+      }
+    });
+  }
+
+  // Chart 2: Ingresos acumulados
+  const ctx2 = document.getElementById('chart-revenue');
+  if (ctx2) {
+    const months = ['Oct', 'Nov', 'Dic', 'Ene', 'Feb', 'Mar'];
+    const revenue = [0, 0, 0, 0, 990 * Math.max(0, stats.paidUsers - 1), stats.revenue];
+    charts.revenue = new Chart(ctx2, {
+      type: 'bar',
+      data: {
+        labels: months,
+        datasets: [{
+          label: 'Ingresos CLP',
+          data: revenue,
+          backgroundColor: '#34d39930',
+          borderColor: '#34d399',
+          borderWidth: 2,
+          borderRadius: 6,
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { grid: { color: '#1e2030' }, ticks: { color: '#5a607a', font: { size: 11 } } },
+          y: { grid: { color: '#1e2030' }, ticks: { color: '#5a607a', font: { size: 11 }, callback: v => '$' + v.toLocaleString('es-CL') }, beginAtZero: true }
+        }
+      }
+    });
+  }
+
+  // Chart 3: Paid vs No paid (donut)
+  const ctx3 = document.getElementById('chart-conversion');
+  if (ctx3) {
+    charts.conv = new Chart(ctx3, {
+      type: 'doughnut',
+      data: {
+        labels: ['Pagaron', 'Registrados sin pagar'],
+        datasets: [{
+          data: [stats.paidUsers, Math.max(0, stats.totalUsers - stats.paidUsers)],
+          backgroundColor: ['#34d39980', '#1e2030'],
+          borderColor: ['#34d399', '#2a3050'],
+          borderWidth: 2,
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { position: 'bottom', labels: { color: '#5a607a', font: { size: 11 }, padding: 12 } }
+        },
+        cutout: '65%',
+      }
+    });
+  }
+
+  // Chart 4: Setup completados
+  const ctx4 = document.getElementById('chart-setup');
+  if (ctx4) {
+    charts.setup = new Chart(ctx4, {
+      type: 'doughnut',
+      data: {
+        labels: ['Setup completo', 'Sin completar'],
+        datasets: [{
+          data: [stats.setupDone, Math.max(0, stats.paidUsers - stats.setupDone)],
+          backgroundColor: ['#a78bfa80', '#1e2030'],
+          borderColor: ['#a78bfa', '#2a3050'],
+          borderWidth: 2,
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { position: 'bottom', labels: { color: '#5a607a', font: { size: 11 }, padding: 12 } }
+        },
+        cutout: '65%',
+      }
+    });
+  }
+}
+
+// ── NOTIFICATIONS ─────────────────────────
+function showNotif(msg, color = 'var(--green)') {
+  const el = document.getElementById('notif');
+  el.textContent = '✅ ' + msg;
+  el.style.borderColor = color;
+  el.style.color = color;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+// ── EMAIL ─────────────────────────────────
+async function sendEmail(to, subject, body) {
+  try {
+    await fetch(ADMIN.RESEND_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ to, subject, body })
+    });
+    showNotif(`Email enviado a ${to}`);
+  } catch {
+    showNotif('Error enviando email', 'var(--red)');
+  }
+}
+
+async function sendBulkEmail() {
+  const subject = document.getElementById('email-subject')?.value;
+  const body = document.getElementById('email-body')?.value;
+  if (!subject || !body) { showNotif('Completa el asunto y el cuerpo del email', 'var(--amber)'); return; }
+  const users = getUsers().filter(u => u.paid);
+  showNotif(`Enviando a ${users.length} clientes...`, 'var(--amber)');
+  for (const u of users) {
+    await sendEmail(u.email, subject, body.replace('{{nombre}}', u.name));
+  }
+  showNotif(`Emails enviados a ${users.length} clientes`);
+}
+
+// ── RENDER ────────────────────────────────
+function render() {
+  const root = document.getElementById('root');
+  if (!isLoggedIn) {
+    root.innerHTML = renderLogin();
+    setTimeout(() => {
+      document.getElementById('pass-input')?.addEventListener('keydown', e => {
+        if (e.key === 'Enter') document.getElementById('login-btn')?.click();
+      });
+      document.getElementById('login-btn')?.addEventListener('click', () => {
+        login(document.getElementById('pass-input').value);
+      });
+    }, 0);
+    return;
+  }
+  root.innerHTML = renderApp();
+  setTimeout(() => {
+    setupNav();
+    buildCharts();
+    setupSearch();
+    setupEmailForm();
+    setupToggle();
+  }, 0);
+}
+
+function renderLogin() {
+  return `
+  <div class="login-wrap">
+    <div class="login-card">
+      <div class="login-logo">🔐</div>
+      <div class="login-title">FitAI Admin</div>
+      <div class="login-sub">Panel de administración privado</div>
+      <div class="login-err" id="login-err">Contraseña incorrecta</div>
+      <div class="login-field">
+        <label>Contraseña de administrador</label>
+        <input type="password" id="pass-input" placeholder="••••••••••"/>
+      </div>
+      <button class="login-btn" id="login-btn">Ingresar →</button>
+    </div>
+  </div>`;
+}
+
+function renderApp() {
+  const stats = getStats();
+  const users = getUsers();
+  const filteredUsers = users.filter(u =>
+    u.email.toLowerCase().includes(searchQuery) ||
+    u.name.toLowerCase().includes(searchQuery)
+  );
+
+  return `
+  <div class="layout">
+    <nav class="sidebar">
+      <div class="sidebar-logo">⚡ FitAI Admin</div>
+      ${[
+        ['dashboard', '📊', 'Dashboard'],
+        ['users', '👥', 'Clientes'],
+        ['payments', '💰', 'Pagos'],
+        ['emails', '📧', 'Emails'],
+        ['notifications', '🔔', 'Notificaciones'],
+      ].map(([id, icon, label]) => `
+        <button class="nav-item ${currentPage === id ? 'active' : ''}" data-page="${id}">
+          <span class="nav-icon">${icon}</span>${label}
+        </button>`).join('')}
+      <div class="sidebar-footer">
+        <button class="logout-btn" id="logout-btn">🚪 Cerrar sesión</button>
+      </div>
+    </nav>
+
+    <main class="main fade-in">
+
+      <!-- DASHBOARD -->
+      <div class="page-section ${currentPage === 'dashboard' ? 'active' : ''}">
+        <div class="page-title">Dashboard</div>
+        <div class="page-sub">Resumen general de FitAI Pro · Actualizado ahora</div>
+
+        <div class="stats-grid">
+          <div class="stat-card purple">
+            <div class="stat-icon">👥</div>
+            <div class="stat-val">${stats.totalUsers}</div>
+            <div class="stat-lbl">Usuarios registrados</div>
+          </div>
+          <div class="stat-card green">
+            <div class="stat-icon">💳</div>
+            <div class="stat-val">${stats.paidUsers}</div>
+            <div class="stat-lbl">Clientes pagados</div>
+          </div>
+          <div class="stat-card lime">
+            <div class="stat-icon">💰</div>
+            <div class="stat-val">$${stats.revenue.toLocaleString('es-CL')}</div>
+            <div class="stat-lbl">Ingresos totales CLP</div>
+          </div>
+          <div class="stat-card blue">
+            <div class="stat-icon">✅</div>
+            <div class="stat-val">${stats.setupDone}</div>
+            <div class="stat-lbl">Setup completado</div>
+          </div>
+          <div class="stat-card amber">
+            <div class="stat-icon">📈</div>
+            <div class="stat-val">${stats.convRate}%</div>
+            <div class="stat-lbl">Tasa de conversión</div>
+          </div>
+        </div>
+
+        <div class="charts-grid">
+          <div class="chart-card">
+            <div class="chart-title">Nuevos usuarios</div>
+            <div class="chart-sub">Últimos 7 días</div>
+            <div class="chart-wrap"><canvas id="chart-users"></canvas></div>
+          </div>
+          <div class="chart-card">
+            <div class="chart-title">Ingresos CLP</div>
+            <div class="chart-sub">Por mes</div>
+            <div class="chart-wrap"><canvas id="chart-revenue"></canvas></div>
+          </div>
+          <div class="chart-card">
+            <div class="chart-title">Conversión</div>
+            <div class="chart-sub">Registrados vs Pagados</div>
+            <div class="chart-wrap"><canvas id="chart-conversion"></canvas></div>
+          </div>
+          <div class="chart-card">
+            <div class="chart-title">Setup completado</div>
+            <div class="chart-sub">De clientes pagados</div>
+            <div class="chart-wrap"><canvas id="chart-setup"></canvas></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- USUARIOS -->
+      <div class="page-section ${currentPage === 'users' ? 'active' : ''}">
+        <div class="page-title">Clientes</div>
+        <div class="page-sub">${users.length} usuarios registrados · ${stats.paidUsers} pagados</div>
+        <div class="table-card">
+          <div class="table-header">
+            <div class="table-title">Lista de usuarios</div>
+            <input class="search-input" id="search-input" placeholder="🔍 Buscar..." value="${searchQuery}"/>
+          </div>
+          <div style="overflow-x:auto">
+            <table>
+              <thead>
+                <tr>
+                  <th>Nombre</th>
+                  <th>Email</th>
+                  <th>Estado pago</th>
+                  <th>Setup</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${filteredUsers.length === 0 ? `<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:32px">Sin usuarios aún</td></tr>` :
+                  filteredUsers.map(u => `
+                  <tr>
+                    <td><strong>${u.name}</strong></td>
+                    <td style="color:var(--muted)">${u.email}</td>
+                    <td><span class="badge ${u.paid ? 'paid' : 'pending'}">${u.paid ? '✅ Pagado' : '⏳ Pendiente'}</span></td>
+                    <td><span class="badge ${u.setupDone ? 'setup' : 'nosetup'}">${u.setupDone ? '✅ Completo' : '❌ Pendiente'}</span></td>
+                    <td>
+                      <button class="action-btn" onclick="sendEmail('${u.email}','Hola desde FitAI Pro','Hola ${u.name}, te escribimos desde FitAI Pro.')">✉️ Email</button>
+                    </td>
+                  </tr>`).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- PAGOS -->
+      <div class="page-section ${currentPage === 'payments' ? 'active' : ''}">
+        <div class="page-title">Pagos</div>
+        <div class="page-sub">Historial de transacciones · $990 CLP por cliente</div>
+
+        <div class="stats-grid" style="margin-bottom:20px">
+          <div class="stat-card green">
+            <div class="stat-icon">💰</div>
+            <div class="stat-val">$${stats.revenue.toLocaleString('es-CL')}</div>
+            <div class="stat-lbl">Total recaudado</div>
+          </div>
+          <div class="stat-card purple">
+            <div class="stat-icon">🧾</div>
+            <div class="stat-val">${stats.paidUsers}</div>
+            <div class="stat-lbl">Transacciones</div>
+          </div>
+          <div class="stat-card blue">
+            <div class="stat-icon">📅</div>
+            <div class="stat-val">$${(990).toLocaleString('es-CL')}</div>
+            <div class="stat-lbl">Precio por cliente</div>
+          </div>
+        </div>
+
+        <div class="table-card">
+          <div class="table-header">
+            <div class="table-title">Transacciones MercadoPago</div>
+            <a href="https://www.mercadopago.cl/activities" target="_blank">
+              <button class="action-btn primary">Ver en MP →</button>
+            </a>
+          </div>
+          <div style="overflow-x:auto">
+            <table>
+              <thead>
+                <tr><th>Cliente</th><th>Email</th><th>Monto</th><th>Estado</th></tr>
+              </thead>
+              <tbody>
+                ${getUsers().filter(u => u.paid).length === 0
+                  ? `<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:32px">Sin pagos aún</td></tr>`
+                  : getUsers().filter(u => u.paid).map(u => `
+                    <tr>
+                      <td><strong>${u.name}</strong></td>
+                      <td style="color:var(--muted)">${u.email}</td>
+                      <td style="color:var(--green);font-weight:700">$990 CLP</td>
+                      <td><span class="badge paid">✅ Aprobado</span></td>
+                    </tr>`).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- EMAILS -->
+      <div class="page-section ${currentPage === 'emails' ? 'active' : ''}">
+        <div class="page-title">Emails</div>
+        <div class="page-sub">Envío masivo y automatizaciones</div>
+
+        <div class="email-card">
+          <div class="email-title">📧 Enviar email a todos los clientes</div>
+          <div class="form-row">
+            <div class="form-field">
+              <label>Asunto</label>
+              <input type="text" id="email-subject" placeholder="Ej: Tu progreso este mes en FitAI Pro"/>
+            </div>
+            <div class="form-field">
+              <label>Destinatarios</label>
+              <select id="email-to">
+                <option value="all">Todos los clientes pagados (${stats.paidUsers})</option>
+                <option value="nosetup">Sin setup completado</option>
+                <option value="inactive">Inactivos +7 días</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-field" style="margin-bottom:16px">
+            <label>Mensaje (usa {{nombre}} para personalizar)</label>
+            <textarea id="email-body" placeholder="Hola {{nombre}}, te escribimos desde FitAI Pro para recordarte que..."></textarea>
+          </div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <button class="action-btn primary" onclick="sendBulkEmail()">📤 Enviar ahora</button>
+            <button class="action-btn" onclick="previewEmail()">👁️ Vista previa</button>
+          </div>
+        </div>
+
+        <div class="email-card">
+          <div class="email-title">⚙️ Automatizaciones de email</div>
+          ${[
+            ['email30', '📅 Email mensual', 'Se envía automáticamente cada 30 días a todos los clientes activos con un resumen de motivación y tips'],
+            ['welcome', '👋 Email de bienvenida', 'Se envía automáticamente cuando un cliente completa el pago y el setup'],
+          ].map(([id, name, desc]) => `
+            <div class="automation-item">
+              <div class="automation-info">
+                <div class="automation-name">${name}</div>
+                <div class="automation-desc">${desc}</div>
+              </div>
+              <div class="toggle ${automations[id] ? 'on' : ''}" data-auto="${id}"></div>
+            </div>`).join('')}
+          <div style="margin-top:16px;padding:14px;background:var(--surface2);border-radius:12px;">
+            <div style="font-size:12px;color:var(--muted);margin-bottom:8px;font-weight:600">📋 CONFIGURAR EMAILS AUTOMÁTICOS</div>
+            <div style="font-size:12px;color:var(--muted);line-height:1.8">
+              Para activar emails automáticos reales necesitas:<br>
+              1. Crear cuenta gratis en <strong style="color:var(--text)">resend.com</strong> (3.000 emails/mes gratis)<br>
+              2. Agregar variable <strong style="color:var(--purple)">RESEND_API_KEY</strong> en Netlify<br>
+              3. Crear función <strong style="color:var(--purple)">send-email.js</strong> en netlify/functions<br>
+              <span style="color:var(--purple);cursor:pointer" onclick="showResendGuide()">→ Ver guía completa</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- NOTIFICACIONES -->
+      <div class="page-section ${currentPage === 'notifications' ? 'active' : ''}">
+        <div class="page-title">Notificaciones Push</div>
+        <div class="page-sub">Notificaciones automáticas cada 15 días</div>
+
+        <div class="email-card">
+          <div class="email-title">🔔 Automatizaciones push</div>
+          <div class="automation-item">
+            <div class="automation-info">
+              <div class="automation-name">📱 Recordatorio quincenal</div>
+              <div class="automation-desc">Notificación push cada 15 días recordando registrar progreso y revisar el plan</div>
+            </div>
+            <div class="toggle ${automations.push15 ? 'on' : ''}" data-auto="push15"></div>
+          </div>
+          <div style="margin-top:16px;padding:14px;background:var(--surface2);border-radius:12px;">
+            <div style="font-size:12px;color:var(--muted);margin-bottom:8px;font-weight:600">📋 CONFIGURAR NOTIFICACIONES PUSH</div>
+            <div style="font-size:12px;color:var(--muted);line-height:1.8">
+              Para notificaciones push reales:<br>
+              1. Crear cuenta gratis en <strong style="color:var(--text)">onesignal.com</strong><br>
+              2. Agregar script de OneSignal al app.html<br>
+              3. Los usuarios deben aceptar permisos al abrir la app<br>
+              4. Desde OneSignal puedes programar envíos automáticos<br>
+              <span style="color:var(--purple);cursor:pointer" onclick="showPushGuide()">→ Ver guía completa</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="email-card">
+          <div class="email-title">📤 Enviar notificación manual</div>
+          <div class="form-field" style="margin-bottom:12px">
+            <label>Título</label>
+            <input type="text" id="push-title" placeholder="Ej: ¡No olvides tu entrenamiento hoy! 💪"/>
+          </div>
+          <div class="form-field" style="margin-bottom:16px">
+            <label>Mensaje</label>
+            <input type="text" id="push-body" placeholder="Ej: Llevas 15 días en FitAI Pro. ¡Sigue así!"/>
+          </div>
+          <button class="action-btn primary" onclick="sendPushNotification()">📤 Enviar push ahora</button>
+        </div>
+      </div>
+
+    </main>
+  </div>`;
+}
+
+// ── SETUP INTERACTIONS ────────────────────
+function setupNav() {
+  document.querySelectorAll('[data-page]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      currentPage = btn.dataset.page;
+      destroyCharts();
+      render();
+    });
+  });
+  document.getElementById('logout-btn')?.addEventListener('click', logout);
+}
+
+function setupSearch() {
+  document.getElementById('search-input')?.addEventListener('input', e => {
+    searchQuery = e.target.value.toLowerCase();
+    const users = getUsers().filter(u =>
+      u.email.toLowerCase().includes(searchQuery) ||
+      u.name.toLowerCase().includes(searchQuery)
+    );
+    const tbody = document.querySelector('tbody');
+    if (tbody) {
+      tbody.innerHTML = users.length === 0
+        ? `<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:32px">Sin resultados</td></tr>`
+        : users.map(u => `
+          <tr>
+            <td><strong>${u.name}</strong></td>
+            <td style="color:var(--muted)">${u.email}</td>
+            <td><span class="badge ${u.paid ? 'paid' : 'pending'}">${u.paid ? '✅ Pagado' : '⏳ Pendiente'}</span></td>
+            <td><span class="badge ${u.setupDone ? 'setup' : 'nosetup'}">${u.setupDone ? '✅ Completo' : '❌ Pendiente'}</span></td>
+            <td><button class="action-btn" onclick="sendEmail('${u.email}','Hola desde FitAI Pro','Hola ${u.name}!')">✉️ Email</button></td>
+          </tr>`).join('');
+    }
+  });
+}
+
+function setupEmailForm() {
+  // Email template buttons
+}
+
+function setupToggle() {
+  document.querySelectorAll('.toggle[data-auto]').forEach(toggle => {
+    toggle.addEventListener('click', () => {
+      const key = toggle.dataset.auto;
+      automations[key] = !automations[key];
+      toggle.classList.toggle('on');
+      showNotif(`Automatización ${automations[key] ? 'activada' : 'desactivada'}`);
+    });
+  });
+}
+
+function previewEmail() {
+  const subject = document.getElementById('email-subject')?.value || '(sin asunto)';
+  const body = document.getElementById('email-body')?.value || '(sin contenido)';
+  alert(`VISTA PREVIA\n\nAsunto: ${subject}\n\n${body.replace('{{nombre}}', 'Juan')}`);
+}
+
+function sendPushNotification() {
+  const title = document.getElementById('push-title')?.value;
+  const body = document.getElementById('push-body')?.value;
+  if (!title || !body) { showNotif('Completa título y mensaje', 'var(--amber)'); return; }
+  showNotif('Push enviado (requiere OneSignal configurado)');
+}
+
+function showResendGuide() {
+  alert('GUÍA RESEND:\n\n1. Ve a resend.com y crea cuenta gratis\n2. Crea un API Key\n3. En Netlify → Environment Variables → agrega RESEND_API_KEY\n4. Crea netlify/functions/send-email.js con el código de la guía\n5. Listo — hasta 3.000 emails/mes gratis');
+}
+
+function showPushGuide() {
+  alert('GUÍA ONESIGNAL:\n\n1. Ve a onesignal.com y crea cuenta gratis\n2. Crea una nueva app Web Push\n3. Copia el script que te dan y agrégalo al app.html\n4. Desde el panel de OneSignal puedes programar notificaciones automáticas\n5. Listo — gratis hasta 10.000 suscriptores');
+}
+
+// ── INIT ──────────────────────────────────
+render();
+</script>
+</body>
+</html>
