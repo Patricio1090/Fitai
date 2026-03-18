@@ -573,10 +573,37 @@ function renderSetup() {
     else {
       STATE.aiLoading=true; render();
       const p=STATE.setupData;
-      const desc=`Usuario: ${p.name}, ${p.age}años, ${p.gender}\nPeso: ${p.weight}kg, Altura: ${p.height}cm, Grasa: ${p.bodyFat||'desconocida'}%\nObjetivo: ${p.goal}\nMeta: ${p.targetWeight}kg / ${p.targetBodyFat}% grasa en ${p.weeksGoal} semanas\nActividad: ${p.activityLevel}`;
-      const planR = await claude([{role:'user',content:`Plan entrenamiento 7 días para: ${desc}. Corto y específico. Máx 300 palabras.`}]);
-      const nutR = await claude([{role:'user',content:`Plan alimentación diario para: ${desc}. 5 comidas con cantidades. Máx 300 palabras.`}]);
-      STATE.profile={...p,setup:true}; STATE.plan=planR; STATE.nutrition=nutR; STATE.aiLoading=false; STATE.screen='app'; save(); render();
+      const desc=`${p.name}, ${p.age}años, ${p.gender}, ${p.weight}kg, ${p.height}cm, objetivo: ${p.goal}, meta: ${p.targetWeight}kg en ${p.weeksGoal} semanas, actividad: ${p.activityLevel}`;
+      
+      // Timeout de 25 segundos
+      const withTimeout = (promise, ms) => Promise.race([
+        promise,
+        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), ms))
+      ]);
+
+      try {
+        const planR = await withTimeout(
+          claude([{role:'user',content:`Plan entrenamiento semanal para ${desc}. Máx 250 palabras.`}]),
+          25000
+        );
+        const nutR = await withTimeout(
+          claude([{role:'user',content:`Plan alimentación diario para ${desc}. 5 comidas. Máx 250 palabras.`}]),
+          25000
+        );
+        STATE.profile={...p,setup:true};
+        STATE.plan=planR;
+        STATE.nutrition=nutR;
+        STATE.screen='app';
+      } catch(e) {
+        // Si falla, igual entra a la app con plan por defecto
+        STATE.profile={...p,setup:true};
+        STATE.plan='⚠️ Hubo un problema generando tu plan. Toca "🔄 Nueva semana" en la sección Entrenamiento para generarlo.';
+        STATE.nutrition='⚠️ Hubo un problema generando tu menú. Toca "🔄 Nuevo menú" en la sección Nutrición para generarlo.';
+        STATE.screen='app';
+      }
+      STATE.aiLoading=false;
+      save();
+      render();
     }
   };
   wrap.querySelector('#btn-back')?.addEventListener('click',()=>{STATE.setupStep--;render();});
