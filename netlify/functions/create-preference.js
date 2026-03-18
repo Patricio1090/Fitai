@@ -1,7 +1,9 @@
+
 const { MercadoPagoConfig, Preference } = require('mercadopago');
 
 exports.handler = async (event) => {
 
+  // Maneja CORS (necesario para que la app pueda llamar al backend)
   if (event.httpMethod === 'OPTIONS') {
     return {
       statusCode: 200,
@@ -15,7 +17,7 @@ exports.handler = async (event) => {
   }
 
   const client = new MercadoPagoConfig({
-    accessToken: process.env.MP_ACCESS_TOKEN,
+    accessToken: process.env.MP_ACCESS_TOKEN,  // Tu Access Token (lo pones en Netlify)
   });
 
   const preference = new Preference(client);
@@ -30,7 +32,7 @@ exports.handler = async (event) => {
           title: 'FitAI Pro — Acceso de por vida',
           description: 'Entrenador personal con IA basado en ciencia de Harvard',
           quantity: 1,
-          unit_price: amount || 990,
+          unit_price: amount || 4990,
           currency_id: 'CLP',
         }],
         payer: { email },
@@ -55,6 +57,7 @@ exports.handler = async (event) => {
     };
 
   } catch (error) {
+    console.error('MP Error:', error);
     return {
       statusCode: 500,
       headers: { 'Access-Control-Allow-Origin': '*' },
