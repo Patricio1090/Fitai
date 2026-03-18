@@ -513,7 +513,6 @@ const STEPS = [
   {key:'bodyFat',q:'¿Sabes tu % de grasa corporal? (opcional)',type:'number',ph:'Deja vacío si no sabes'},
   {key:'goal',q:'¿Cuál es tu objetivo principal?',type:'select',opts:['🔥 Quemar grasa','💪 Ganar masa muscular','⚡ Ambos (recomposición)']},
   {key:'targetWeight',q:'¿Cuál es tu peso objetivo? (kg)',type:'number',ph:'Ej: 72'},
-  {key:'targetBodyFat',q:'¿Cuál es tu % de grasa objetivo?',type:'number',ph:'Ej: 15'},
   {key:'weeksGoal',q:'¿En cuántas semanas quieres lograrlo?',type:'number',ph:'Ej: 12'},
   {key:'activityLevel',q:'¿Cuál es tu nivel de actividad actual?',type:'select',opts:['Sedentario (sin ejercicio)','Ligero (1-2 días/sem)','Moderado (3-4 días/sem)','Activo (5+ días/sem)','Atleta (2x/día)']},
 ];
@@ -571,10 +570,8 @@ function renderSetup() {
       STATE.aiLoading=true; render();
       const p=STATE.setupData;
       const desc=`Usuario: ${p.name}, ${p.age}años, ${p.gender}\nPeso: ${p.weight}kg, Altura: ${p.height}cm, Grasa: ${p.bodyFat||'desconocida'}%\nObjetivo: ${p.goal}\nMeta: ${p.targetWeight}kg / ${p.targetBodyFat}% grasa en ${p.weeksGoal} semanas\nActividad: ${p.activityLevel}`;
-      const [planR,nutR]=await Promise.all([
-        claude([{role:'user',content:`Plan entrenamiento semanal para: ${desc}. Incluye días, ejercicios, series, reps. Máx 500 palabras.`}]),
-        claude([{role:'user',content:`Plan alimentación diario para: ${desc}. Calorías, macros, 5 comidas. Máx 500 palabras.`}])
-      ]);
+      const planR = await claude([{role:'user',content:`Plan entrenamiento 7 días para: ${desc}. Corto y específico. Máx 300 palabras.`}]);
+      const nutR = await claude([{role:'user',content:`Plan alimentación diario para: ${desc}. 5 comidas con cantidades. Máx 300 palabras.`}]);
       STATE.profile={...p,setup:true}; STATE.plan=planR; STATE.nutrition=nutR; STATE.aiLoading=false; STATE.screen='app'; save(); render();
     }
   };
