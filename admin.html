@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>FitAI Admin</title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
 :root{--bg:#07080f;--s:#0f1018;--s2:#161720;--b:#1e2030;--t:#eeeef8;--m:#5a607a;--p:#a78bfa;--bl:#60a5fa;--g:#34d399;--a:#fbbf24;--r:#f87171;--l:#b8ff57;}
@@ -132,6 +133,8 @@ input[type=search]:focus{border-color:var(--p);}
     <button class="nav-btn" onclick="goTo('payments',this)">💰 Pagos</button>
     <button class="nav-btn" onclick="goTo('emails',this)">📧 Emails</button>
     <button class="nav-btn" onclick="goTo('push',this)">🔔 Push</button>
+    <span id="data-source" style="font-size:11px;color:var(--m);margin-left:8px;white-space:nowrap">⏳ Cargando...</span>
+    <button class="btn btn-ghost btn-sm" onclick="loadData()" style="margin-right:4px">🔄</button>
     <button class="logout" onclick="doLogout()">Salir</button>
   </div>
 
@@ -171,7 +174,7 @@ input[type=search]:focus{border-color:var(--p);}
         </div>
         <div style="overflow-x:auto">
           <table class="tbl">
-            <thead><tr><th>Cliente</th><th>Email</th><th>Monto</th><th>Estado</th></tr></thead>
+            <thead><tr><th>Cliente</th><th>Email</th><th>Monto</th><th>Estado</th><th>Fecha</th></tr></thead>
             <tbody id="pay-tbody"></tbody>
           </table>
         </div>
@@ -253,8 +256,18 @@ input[type=search]:focus{border-color:var(--p);}
 
 <script>
 const PASS = 'fitai2024admin';
+const SUPA_URL = 'https://wnuehkewxbpahfbemliz.supabase.co';  // ← reemplaza
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndudWVoa2V3eGJwYWhmYmVtbGl6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM5Mjc1NDcsImV4cCI6MjA4OTUwMzU0N30.CQ_pICuiWPwUhMrsCl7csOzMZR3cYZuaLcMelJnnyRI';                 // ← reemplaza
+let supa = null;
+function initSupa() {
+  if (!supa && SUPA_URL !== 'https://TU-PROYECTO.supabase.co') {
+    supa = window.supabase.createClient(SUPA_URL, SUPA_KEY);
+  }
+}
 let charts = {};
 let allUsers = [];
+let allPayments = [];
+let allLogs = [];
 
 // ── AUTH ──────────────────────────────────
 function doLogin() {
@@ -293,7 +306,46 @@ function goTo(id, btn) {
 }
 
 // ── DATA ──────────────────────────────────
-function loadData() {
+async function loadData() {
+  initSupa();
+  
+  if (supa) {
+    // Load from Supabase (real data)
+    try {
+      const { data: users } = await supa.from('users').select('*').order('created_at', { ascending: false });
+      const { data: payments } = await supa.from('payments').select('*').order('created_at', { ascending: false });
+      const { data: logs } = await supa.from('daily_logs').select('*').order('created_at', { ascending: false });
+      
+      allUsers = (users || []).map(u => ({
+        name: u.name || 'Sin nombre',
+        email: u.email || '',
+        paid: u.paid || false,
+        setup: u.setup_done || false,
+        goal: u.goal || '',
+        created_at: u.created_at,
+        paid_at: u.paid_at,
+      }));
+      allPayments = payments || [];
+      allLogs = logs || [];
+      
+      document.getElementById('data-source').textContent = '🟢 Supabase (tiempo real)';
+    } catch(e) {
+      console.log('Supabase error:', e);
+      loadFromLocalStorage();
+    }
+  } else {
+    // Fallback: read from localStorage (same device only)
+    loadFromLocalStorage();
+    document.getElementById('data-source').textContent = '🟡 localStorage (solo este dispositivo)';
+  }
+
+  renderStats();
+  renderUsers(allUsers);
+  renderPayments();
+  setTimeout(buildCharts, 100);
+}
+
+function loadFromLocalStorage() {
   try {
     const raw = localStorage.getItem('fitai_users');
     if (raw) {
@@ -306,11 +358,8 @@ function loadData() {
       }));
     }
   } catch { allUsers = []; }
-
-  renderStats();
-  renderUsers(allUsers);
-  renderPayments();
-  setTimeout(buildCharts, 100);
+  allPayments = [];
+  allLogs = [];
 }
 
 function getStats() {
@@ -369,19 +418,29 @@ function filterUsers(q) {
 
 // ── RENDER PAYMENTS ───────────────────────
 function renderPayments() {
-  const paid = allUsers.filter(u => u.paid);
   const tbody = document.getElementById('pay-tbody');
-  if (!paid.length) {
-    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--m);padding:24px">Sin pagos aún</td></tr>';
+  // Use Supabase payments if available, else fallback to users
+  const source = allPayments.length > 0 ? allPayments : allUsers.filter(u => u.paid).map(u => ({
+    user_email: u.email, amount: 990, currency: 'CLP', status: 'approved',
+    created_at: u.paid_at || u.created_at, name: u.name
+  }));
+
+  if (!source.length) {
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--m);padding:24px">Sin pagos aún</td></tr>';
     return;
   }
-  tbody.innerHTML = paid.map(u => `
-    <tr>
-      <td><strong>${u.name}</strong></td>
-      <td style="color:var(--m);font-size:12px">${u.email}</td>
-      <td style="color:var(--g);font-weight:700">$990 CLP</td>
+  tbody.innerHTML = source.map(p => {
+    const user = allUsers.find(u => u.email === p.user_email);
+    const name = user?.name || p.name || p.user_email;
+    const date = p.created_at ? new Date(p.created_at).toLocaleDateString('es-CL') : '-';
+    return `<tr>
+      <td><strong>${name}</strong></td>
+      <td style="color:var(--m);font-size:12px">${p.user_email}</td>
+      <td style="color:var(--g);font-weight:700">$${(p.amount||990).toLocaleString('es-CL')} ${p.currency||'CLP'}</td>
       <td><span class="badge bp">✅ Aprobado</span></td>
-    </tr>`).join('');
+      <td style="color:var(--m);font-size:11px">${date}</td>
+    </tr>`;
+  }).join('');
 }
 
 // ── CHARTS ────────────────────────────────
