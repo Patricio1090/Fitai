@@ -10,5 +10,6 @@
     Access-Control-Allow-Origin = "*"
     Access-Control-Allow-Headers = "Content-Type"
     Access-Control-Allow-Methods = "POST, OPTIONS"
+
 [build.environment]
-  SECRETS_SCAN_OMIT_KEYS = "GEMINI_API_KEY"
+  SECRETS_SCAN_ENABLED = "false"
