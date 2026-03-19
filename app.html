@@ -2,782 +2,847 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>FitAI Pro — Admin Dashboard</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<meta name="theme-color" content="#080810"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-title" content="FitAI Pro"/>
+<title>FitAI Pro</title>
+<link rel="manifest" href="manifest.json"/>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet"/>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<!-- Supabase -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- MercadoPago SDK -->
+<script src="https://sdk.mercadopago.com/js/v2"></script>
 <style>
 :root {
-  --bg: #07080f;
-  --surface: #0f1018;
-  --surface2: #161720;
-  --border: #1e2030;
-  --text: #eeeef8;
-  --muted: #5a607a;
-  --purple: #a78bfa;
-  --blue: #60a5fa;
-  --green: #34d399;
-  --amber: #fbbf24;
-  --red: #f87171;
-  --lime: #b8ff57;
+  --bg: #080810; --surface: #10101c; --surface2: #16162a;
+  --border: #1e1e38; --text: #eeeef8; --muted: #6b7280;
+  --purple: #a78bfa; --blue: #60a5fa; --green: #34d399;
+  --amber: #fbbf24; --lime: #b8ff57;
 }
-*{box-sizing:border-box;margin:0;padding:0;}
-body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh;}
-::-webkit-scrollbar{width:4px;}::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px;}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; overflow-x: hidden; }
+h1,h2,h3 { font-family: 'Syne', sans-serif; }
+input, select, textarea { font-family: 'DM Sans', sans-serif; color-scheme: dark; }
+::-webkit-scrollbar { width: 3px; } ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
 
-/* LOGIN */
-.login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;background:radial-gradient(ellipse at 50% 0%,#1a0a3e 0%,var(--bg) 60%);}
-.login-card{background:var(--surface);border:1px solid var(--border);border-radius:24px;padding:48px 40px;width:100%;max-width:400px;text-align:center;}
-.login-logo{font-size:48px;margin-bottom:12px;}
-.login-title{font-family:'Syne',sans-serif;font-size:24px;font-weight:800;background:linear-gradient(135deg,var(--purple),var(--blue));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:4px;}
-.login-sub{font-size:13px;color:var(--muted);margin-bottom:32px;}
-.login-field{margin-bottom:14px;text-align:left;}
-.login-field label{font-size:12px;color:var(--muted);margin-bottom:5px;display:block;}
-.login-field input{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;color:var(--text);font-size:14px;outline:none;font-family:'DM Sans',sans-serif;}
-.login-field input:focus{border-color:var(--purple);}
-.login-btn{width:100%;background:linear-gradient(135deg,var(--purple),#7c3aed);color:#fff;border:none;border-radius:12px;padding:14px;font-family:'Syne',sans-serif;font-size:15px;font-weight:700;cursor:pointer;margin-top:8px;}
-.login-err{background:#f8717115;border:1px solid #f8717130;border-radius:10px;padding:10px;font-size:13px;color:var(--red);margin-bottom:12px;display:none;}
-.login-err.show{display:block;}
+#app { min-height: 100vh; padding-bottom: 72px; }
 
-/* MAIN LAYOUT */
-.layout{display:grid;grid-template-columns:220px 1fr;min-height:100vh;}
-@media(max-width:768px){.layout{grid-template-columns:1fr;}}
+/* --- AUTH / PAYWALL SCREENS --- */
+.screen {
+  min-height: 100vh; display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 30px 20px; background: var(--bg);
+}
+.screen-logo { font-size: 56px; margin-bottom: 12px; }
+.screen-title { font-family: 'Syne', sans-serif; font-size: 28px; font-weight: 800; background: linear-gradient(135deg, var(--lime), var(--blue)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-align: center; }
+.screen-sub { font-size: 13px; color: var(--muted); margin-top: 6px; text-align: center; line-height: 1.6; }
+.auth-card { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 28px 24px; width: 100%; max-width: 400px; margin-top: 24px; }
+.auth-tabs { display: flex; background: var(--surface2); border-radius: 12px; padding: 4px; margin-bottom: 24px; }
+.auth-tab { flex: 1; padding: 9px; border: none; border-radius: 9px; background: none; color: var(--muted); font-size: 14px; font-weight: 600; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.2s; }
+.auth-tab.active { background: var(--surface); color: var(--text); box-shadow: 0 1px 6px #00000040; }
+.field { margin-bottom: 14px; }
+.field label { font-size: 12px; color: var(--muted); margin-bottom: 5px; display: block; }
+input[type=text], input[type=email], input[type=password], input[type=number], select, textarea {
+  background: var(--surface2); border: 1px solid var(--border); border-radius: 10px;
+  padding: 12px 14px; color: var(--text); font-size: 14px; width: 100%; outline: none;
+  transition: border-color 0.2s;
+}
+input:focus, select:focus { border-color: var(--purple); }
+textarea { resize: none; height: 72px; }
+.btn { border: none; border-radius: 12px; padding: 13px 20px; font-size: 14px; font-weight: 700; cursor: pointer; width: 100%; margin-top: 8px; font-family: 'Syne', sans-serif; transition: transform 0.1s, opacity 0.2s; }
+.btn:active { transform: scale(0.97); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-lime { background: var(--lime); color: #000; }
+.btn-purple { background: linear-gradient(135deg, var(--purple), #7c3aed); color: #fff; }
+.btn-green  { background: linear-gradient(135deg, var(--green), #059669); color: #fff; }
+.btn-amber  { background: linear-gradient(135deg, var(--amber), #d97706); color: #000; }
+.btn-blue   { background: linear-gradient(135deg, var(--blue), #2563eb); color: #fff; }
+.btn-ghost  { background: var(--surface2); color: var(--muted); }
+.btn-sm     { padding: 9px 16px; font-size: 13px; width: auto; margin-top: 0; }
+.err { background: #f8717115; border: 1px solid #f8717130; border-radius: 10px; padding: 10px 14px; font-size: 13px; color: #f87171; margin-bottom: 12px; display: none; }
+.err.show { display: block; }
+.link-btn { background: none; border: none; color: var(--purple); cursor: pointer; font-size: 13px; font-family: 'DM Sans', sans-serif; text-decoration: underline; padding: 0; }
 
-/* SIDEBAR */
-.sidebar{background:var(--surface);border-right:1px solid var(--border);padding:24px 16px;display:flex;flex-direction:column;gap:4px;position:sticky;top:0;height:100vh;overflow-y:auto;}
-.sidebar-logo{font-family:'Syne',sans-serif;font-size:16px;font-weight:800;color:var(--lime);padding:8px 12px;margin-bottom:16px;display:flex;align-items:center;gap:8px;}
-.nav-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;cursor:pointer;font-size:13px;font-weight:600;color:var(--muted);transition:all 0.2s;border:none;background:none;width:100%;text-align:left;}
-.nav-item:hover{background:var(--surface2);color:var(--text);}
-.nav-item.active{background:linear-gradient(135deg,#a78bfa20,#7c3aed10);color:var(--purple);border:1px solid #a78bfa20;}
-.nav-icon{font-size:18px;}
-.sidebar-footer{margin-top:auto;padding-top:16px;border-top:1px solid var(--border);}
-.logout-btn{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;cursor:pointer;font-size:13px;font-weight:600;color:var(--red);background:none;border:none;width:100%;}
+/* --- PAYWALL --- */
+.paywall-card { background: var(--surface); border: 2px solid var(--lime); border-radius: 24px; padding: 36px 28px; width: 100%; max-width: 420px; margin-top: 20px; text-align: center; position: relative; overflow: hidden; }
+.paywall-card::before { content: ''; position: absolute; top: -60px; left: -60px; width: 200px; height: 200px; border-radius: 50%; background: radial-gradient(circle, #b8ff5712, transparent 70%); }
+.paywall-price { font-family: 'Syne', sans-serif; font-size: 72px; font-weight: 900; color: var(--lime); line-height: 1; margin: 16px 0 4px; }
+.paywall-period { font-size: 13px; color: var(--muted); margin-bottom: 24px; }
+.paywall-features { text-align: left; margin-bottom: 28px; }
+.paywall-feat { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 10px; font-size: 13px; color: var(--muted); }
+.paywall-feat::before { content: '✓'; color: var(--lime); font-weight: 800; flex-shrink: 0; }
+.stripe-element { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 14px; margin-bottom: 16px; }
+.stripe-element.StripeElement--focus { border-color: var(--purple); }
+.secure-badge { font-size: 11px; color: var(--muted); margin-top: 12px; display: flex; align-items: center; justify-content: center; gap: 6px; }
 
-/* MAIN */
-.main{padding:32px;overflow-y:auto;}
-.page-title{font-family:'Syne',sans-serif;font-size:24px;font-weight:800;margin-bottom:4px;}
-.page-sub{font-size:13px;color:var(--muted);margin-bottom:28px;}
+/* --- MAIN APP --- */
+.header { background: linear-gradient(160deg, #14083a 0%, #080810 60%); padding: 20px 16px 14px; border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 40; }
+.header-inner { display: flex; justify-content: space-between; align-items: center; max-width: 600px; margin: 0 auto; }
+.logo { font-family: 'Syne', sans-serif; font-size: 20px; font-weight: 800; background: linear-gradient(135deg, var(--purple), var(--blue), var(--green)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.badge { border-radius: 20px; padding: 3px 12px; font-size: 11px; font-weight: 700; display: inline-block; }
+.content { padding: 16px; max-width: 600px; margin: 0 auto; }
+.tabbar { position: fixed; bottom: 0; left: 0; right: 0; background: #0d0d1a; border-top: 1px solid var(--border); display: flex; z-index: 50; padding-bottom: env(safe-area-inset-bottom); }
+.tab-btn { flex: 1; padding: 9px 4px 7px; background: none; border: none; color: var(--muted); font-size: 9.5px; font-weight: 600; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 3px; transition: color 0.2s; font-family: 'DM Sans', sans-serif; }
+.tab-btn.active { color: var(--purple); }
+.tab-btn .icon { font-size: 20px; line-height: 1; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 16px; margin-bottom: 12px; }
+.card-purple { background: linear-gradient(135deg, #a78bfa18, var(--surface)); border: 1px solid #a78bfa28; }
+.card-green  { background: linear-gradient(135deg, #34d39918, var(--surface)); border: 1px solid #34d39928; }
+.card-amber  { background: linear-gradient(135deg, #fbbf2418, var(--surface)); border: 1px solid #fbbf2428; }
+.card-blue   { background: linear-gradient(135deg, #60a5fa18, var(--surface)); border: 1px solid #60a5fa28; }
+.card-h { font-family: 'Syne', sans-serif; font-size: 16px; font-weight: 700; margin-bottom: 12px; }
+.card-sh { font-size: 12px; color: var(--muted); font-weight: 600; margin-bottom: 8px; }
+.stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
+.stats-grid2 { grid-template-columns: repeat(2, 1fr); }
+.stat-box { border-radius: 14px; padding: 12px; text-align: center; }
+.stat-icon { font-size: 22px; margin-bottom: 4px; }
+.stat-val  { font-family: 'Syne', sans-serif; font-size: 20px; font-weight: 800; }
+.stat-lbl  { font-size: 10px; color: var(--muted); margin-top: 2px; }
+.prog-wrap { height: 8px; background: var(--border); border-radius: 8px; overflow: hidden; margin: 6px 0; }
+.prog-fill { height: 100%; border-radius: 8px; transition: width 1s cubic-bezier(.4,0,.2,1); }
+.energy-row { display: flex; gap: 8px; }
+.energy-btn { flex: 1; padding: 10px 0; border-radius: 10px; border: 2px solid var(--border); background: var(--surface2); color: var(--muted); font-weight: 700; cursor: pointer; font-size: 15px; transition: all 0.15s; }
+.energy-btn.active { border-color: var(--amber); background: #fbbf2415; color: var(--amber); }
+.ai-text { font-size: 13px; color: #d1d5db; line-height: 1.75; white-space: pre-wrap; }
+.log-item { padding: 10px 0; border-bottom: 1px solid var(--border); }
+.log-item:last-child { border-bottom: none; }
+.log-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.log-date { font-size: 13px; font-weight: 700; }
+.tags { display: flex; flex-wrap: wrap; gap: 4px; }
+.tag { font-size: 10px; background: var(--surface2); border: 1px solid var(--border); color: var(--muted); border-radius: 6px; padding: 2px 8px; }
+.mini-chart { display: flex; align-items: flex-end; gap: 3px; height: 52px; padding: 0 2px; }
+.bar-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.bar { width: 100%; background: linear-gradient(180deg, #60a5fa, #3b82f680); border-radius: 4px 4px 0 0; }
+.bar-lbl { font-size: 8px; color: #374151; }
+.chat-msg { padding: 9px 12px; border-radius: 12px; font-size: 12px; line-height: 1.6; margin-bottom: 6px; }
+.chat-user { background: var(--surface2); color: var(--text); }
+.chat-ai   { background: #a78bfa12; color: #c4b5fd; border: 1px solid #a78bfa20; }
+.chat-row  { display: flex; gap: 8px; margin-top: 10px; }
+.chat-row input { flex: 1; }
+.chat-row button { background: var(--purple); color: #fff; border: none; border-radius: 10px; padding: 0 16px; font-size: 18px; cursor: pointer; }
+.loading-overlay { position: fixed; bottom: 84px; left: 50%; transform: translateX(-50%); background: var(--surface2); border: 1px solid #a78bfa30; border-radius: 24px; padding: 10px 20px; display: flex; align-items: center; gap: 8px; z-index: 100; }
+.dot { width: 6px; height: 6px; border-radius: 50%; background: var(--purple); animation: pulse 1.2s infinite; }
+.dot:nth-child(2) { animation-delay: .3s; }
+.dot:nth-child(3) { animation-delay: .6s; }
+.setup-wrap { min-height: 100vh; background: var(--bg); display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding: 30px 20px 100px; }
+.setup-card { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 24px 20px; width: 100%; max-width: 440px; margin-top: 20px; }
+.option-btn { width: 100%; text-align: left; background: var(--surface2); border: 2px solid var(--border); border-radius: 12px; padding: 12px 16px; color: var(--text); font-size: 14px; cursor: pointer; margin-bottom: 8px; transition: all 0.15s; font-family: 'DM Sans', sans-serif; }
+.option-btn.selected { border-color: var(--purple); background: #a78bfa15; color: var(--purple); font-weight: 600; }
+.user-menu { position: absolute; right: 16px; top: 60px; background: var(--surface2); border: 1px solid var(--border); border-radius: 14px; padding: 8px; z-index: 200; min-width: 160px; display: none; }
+.user-menu.open { display: block; }
+.user-menu-item { display: block; width: 100%; background: none; border: none; color: var(--text); font-size: 13px; padding: 10px 14px; text-align: left; cursor: pointer; border-radius: 8px; font-family: 'DM Sans', sans-serif; }
+.user-menu-item:hover { background: var(--border); }
+.avatar-btn { width: 34px; height: 34px; border-radius: 50%; border: 2px solid var(--border); background: linear-gradient(135deg, var(--purple), var(--blue)); cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; }
 
-/* STATS GRID */
-.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:28px;}
-.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px;position:relative;overflow:hidden;transition:transform 0.2s;}
-.stat-card:hover{transform:translateY(-2px);}
-.stat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:16px 16px 0 0;}
-.stat-card.purple::before{background:linear-gradient(90deg,var(--purple),#7c3aed);}
-.stat-card.green::before{background:linear-gradient(90deg,var(--green),#059669);}
-.stat-card.blue::before{background:linear-gradient(90deg,var(--blue),#2563eb);}
-.stat-card.amber::before{background:linear-gradient(90deg,var(--amber),#d97706);}
-.stat-card.lime::before{background:linear-gradient(90deg,var(--lime),#84cc16);}
-.stat-icon{font-size:28px;margin-bottom:10px;}
-.stat-val{font-family:'Syne',sans-serif;font-size:32px;font-weight:900;line-height:1;}
-.stat-lbl{font-size:12px;color:var(--muted);margin-top:4px;}
-.stat-change{font-size:11px;margin-top:6px;font-weight:600;}
-.stat-change.up{color:var(--green);}
-.stat-change.down{color:var(--red);}
-
-/* CHARTS */
-.charts-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:16px;margin-bottom:28px;}
-.chart-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px;}
-.chart-title{font-family:'Syne',sans-serif;font-size:14px;font-weight:700;margin-bottom:4px;}
-.chart-sub{font-size:11px;color:var(--muted);margin-bottom:16px;}
-.chart-wrap{position:relative;height:200px;}
-
-/* TABLE */
-.table-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px;margin-bottom:28px;}
-.table-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px;}
-.table-title{font-family:'Syne',sans-serif;font-size:14px;font-weight:700;}
-.search-input{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 12px;color:var(--text);font-size:13px;outline:none;width:200px;font-family:'DM Sans',sans-serif;}
-.search-input:focus{border-color:var(--purple);}
-table{width:100%;border-collapse:collapse;}
-th{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);}
-td{font-size:13px;padding:12px;border-bottom:1px solid var(--border)10;}
-tr:last-child td{border-bottom:none;}
-tr:hover td{background:var(--surface2);}
-.badge{display:inline-block;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:700;}
-.badge.paid{background:#34d39920;color:var(--green);}
-.badge.pending{background:#fbbf2420;color:var(--amber);}
-.badge.setup{background:#60a5fa20;color:var(--blue);}
-.badge.nosetup{background:#f8717120;color:var(--red);}
-
-/* ACTIONS */
-.action-btn{background:none;border:1px solid var(--border);border-radius:8px;padding:6px 12px;font-size:12px;color:var(--muted);cursor:pointer;font-family:'DM Sans',sans-serif;transition:all 0.2s;}
-.action-btn:hover{border-color:var(--purple);color:var(--purple);}
-.action-btn.primary{background:linear-gradient(135deg,var(--purple),#7c3aed);color:#fff;border:none;}
-.action-btn.green{background:linear-gradient(135deg,var(--green),#059669);color:#fff;border:none;}
-.action-btn.amber{background:linear-gradient(135deg,var(--amber),#d97706);color:#000;border:none;}
-
-/* EMAIL SECTION */
-.email-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:24px;margin-bottom:28px;}
-.email-title{font-family:'Syne',sans-serif;font-size:14px;font-weight:700;margin-bottom:16px;}
-.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;}
-@media(max-width:600px){.form-row{grid-template-columns:1fr;}}
-.form-field label{font-size:12px;color:var(--muted);margin-bottom:5px;display:block;}
-.form-field input,.form-field select,.form-field textarea{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;color:var(--text);font-size:13px;outline:none;font-family:'DM Sans',sans-serif;}
-.form-field input:focus,.form-field select:focus,.form-field textarea:focus{border-color:var(--purple);}
-.form-field textarea{height:100px;resize:none;}
-.automation-item{display:flex;justify-content:space-between;align-items:center;padding:14px;background:var(--surface2);border-radius:12px;margin-bottom:8px;}
-.automation-info{display:flex;flex-direction:column;gap:3px;}
-.automation-name{font-size:13px;font-weight:600;}
-.automation-desc{font-size:11px;color:var(--muted);}
-.toggle{width:44px;height:24px;background:var(--border);border-radius:100px;position:relative;cursor:pointer;transition:background 0.2s;}
-.toggle.on{background:var(--green);}
-.toggle::after{content:'';position:absolute;width:18px;height:18px;background:#fff;border-radius:50%;top:3px;left:3px;transition:transform 0.2s;}
-.toggle.on::after{transform:translateX(20px);}
-
-/* NOTIFICATION */
-.notif{position:fixed;top:20px;right:20px;background:var(--surface);border:1px solid var(--green);border-radius:12px;padding:12px 20px;font-size:13px;color:var(--green);z-index:999;animation:slideIn 0.3s ease;display:none;}
-.notif.show{display:block;}
-@keyframes slideIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:none}}
-
-/* PAGE SECTIONS */
-.page-section{display:none;}
-.page-section.active{display:block;}
-
-@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
-.fade-in{animation:fadeIn 0.3s ease;}
+@keyframes pulse { 0%,100%{opacity:.2}50%{opacity:1} }
+@keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+.fade-in { animation: fadeIn 0.3s ease; }
+* { -webkit-tap-highlight-color: transparent; }
 </style>
 </head>
 <body>
-
-<div id="root"></div>
-<div class="notif" id="notif"></div>
+<div id="app"></div>
 
 <script>
-// ══════════════════════════════════════════
-// CONFIGURACION ADMIN
-// ══════════════════════════════════════════
-const ADMIN = {
-  PASSWORD: 'fitai2024admin',  // ← Cambia esta contraseña
-  RESEND_ENDPOINT: 'https://mysuperfitness.netlify.app/.netlify/functions/send-email',
+// ---
+// CONFIGURACION — edita estas lineas para cambiar precio y credenciales
+// ---
+const CONFIG = {
+  MP_PUBLIC_KEY: 'APP_USR-ade94a33-3e1d-416d-9241-1f744a93bc6f',
+  PAYMENT_ENDPOINT: 'https://mysuperfitness.netlify.app/.netlify/functions/create-preference',
+  AMOUNT: 990,
+  CURRENCY: 'CLP',
+  PRICE_DISPLAY: '$990',
 };
-// ══════════════════════════════════════════
+// ---
 
-const STORAGE_KEY = 'fitai_users';
-let currentPage = 'dashboard';
-let searchQuery = '';
-let automations = {
-  email30: true,
-  push15: true,
-  welcome: true,
-};
 
-// ── AUTH ──────────────────────────────────
-let isLoggedIn = sessionStorage.getItem('fitai_admin') === 'true';
 
-function login(pass) {
-  if (pass === ADMIN.PASSWORD) {
-    sessionStorage.setItem('fitai_admin', 'true');
-    isLoggedIn = true;
-    render();
-  } else {
-    document.getElementById('login-err').classList.add('show');
+// ════════════════════════════════════════════
+// SUPABASE — Base de datos en la nube
+// ════════════════════════════════════════════
+const SUPA_URL = 'https://TU-PROYECTO.supabase.co';  // ← reemplaza con tu URL
+const SUPA_KEY = 'TU-ANON-KEY-AQUI';                 // ← reemplaza con tu anon key
+let supa = null;
+
+function initSupabase() {
+  if (!supa && SUPA_URL !== 'https://TU-PROYECTO.supabase.co') {
+    supa = window.supabase.createClient(SUPA_URL, SUPA_KEY);
   }
 }
 
-function logout() {
-  sessionStorage.removeItem('fitai_admin');
-  isLoggedIn = false;
-  render();
+async function dbSaveUser(user) {
+  initSupabase(); if (!supa) return;
+  try {
+    await supa.from('users').upsert({
+      email: user.email,
+      name: user.name,
+      password_hash: user.passwordHash,
+      paid: user.paid || false,
+      setup_done: false,
+      created_at: new Date().toISOString(),
+    }, { onConflict: 'email' });
+  } catch(e) { console.log('DB save user error:', e); }
 }
 
-// ── DATA ──────────────────────────────────
-function getUsers() {
+async function dbMarkPaid(email) {
+  initSupabase(); if (!supa) return;
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    const obj = JSON.parse(raw);
-    return Object.values(obj).map(u => ({
-      email: u.email,
-      name: u.name || 'Sin nombre',
-      paid: u.paid || false,
-      setupDone: u.paid || false, // approximation
-      registeredAt: u.registeredAt || new Date().toISOString(),
-      token: u.token || '',
+    await supa.from('users').update({
+      paid: true,
+      paid_at: new Date().toISOString(),
+    }).eq('email', email);
+    await supa.from('payments').insert({
+      user_email: email,
+      amount: CONFIG.AMOUNT,
+      currency: CONFIG.CURRENCY,
+      status: 'approved',
+      created_at: new Date().toISOString(),
+    });
+  } catch(e) { console.log('DB mark paid error:', e); }
+}
+
+async function dbMarkSetupDone(email, goal) {
+  initSupabase(); if (!supa) return;
+  try {
+    await supa.from('users').update({
+      setup_done: true,
+      goal: goal,
+      last_active: new Date().toISOString(),
+    }).eq('email', email);
+  } catch(e) { console.log('DB setup done error:', e); }
+}
+
+async function dbSaveDailyLog(email, log) {
+  initSupabase(); if (!supa) return;
+  try {
+    await supa.from('daily_logs').upsert({
+      user_email: email,
+      date: log.date,
+      weight: parseFloat(log.weight) || null,
+      body_fat: parseFloat(log.bodyFat) || null,
+      calories: parseInt(log.calories) || null,
+      protein: parseInt(log.protein) || null,
+      sleep: parseFloat(log.sleep) || null,
+      water: parseFloat(log.water) || null,
+      training: log.training,
+      energy: parseInt(log.energy) || null,
+      notes: log.notes || null,
+    }, { onConflict: 'user_email,date' });
+  } catch(e) { console.log('DB log error:', e); }
+}
+// ════════════════════════════════════════════
+
+const STORAGE_KEY = 'fitai_v3';
+let mp = null;
+
+let STATE = {
+  lang: 'es', // idioma: es, en, fr, pt
+  // Auth
+  authMode: 'login', // 'login' | 'register'
+  user: null,        // { email, name, paid, token }
+  authLoading: false,
+  authError: '',
+
+  // Payment
+  screen: 'auth',    // 'auth' | 'paywall' | 'setup' | 'app'
+  payLoading: false,
+  payError: '',
+
+  // App
+  profile: null,
+  dailyLogs: [],
+  plan: null,
+  nutrition: null,
+  chat: [],
+  setupStep: 0,
+  setupData: {},
+  tab: 0,
+  aiLoading: false,
+  aiMsg: '',
+  todayLog: { weight:'', bodyFat:'', calories:'', protein:'', sleep:'', water:'', training:'no', energy:'3', notes:'' },
+  showUserMenu: false,
+};
+
+// --- PERSISTENCE ---
+function save() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      user: STATE.user,
+      profile: STATE.profile,
+      dailyLogs: STATE.dailyLogs,
+      plan: STATE.plan,
+      nutrition: STATE.nutrition,
+      chat: STATE.chat,
     }));
-  } catch { return []; }
+  } catch{}
 }
-
-function getStats() {
-  const users = getUsers();
-  const paid = users.filter(u => u.paid);
-  const setupDone = users.filter(u => u.setupDone);
-  const revenue = paid.length * 990;
-  return {
-    totalUsers: users.length,
-    paidUsers: paid.length,
-    setupDone: setupDone.length,
-    revenue,
-    convRate: users.length > 0 ? Math.round((paid.length / users.length) * 100) : 0,
-  };
-}
-
-// ── CHARTS ────────────────────────────────
-let charts = {};
-
-function destroyCharts() {
-  Object.values(charts).forEach(c => { try { c.destroy(); } catch {} });
-  charts = {};
-}
-
-function buildCharts() {
-  destroyCharts();
-  const users = getUsers();
-  const stats = getStats();
-
-  // Chart 1: Usuarios por día (últimos 7 días simulados)
-  const ctx1 = document.getElementById('chart-users');
-  if (ctx1) {
-    const days = [];
-    const counts = [];
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
-      days.push(d.toLocaleDateString('es-CL', { weekday: 'short' }));
-      counts.push(Math.max(0, Math.floor(Math.random() * 3) + (i === 0 ? users.length : 0)));
-    }
-    charts.users = new Chart(ctx1, {
-      type: 'line',
-      data: {
-        labels: days,
-        datasets: [{
-          label: 'Nuevos usuarios',
-          data: counts,
-          borderColor: '#a78bfa',
-          backgroundColor: '#a78bfa20',
-          fill: true,
-          tension: 0.4,
-          pointBackgroundColor: '#a78bfa',
-          pointRadius: 4,
-        }]
-      },
-      options: {
-        responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
-        scales: {
-          x: { grid: { color: '#1e2030' }, ticks: { color: '#5a607a', font: { size: 11 } } },
-          y: { grid: { color: '#1e2030' }, ticks: { color: '#5a607a', font: { size: 11 } }, beginAtZero: true }
-        }
-      }
-    });
-  }
-
-  // Chart 2: Ingresos acumulados
-  const ctx2 = document.getElementById('chart-revenue');
-  if (ctx2) {
-    const months = ['Oct', 'Nov', 'Dic', 'Ene', 'Feb', 'Mar'];
-    const revenue = [0, 0, 0, 0, 990 * Math.max(0, stats.paidUsers - 1), stats.revenue];
-    charts.revenue = new Chart(ctx2, {
-      type: 'bar',
-      data: {
-        labels: months,
-        datasets: [{
-          label: 'Ingresos CLP',
-          data: revenue,
-          backgroundColor: '#34d39930',
-          borderColor: '#34d399',
-          borderWidth: 2,
-          borderRadius: 6,
-        }]
-      },
-      options: {
-        responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
-        scales: {
-          x: { grid: { color: '#1e2030' }, ticks: { color: '#5a607a', font: { size: 11 } } },
-          y: { grid: { color: '#1e2030' }, ticks: { color: '#5a607a', font: { size: 11 }, callback: v => '$' + v.toLocaleString('es-CL') }, beginAtZero: true }
-        }
-      }
-    });
-  }
-
-  // Chart 3: Paid vs No paid (donut)
-  const ctx3 = document.getElementById('chart-conversion');
-  if (ctx3) {
-    charts.conv = new Chart(ctx3, {
-      type: 'doughnut',
-      data: {
-        labels: ['Pagaron', 'Registrados sin pagar'],
-        datasets: [{
-          data: [stats.paidUsers, Math.max(0, stats.totalUsers - stats.paidUsers)],
-          backgroundColor: ['#34d39980', '#1e2030'],
-          borderColor: ['#34d399', '#2a3050'],
-          borderWidth: 2,
-        }]
-      },
-      options: {
-        responsive: true, maintainAspectRatio: false,
-        plugins: {
-          legend: { position: 'bottom', labels: { color: '#5a607a', font: { size: 11 }, padding: 12 } }
-        },
-        cutout: '65%',
-      }
-    });
-  }
-
-  // Chart 4: Setup completados
-  const ctx4 = document.getElementById('chart-setup');
-  if (ctx4) {
-    charts.setup = new Chart(ctx4, {
-      type: 'doughnut',
-      data: {
-        labels: ['Setup completo', 'Sin completar'],
-        datasets: [{
-          data: [stats.setupDone, Math.max(0, stats.paidUsers - stats.setupDone)],
-          backgroundColor: ['#a78bfa80', '#1e2030'],
-          borderColor: ['#a78bfa', '#2a3050'],
-          borderWidth: 2,
-        }]
-      },
-      options: {
-        responsive: true, maintainAspectRatio: false,
-        plugins: {
-          legend: { position: 'bottom', labels: { color: '#5a607a', font: { size: 11 }, padding: 12 } }
-        },
-        cutout: '65%',
-      }
-    });
-  }
-}
-
-// ── NOTIFICATIONS ─────────────────────────
-function showNotif(msg, color = 'var(--green)') {
-  const el = document.getElementById('notif');
-  el.textContent = '✅ ' + msg;
-  el.style.borderColor = color;
-  el.style.color = color;
-  el.classList.add('show');
-  setTimeout(() => el.classList.remove('show'), 3000);
-}
-
-// ── EMAIL ─────────────────────────────────
-async function sendEmail(to, subject, body) {
+function loadSaved() {
   try {
-    await fetch(ADMIN.RESEND_ENDPOINT, {
+    const d = JSON.parse(localStorage.getItem(STORAGE_KEY)||'{}');
+    if (d.user) STATE.user = d.user;
+    if (d.profile) STATE.profile = d.profile;
+    if (d.dailyLogs) STATE.dailyLogs = d.dailyLogs;
+    if (d.plan) STATE.plan = d.plan;
+    if (d.nutrition) STATE.nutrition = d.nutrition;
+    if (d.chat) STATE.chat = d.chat;
+  } catch{}
+}
+loadSaved();
+
+// --- DETECTA RETORNO DESDE MERCADOPAGO ---
+const _urlParams = new URLSearchParams(window.location.search);
+const _paymentStatus = _urlParams.get('payment');
+if (_paymentStatus === 'success' || _urlParams.get('collection_status') === 'approved') {
+  // MP aprobó el pago - recupera usuario y marca como pagado
+  const pendingUser = localStorage.getItem('fitai_pending_user');
+  if (pendingUser && !STATE.user) {
+    STATE.user = JSON.parse(pendingUser);
+  }
+  if (STATE.user) {
+    markAsPaid(STATE.user.email);
+    STATE.screen = STATE.profile ? 'app' : 'setup';
+  }
+  localStorage.removeItem('fitai_pending_email');
+  localStorage.removeItem('fitai_pending_user');
+  // Limpia parámetros de la URL
+  window.history.replaceState({}, '', window.location.pathname);
+} else if (_paymentStatus === 'failure') {
+  STATE.screen = 'paywall';
+  STATE.payError = 'El pago no fue aprobado. Intenta con otro medio de pago.';
+  window.history.replaceState({}, '', window.location.pathname);
+}
+
+// Determine initial screen
+function getInitialScreen() {
+  if (!STATE.user) return 'auth';
+  if (!STATE.user.paid) return 'paywall';
+  if (!STATE.profile) return 'setup';
+  return 'app';
+}
+STATE.screen = getInitialScreen();
+
+// --- CLAUDE API ---
+const LANG_SYS = {
+  es: 'Responde siempre en español.',
+  en: 'Always respond in English.',
+  fr: 'Réponds toujours en français.',
+  pt: 'Responda sempre em português.'
+};
+function getSYS() {
+  return `Eres un experto en ciencias del deporte, nutrición y metabolismo basado en las últimas investigaciones de Harvard Medical School. Sé específico, científico pero accesible. Usa emojis estratégicamente. ${LANG_SYS[STATE.lang] || LANG_SYS.es}`;
+}
+
+async function claude(messages, max=1000) {
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:max, system:getSYS(), messages })
+  });
+  const d = await res.json();
+  return d.content?.map(b=>b.text||'').join('\n')||'';
+}
+
+// --- AUTH (simulado con localStorage - en producción usa tu backend) ---
+// En producción real, reemplaza estas funciones con llamadas a tu API de auth
+function authRegister(email, password, name) {
+  // Simula registro - en producción: POST /api/register
+  const users = JSON.parse(localStorage.getItem('fitai_users')||'{}');
+  if (users[email]) throw new Error('Este email ya está registrado.');
+  const user = { email, name, paid: false, token: btoa(email+':'+Date.now()) };
+  users[email] = { ...user, passwordHash: btoa(password) };
+  localStorage.setItem('fitai_users', JSON.stringify(users));
+  dbSaveUser({...user, passwordHash: btoa(password)});
+  return user;
+}
+function authLogin(email, password) {
+  // SUPERUSUARIO ADMIN - acceso sin pago para pruebas
+  if (email === 'admin@fitai.cl' && password === 'fitai2024admin') {
+    return { email: 'admin@fitai.cl', name: 'Admin', paid: true, token: 'admin-token' };
+  }
+  // Login normal
+  const users = JSON.parse(localStorage.getItem('fitai_users')||'{}');
+  const u = users[email];
+  if (!u) throw new Error('Email no encontrado.');
+  if (u.passwordHash !== btoa(password)) throw new Error('Contraseña incorrecta.');
+  return { email: u.email, name: u.name, paid: u.paid, token: u.token };
+}
+function markAsPaid(email) {
+  const users = JSON.parse(localStorage.getItem('fitai_users')||'{}');
+  if (users[email]) { users[email].paid = true; localStorage.setItem('fitai_users', JSON.stringify(users)); }
+  STATE.user.paid = true;
+  save();
+  dbMarkPaid(email);
+}
+
+// --- MERCADOPAGO PAYMENT ---
+async function processPayment() {
+  STATE.payLoading = true;
+  STATE.payError = '';
+  render();
+
+  try {
+    // MODO DEMO: si aún no has puesto tu Public Key real
+    if (!CONFIG.MP_PUBLIC_KEY || CONFIG.MP_PUBLIC_KEY === 'APP_USR-TU-PUBLIC-KEY-AQUI') {
+      await new Promise(r => setTimeout(r, 1800));
+      markAsPaid(STATE.user.email);
+      STATE.screen = 'setup';
+      STATE.payLoading = false;
+      render();
+      return;
+    }
+
+    // Llama al backend para crear la preferencia de pago en MP
+    const res = await fetch(CONFIG.PAYMENT_ENDPOINT, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ to, subject, body })
+      body: JSON.stringify({
+        email: STATE.user.email,
+        amount: CONFIG.AMOUNT,
+        currency: CONFIG.CURRENCY,
+      })
     });
-    showNotif(`Email enviado a ${to}`);
-  } catch {
-    showNotif('Error enviando email', 'var(--red)');
+
+    const data = await res.json();
+    if (!data.initPoint && !data.sandboxInitPoint) throw new Error('No se pudo crear el pago.');
+
+    // Guarda el email para recuperarlo cuando MP redirija de vuelta
+    localStorage.setItem('fitai_pending_email', STATE.user.email);
+    localStorage.setItem('fitai_pending_user', JSON.stringify(STATE.user));
+
+    // Redirige a MercadoPago - el usuario paga y vuelve automáticamente
+    window.location.href = data.initPoint || data.sandboxInitPoint;
+
+  } catch(e) {
+    STATE.payError = e.message || 'Error al conectar con MercadoPago. Intenta de nuevo.';
+    STATE.payLoading = false;
+    render();
   }
 }
 
-async function sendBulkEmail() {
-  const subject = document.getElementById('email-subject')?.value;
-  const body = document.getElementById('email-body')?.value;
-  if (!subject || !body) { showNotif('Completa el asunto y el cuerpo del email', 'var(--amber)'); return; }
-  const users = getUsers().filter(u => u.paid);
-  showNotif(`Enviando a ${users.length} clientes...`, 'var(--amber)');
-  for (const u of users) {
-    await sendEmail(u.email, subject, body.replace('{{nombre}}', u.name));
-  }
-  showNotif(`Emails enviados a ${users.length} clientes`);
+// --- PROGRESS CALC ---
+function calcProgress() {
+  const logs = STATE.dailyLogs;
+  const sw = parseFloat(STATE.profile?.weight)||0;
+  const tw = parseFloat(STATE.profile?.targetWeight)||sw;
+  const lw = logs.length ? (parseFloat(logs[0]?.weight)||sw) : sw;
+  const lost = sw - lw;
+  const total = sw - tw;
+  const pct = total > 0 ? Math.min(100, Math.max(0, (lost/total)*100)) : 0;
+  const trend = logs.slice(0,14).reverse().map(l=>({date:l.date,w:parseFloat(l.weight)||null})).filter(l=>l.w);
+  return { lost:lost.toFixed(1), pct:pct.toFixed(0), days:logs.length, trend, lw:lw||sw };
 }
 
-// ── RENDER ────────────────────────────────
+// --- RENDER ---
 function render() {
-  const root = document.getElementById('root');
-  if (!isLoggedIn) {
-    root.innerHTML = renderLogin();
-    setTimeout(() => {
-      document.getElementById('pass-input')?.addEventListener('keydown', e => {
-        if (e.key === 'Enter') document.getElementById('login-btn')?.click();
-      });
-      document.getElementById('login-btn')?.addEventListener('click', () => {
-        login(document.getElementById('pass-input').value);
-      });
-    }, 0);
-    return;
+  const root = document.getElementById('app');
+  root.innerHTML = '';
+  root.style.position = 'relative';
+
+  if (STATE.screen === 'auth') { root.appendChild(renderAuth()); return; }
+  if (STATE.screen === 'paywall') { root.appendChild(renderPaywall()); return; }
+  if (STATE.screen === 'setup' && !STATE.profile) { root.appendChild(renderSetup()); return; }
+
+  root.appendChild(renderHeader());
+  const content = document.createElement('div');
+  content.className = 'content fade-in';
+  const tabs = [renderDashboard, renderWorkout, renderNutrition, renderLog, renderProgress];
+  content.appendChild(tabs[STATE.tab]());
+  root.appendChild(content);
+  root.appendChild(renderTabBar());
+
+  if (STATE.showUserMenu) {
+    const menu = document.createElement('div');
+    menu.className = 'user-menu open';
+    menu.innerHTML = `
+      <div style="padding:8px 14px 8px;border-bottom:1px solid var(--border);margin-bottom:4px">
+        <div style="font-size:12px;font-weight:700">${STATE.user?.name||'Usuario'}</div>
+        <div style="font-size:11px;color:var(--muted)">${STATE.user?.email||''}</div>
+      </div>
+      <button class="user-menu-item" id="menu-reset">🔄 Reiniciar programa</button>
+      <button class="user-menu-item" id="menu-logout" style="color:#f87171">🚪 Cerrar sesión</button>`;
+    root.appendChild(menu);
+    menu.querySelector('#menu-reset').onclick = () => {
+      if(confirm('¿Reiniciar todo el programa?')) { STATE.profile=null; STATE.dailyLogs=[]; STATE.plan=null; STATE.nutrition=null; STATE.chat=[]; STATE.setupStep=0; STATE.setupData={}; STATE.aiMsg=''; STATE.screen='setup'; STATE.showUserMenu=false; save(); render(); }
+    };
+    menu.querySelector('#menu-logout').onclick = () => { STATE.user=null; STATE.profile=null; STATE.dailyLogs=[]; STATE.plan=null; STATE.nutrition=null; STATE.chat=[]; STATE.screen='auth'; STATE.showUserMenu=false; save(); render(); };
+    document.addEventListener('click', function handler(e) { if(!menu.contains(e.target)) { STATE.showUserMenu=false; document.removeEventListener('click',handler); render(); } }, {once:true});
   }
-  root.innerHTML = renderApp();
-  setTimeout(() => {
-    setupNav();
-    buildCharts();
-    setupSearch();
-    setupEmailForm();
-    setupToggle();
-  }, 0);
+
+  if (STATE.aiLoading) {
+    const ov = document.createElement('div');
+    ov.className = 'loading-overlay';
+    ov.innerHTML = '<div class="dot"></div><div class="dot"></div><div class="dot"></div><span style="font-size:12px;color:var(--purple)">Procesando con IA…</span>';
+    root.appendChild(ov);
+  }
 }
 
-function renderLogin() {
-  return `
-  <div class="login-wrap">
-    <div class="login-card">
-      <div class="login-logo">🔐</div>
-      <div class="login-title">FitAI Admin</div>
-      <div class="login-sub">Panel de administración privado</div>
-      <div class="login-err" id="login-err">Contraseña incorrecta</div>
-      <div class="login-field">
-        <label>Contraseña de administrador</label>
-        <input type="password" id="pass-input" placeholder="••••••••••"/>
+// --- AUTH SCREEN ---
+function renderAuth() {
+  const div = document.createElement('div');
+  div.className = 'screen';
+  div.innerHTML = `
+    <div class="screen-logo">⚡</div>
+    <div class="screen-title">FitAI Pro</div>
+    <div class="screen-sub">Tu entrenador personal con IA · Solo $990 CLP</div>
+    <div class="auth-card">
+      <div class="auth-tabs">
+        <button class="auth-tab ${STATE.authMode==='login'?'active':''}" id="tab-login">Ingresar</button>
+        <button class="auth-tab ${STATE.authMode==='register'?'active':''}" id="tab-reg">Crear cuenta</button>
       </div>
-      <button class="login-btn" id="login-btn">Ingresar →</button>
+      <div class="err ${STATE.authError?'show':''}" id="auth-err">${STATE.authError}</div>
+      ${STATE.authMode==='register'?`
+        <div class="field"><label>Tu nombre</label><input type="text" id="auth-name" placeholder="Nombre completo"/></div>
+      `:''}
+      <div class="field"><label>Email</label><input type="email" id="auth-email" placeholder="tu@email.com"/></div>
+      <div class="field"><label>Contraseña</label><input type="password" id="auth-pass" placeholder="••••••••"/></div>
+      <button class="btn btn-lime" id="btn-auth" ${STATE.authLoading?'disabled':''}>
+        ${STATE.authLoading?'Cargando…':STATE.authMode==='login'?'Ingresar →':'Crear cuenta →'}
+      </button>
+      ${STATE.authMode==='login'?`<p style="text-align:center;margin-top:14px;font-size:12px;color:var(--muted)">¿No tienes cuenta? <button class="link-btn" id="to-reg">Regístrate aquí</button></p>`:`<p style="text-align:center;margin-top:14px;font-size:12px;color:var(--muted)">¿Ya tienes cuenta? <button class="link-btn" id="to-login">Ingresa aquí</button></p>`}
+    </div>
+    <p style="font-size:11px;color:var(--muted);margin-top:16px;text-align:center">🔒 Tus datos están seguros y cifrados</p>`;
+
+  div.querySelector('#tab-login').onclick = () => { STATE.authMode='login'; STATE.authError=''; render(); };
+  div.querySelector('#tab-reg').onclick = () => { STATE.authMode='register'; STATE.authError=''; render(); };
+  const toReg = div.querySelector('#to-reg');
+  if (toReg) toReg.onclick = () => { STATE.authMode='register'; STATE.authError=''; render(); };
+  const toLogin = div.querySelector('#to-login');
+  if (toLogin) toLogin.onclick = () => { STATE.authMode='login'; STATE.authError=''; render(); };
+
+  div.querySelector('#btn-auth').onclick = async () => {
+    const email = div.querySelector('#auth-email')?.value?.trim();
+    const pass = div.querySelector('#auth-pass')?.value;
+    const name = div.querySelector('#auth-name')?.value?.trim();
+    if (!email || !pass) { STATE.authError='Completa todos los campos.'; render(); return; }
+    STATE.authLoading = true; STATE.authError = ''; render();
+    try {
+      if (STATE.authMode === 'register') {
+        if (!name) { throw new Error('Ingresa tu nombre.'); }
+        STATE.user = authRegister(email, pass, name);
+      } else {
+        STATE.user = authLogin(email, pass);
+      }
+      save();
+      STATE.screen = STATE.user.paid ? (STATE.profile ? 'app' : 'setup') : 'paywall';
+    } catch(e) {
+      STATE.authError = e.message;
+    }
+    STATE.authLoading = false;
+    render();
+  };
+
+  div.querySelector('#auth-pass')?.addEventListener('keydown', e => { if(e.key==='Enter') div.querySelector('#btn-auth')?.click(); });
+  return div;
+}
+
+// --- PAYWALL SCREEN ---
+function renderPaywall() {
+  const isDemo = !CONFIG.MP_PUBLIC_KEY || CONFIG.MP_PUBLIC_KEY === 'APP_USR-TU-PUBLIC-KEY-AQUI';
+  const div = document.createElement('div');
+  div.className = 'screen';
+  div.innerHTML = `
+    <div class="screen-logo">🏆</div>
+    <div class="screen-title">Activa tu plan</div>
+    <div class="screen-sub">Hola, ${STATE.user?.name}. Un único pago para acceso completo de por vida.</div>
+    <div class="paywall-card">
+      <div style="display:inline-block;background:var(--lime);color:#000;border-radius:100px;padding:4px 16px;font-size:11px;font-weight:800;letter-spacing:1px;text-transform:uppercase;margin-bottom:12px">Acceso de por vida</div>
+      <div class="paywall-price">${CONFIG.PRICE_DISPLAY}</div>
+      <div class="paywall-period">pesos chilenos · pago único · sin renovaciones</div>
+
+      <div class="paywall-features">
+        ${['Plan de entrenamiento semanal con IA','Plan de alimentación diario personalizado','Seguimiento de progreso diario','Análisis de IA y feedback científico','Coach IA disponible 24/7','App instalable en tu teléfono'].map(f=>`<div class="paywall-feat">${f}</div>`).join('')}
+      </div>
+
+      <!-- Métodos de pago disponibles en MP Chile -->
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:12px 16px;margin-bottom:16px;text-align:left">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:10px;font-weight:600;text-transform:uppercase;letter-spacing:1px">Medios de pago disponibles</div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px">
+          ${['💳 Débito / Crédito','🔵 Redcompra','💰 Saldo MercadoPago','🏦 Transferencia','🏪 Efectivo'].map(m=>`<span style="background:var(--border);color:var(--muted);border-radius:20px;padding:4px 12px;font-size:11px;font-weight:600">${m}</span>`).join('')}
+        </div>
+      </div>
+
+      <div class="err ${STATE.payError?'show':''}">${STATE.payError}</div>
+
+      <button class="btn btn-lime" id="btn-pay" ${STATE.payLoading?'disabled':''}>
+        ${STATE.payLoading
+          ? '⏳ Conectando con MercadoPago…'
+          : isDemo
+            ? '⚡ Pagar $990 CLP (modo demo)'
+            : `⚡ Ir a pagar ${CONFIG.PRICE_DISPLAY} ${CONFIG.CURRENCY} →`}
+      </button>
+
+      ${isDemo ? `<div style="background:#fbbf2410;border:1px solid #fbbf2430;border-radius:10px;padding:10px;margin-top:10px;font-size:11px;color:var(--amber);text-align:center">⚠️ Modo demo activo. Agrega tu Public Key de MP para cobros reales.</div>` : ''}
+
+      <div class="secure-badge" style="margin-top:14px">
+        <img src="https://www.mercadopago.cl/favicon.ico" style="width:14px;height:14px;border-radius:3px" onerror="this.style.display='none'"/>
+        🔒 Pago 100% seguro con MercadoPago · Garantía 7 días
+      </div>
+    </div>
+    <button class="btn btn-ghost" style="max-width:420px;margin-top:8px" id="btn-logout-pay">← Cambiar cuenta</button>`;
+
+  div.querySelector('#btn-pay').onclick = processPayment;
+  div.querySelector('#btn-logout-pay').onclick = () => { STATE.user=null; STATE.screen='auth'; save(); render(); };
+  return div;
+}
+
+// --- SETUP FLOW ---
+const STEPS = [
+  {key:'name',q:'¿Cuál es tu nombre?',type:'text',ph:'Tu nombre'},
+  {key:'age',q:'¿Cuántos años tienes?',type:'number',ph:'Ej: 28'},
+  {key:'gender',q:'¿Cuál es tu sexo biológico?',type:'select',opts:['Masculino','Femenino']},
+  {key:'weight',q:'¿Cuál es tu peso actual? (kg)',type:'number',ph:'Ej: 82'},
+  {key:'height',q:'¿Cuál es tu altura? (cm)',type:'number',ph:'Ej: 175'},
+  {key:'bodyFat',q:'¿Sabes tu % de grasa corporal? (opcional)',type:'number',ph:'Deja vacío si no sabes'},
+  {key:'goal',q:'¿Cuál es tu objetivo principal?',type:'select',opts:['🔥 Quemar grasa','💪 Ganar masa muscular','⚡ Ambos (recomposición)']},
+  {key:'targetWeight',q:'¿Cuál es tu peso objetivo? (kg)',type:'number',ph:'Ej: 72'},
+  {key:'weeksGoal',q:'¿En cuántas semanas quieres lograrlo?',type:'number',ph:'Ej: 12'},
+  {key:'activityLevel',q:'¿Cuál es tu nivel de actividad actual?',type:'select',opts:['Sedentario (sin ejercicio)','Ligero (1-2 días/sem)','Moderado (3-4 días/sem)','Activo (5+ días/sem)','Atleta (2x/día)']},
+];
+
+function renderSetup() {
+  const wrap = document.createElement('div');
+  wrap.className = 'setup-wrap';
+
+  if (STATE.aiLoading) {
+    wrap.innerHTML = `<div style="text-align:center;padding-top:60px"><div style="font-size:56px;margin-bottom:16px">🧠</div><div style="font-family:Syne,sans-serif;font-size:22px;font-weight:800;color:var(--purple)">Generando tu plan…</div><div style="color:var(--muted);font-size:13px;margin-top:8px">Analizando con principios de Harvard</div><div style="display:flex;justify-content:center;gap:8px;margin-top:24px"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div></div>`;
+    return wrap;
+  }
+
+  const step = STEPS[STATE.setupStep];
+  const pct = (STATE.setupStep/STEPS.length)*100;
+
+  wrap.innerHTML = `
+    <div class="screen-logo">🏋️</div>
+    <div class="screen-title">Configura tu plan</div>
+    <div class="screen-sub">Hola ${STATE.user?.name}! Cuéntanos sobre ti.</div>
+    <div style="width:100%;max-width:440px;margin-top:20px">
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+        <span style="font-size:11px;color:var(--muted)">Configuración inicial</span>
+        <span style="font-size:11px;color:var(--purple)">${STATE.setupStep+1}/${STEPS.length}</span>
+      </div>
+      <div class="prog-wrap"><div class="prog-fill" style="width:${pct}%;background:linear-gradient(90deg,var(--purple),#7c3aed)"></div></div>
+    </div>
+    <div class="setup-card">
+      <div style="font-size:12px;color:var(--purple);font-weight:700;margin-bottom:14px">Paso ${STATE.setupStep+1}</div>
+      <div style="font-family:Syne,sans-serif;font-size:17px;font-weight:700;margin-bottom:20px;line-height:1.4">${step.q}</div>
+      <div id="step-inp"></div>
+      <button class="btn btn-purple" id="btn-next" style="margin-top:16px">${STATE.setupStep===STEPS.length-1?'🚀 Generar mi plan':'Continuar →'}</button>
+      ${STATE.setupStep>0?`<button class="btn btn-ghost" id="btn-back">← Atrás</button>`:''}
+    </div>`;
+
+  const inp = wrap.querySelector('#step-inp');
+  if (step.type==='select') {
+    step.opts.forEach(o => {
+      const b=document.createElement('button'); b.className='option-btn'+(STATE.setupData[step.key]===o?' selected':''); b.textContent=o;
+      b.onclick=()=>{STATE.setupData[step.key]=o;render();};
+      inp.appendChild(b);
+    });
+  } else {
+    const el=document.createElement('input'); el.type=step.type; el.placeholder=step.ph; el.value=STATE.setupData[step.key]||''; el.style.cssText='width:100%';
+    el.oninput=e=>STATE.setupData[step.key]=e.target.value;
+    el.onkeydown=e=>{if(e.key==='Enter')wrap.querySelector('#btn-next')?.click();};
+    inp.appendChild(el); setTimeout(()=>el.focus(),100);
+  }
+
+  wrap.querySelector('#btn-next').onclick = async () => {
+    const val=STATE.setupData[step.key];
+    if(step.key!=='bodyFat'&&!val){inp.querySelector('input,select')?.focus();return;}
+    if(STATE.setupStep<STEPS.length-1){STATE.setupStep++;render();}
+    else {
+      STATE.aiLoading=true; render();
+      const p=STATE.setupData;
+      const desc=`${p.name}, ${p.age}años, ${p.gender}, ${p.weight}kg, ${p.height}cm, objetivo: ${p.goal}, meta: ${p.targetWeight}kg en ${p.weeksGoal} semanas, actividad: ${p.activityLevel}`;
+      
+      // Timeout de 25 segundos
+      const withTimeout = (promise, ms) => Promise.race([
+        promise,
+        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), ms))
+      ]);
+
+      try {
+        const planR = await withTimeout(
+          claude([{role:'user',content:`Plan entrenamiento semanal para ${desc}. Máx 250 palabras.`}]),
+          25000
+        );
+        const nutR = await withTimeout(
+          claude([{role:'user',content:`Plan alimentación diario para ${desc}. 5 comidas. Máx 250 palabras.`}]),
+          25000
+        );
+        STATE.profile={...p,setup:true};
+        dbMarkSetupDone(STATE.user?.email, p.goal);
+        STATE.plan=planR;
+        STATE.nutrition=nutR;
+        STATE.screen='app';
+      } catch(e) {
+        // Si falla, igual entra a la app con plan por defecto
+        STATE.profile={...p,setup:true};
+        STATE.plan='⚠️ Hubo un problema generando tu plan. Toca "🔄 Nueva semana" en la sección Entrenamiento para generarlo.';
+        STATE.nutrition='⚠️ Hubo un problema generando tu menú. Toca "🔄 Nuevo menú" en la sección Nutrición para generarlo.';
+        STATE.screen='app';
+      }
+      STATE.aiLoading=false;
+      save();
+      render();
+    }
+  };
+  wrap.querySelector('#btn-back')?.addEventListener('click',()=>{STATE.setupStep--;render();});
+  return wrap;
+}
+
+// --- HEADER ---
+function renderHeader() {
+  const p=STATE.profile;
+  const tabNames=['Dashboard','Entrenamiento','Nutrición','Registro','Progreso'];
+  const goal=p.goal?.includes('grasa')?'🔥 Fat Burn':p.goal?.includes('muscular')?'💪 Muscle':'⚡ Recomp';
+  const h=document.createElement('div'); h.className='header';
+  h.innerHTML=`<div class="header-inner">
+    <div><div class="logo">⚡ FitAI Pro</div><div class="sub">Hola, ${STATE.user?.name||p.name} · ${tabNames[STATE.tab]}</div></div>
+    <div style="display:flex;align-items:center;gap:4px">
+      ${['es','en','fr','pt'].map(l=>`<button data-l="${l}" style="background:${STATE.lang===l?'#a78bfa25':'none'};border:1px solid ${STATE.lang===l?'var(--purple)':'var(--border)'};border-radius:6px;padding:3px 6px;font-size:10px;font-weight:700;color:${STATE.lang===l?'var(--purple)':'var(--muted)'};cursor:pointer">${l.toUpperCase()}</button>`).join('')}
+      <span class="badge" style="background:#a78bfa20;color:var(--purple);font-size:10px;margin-left:2px">${goal}</span>
+      <button class="avatar-btn" id="btn-user">👤</button>
     </div>
   </div>`;
+  h.querySelectorAll('[data-l]').forEach(b=>b.addEventListener('click',(e)=>{e.stopPropagation();STATE.lang=b.dataset.l;STATE.aiMsg='';render();}));
+  h.querySelector('#btn-user').onclick=(e)=>{e.stopPropagation();STATE.showUserMenu=!STATE.showUserMenu;render();};
+  return h;
 }
 
-function renderApp() {
-  const stats = getStats();
-  const users = getUsers();
-  const filteredUsers = users.filter(u =>
-    u.email.toLowerCase().includes(searchQuery) ||
-    u.name.toLowerCase().includes(searchQuery)
-  );
-
-  return `
-  <div class="layout">
-    <nav class="sidebar">
-      <div class="sidebar-logo">⚡ FitAI Admin</div>
-      ${[
-        ['dashboard', '📊', 'Dashboard'],
-        ['users', '👥', 'Clientes'],
-        ['payments', '💰', 'Pagos'],
-        ['emails', '📧', 'Emails'],
-        ['notifications', '🔔', 'Notificaciones'],
-      ].map(([id, icon, label]) => `
-        <button class="nav-item ${currentPage === id ? 'active' : ''}" data-page="${id}">
-          <span class="nav-icon">${icon}</span>${label}
-        </button>`).join('')}
-      <div class="sidebar-footer">
-        <button class="logout-btn" id="logout-btn">🚪 Cerrar sesión</button>
-      </div>
-    </nav>
-
-    <main class="main fade-in">
-
-      <!-- DASHBOARD -->
-      <div class="page-section ${currentPage === 'dashboard' ? 'active' : ''}" id="section-dashboard">
-        <div class="page-title">Dashboard</div>
-        <div class="page-sub">Resumen general de FitAI Pro · Actualizado ahora</div>
-
-        <div class="stats-grid">
-          <div class="stat-card purple">
-            <div class="stat-icon">👥</div>
-            <div class="stat-val">${stats.totalUsers}</div>
-            <div class="stat-lbl">Usuarios registrados</div>
-          </div>
-          <div class="stat-card green">
-            <div class="stat-icon">💳</div>
-            <div class="stat-val">${stats.paidUsers}</div>
-            <div class="stat-lbl">Clientes pagados</div>
-          </div>
-          <div class="stat-card lime">
-            <div class="stat-icon">💰</div>
-            <div class="stat-val">$${stats.revenue.toLocaleString('es-CL')}</div>
-            <div class="stat-lbl">Ingresos totales CLP</div>
-          </div>
-          <div class="stat-card blue">
-            <div class="stat-icon">✅</div>
-            <div class="stat-val">${stats.setupDone}</div>
-            <div class="stat-lbl">Setup completado</div>
-          </div>
-          <div class="stat-card amber">
-            <div class="stat-icon">📈</div>
-            <div class="stat-val">${stats.convRate}%</div>
-            <div class="stat-lbl">Tasa de conversión</div>
-          </div>
-        </div>
-
-        <div class="charts-grid">
-          <div class="chart-card">
-            <div class="chart-title">Nuevos usuarios</div>
-            <div class="chart-sub">Últimos 7 días</div>
-            <div class="chart-wrap"><canvas id="chart-users"></canvas></div>
-          </div>
-          <div class="chart-card">
-            <div class="chart-title">Ingresos CLP</div>
-            <div class="chart-sub">Por mes</div>
-            <div class="chart-wrap"><canvas id="chart-revenue"></canvas></div>
-          </div>
-          <div class="chart-card">
-            <div class="chart-title">Conversión</div>
-            <div class="chart-sub">Registrados vs Pagados</div>
-            <div class="chart-wrap"><canvas id="chart-conversion"></canvas></div>
-          </div>
-          <div class="chart-card">
-            <div class="chart-title">Setup completado</div>
-            <div class="chart-sub">De clientes pagados</div>
-            <div class="chart-wrap"><canvas id="chart-setup"></canvas></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- USUARIOS -->
-      <div class="page-section ${currentPage === 'users' ? 'active' : ''}" id="section-users">
-        <div class="page-title">Clientes</div>
-        <div class="page-sub">${users.length} usuarios registrados · ${stats.paidUsers} pagados</div>
-        <div class="table-card">
-          <div class="table-header">
-            <div class="table-title">Lista de usuarios</div>
-            <input class="search-input" id="search-input" placeholder="🔍 Buscar..." value="${searchQuery}"/>
-          </div>
-          <div style="overflow-x:auto">
-            <table>
-              <thead>
-                <tr>
-                  <th>Nombre</th>
-                  <th>Email</th>
-                  <th>Estado pago</th>
-                  <th>Setup</th>
-                  <th>Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${filteredUsers.length === 0 ? `<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:32px">Sin usuarios aún</td></tr>` :
-                  filteredUsers.map(u => `
-                  <tr>
-                    <td><strong>${u.name}</strong></td>
-                    <td style="color:var(--muted)">${u.email}</td>
-                    <td><span class="badge ${u.paid ? 'paid' : 'pending'}">${u.paid ? '✅ Pagado' : '⏳ Pendiente'}</span></td>
-                    <td><span class="badge ${u.setupDone ? 'setup' : 'nosetup'}">${u.setupDone ? '✅ Completo' : '❌ Pendiente'}</span></td>
-                    <td>
-                      <button class="action-btn" onclick="sendEmail('${u.email}','Hola desde FitAI Pro','Hola ${u.name}, te escribimos desde FitAI Pro.')">✉️ Email</button>
-                    </td>
-                  </tr>`).join('')}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
-      <!-- PAGOS -->
-      <div class="page-section ${currentPage === 'payments' ? 'active' : ''}" id="section-payments">
-        <div class="page-title">Pagos</div>
-        <div class="page-sub">Historial de transacciones · $990 CLP por cliente</div>
-
-        <div class="stats-grid" style="margin-bottom:20px">
-          <div class="stat-card green">
-            <div class="stat-icon">💰</div>
-            <div class="stat-val">$${stats.revenue.toLocaleString('es-CL')}</div>
-            <div class="stat-lbl">Total recaudado</div>
-          </div>
-          <div class="stat-card purple">
-            <div class="stat-icon">🧾</div>
-            <div class="stat-val">${stats.paidUsers}</div>
-            <div class="stat-lbl">Transacciones</div>
-          </div>
-          <div class="stat-card blue">
-            <div class="stat-icon">📅</div>
-            <div class="stat-val">$${(990).toLocaleString('es-CL')}</div>
-            <div class="stat-lbl">Precio por cliente</div>
-          </div>
-        </div>
-
-        <div class="table-card">
-          <div class="table-header">
-            <div class="table-title">Transacciones MercadoPago</div>
-            <a href="https://www.mercadopago.cl/activities" target="_blank">
-              <button class="action-btn primary">Ver en MP →</button>
-            </a>
-          </div>
-          <div style="overflow-x:auto">
-            <table>
-              <thead>
-                <tr><th>Cliente</th><th>Email</th><th>Monto</th><th>Estado</th></tr>
-              </thead>
-              <tbody>
-                ${getUsers().filter(u => u.paid).length === 0
-                  ? `<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:32px">Sin pagos aún</td></tr>`
-                  : getUsers().filter(u => u.paid).map(u => `
-                    <tr>
-                      <td><strong>${u.name}</strong></td>
-                      <td style="color:var(--muted)">${u.email}</td>
-                      <td style="color:var(--green);font-weight:700">$990 CLP</td>
-                      <td><span class="badge paid">✅ Aprobado</span></td>
-                    </tr>`).join('')}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
-      <!-- EMAILS -->
-      <div class="page-section ${currentPage === 'emails' ? 'active' : ''}" id="section-emails">
-        <div class="page-title">Emails</div>
-        <div class="page-sub">Envío masivo y automatizaciones</div>
-
-        <div class="email-card">
-          <div class="email-title">📧 Enviar email a todos los clientes</div>
-          <div class="form-row">
-            <div class="form-field">
-              <label>Asunto</label>
-              <input type="text" id="email-subject" placeholder="Ej: Tu progreso este mes en FitAI Pro"/>
-            </div>
-            <div class="form-field">
-              <label>Destinatarios</label>
-              <select id="email-to">
-                <option value="all">Todos los clientes pagados (${stats.paidUsers})</option>
-                <option value="nosetup">Sin setup completado</option>
-                <option value="inactive">Inactivos +7 días</option>
-              </select>
-            </div>
-          </div>
-          <div class="form-field" style="margin-bottom:16px">
-            <label>Mensaje (usa {{nombre}} para personalizar)</label>
-            <textarea id="email-body" placeholder="Hola {{nombre}}, te escribimos desde FitAI Pro para recordarte que..."></textarea>
-          </div>
-          <div style="display:flex;gap:10px;flex-wrap:wrap">
-            <button class="action-btn primary" onclick="sendBulkEmail()">📤 Enviar ahora</button>
-            <button class="action-btn" onclick="previewEmail()">👁️ Vista previa</button>
-          </div>
-        </div>
-
-        <div class="email-card">
-          <div class="email-title">⚙️ Automatizaciones de email</div>
-          ${[
-            ['email30', '📅 Email mensual', 'Se envía automáticamente cada 30 días a todos los clientes activos con un resumen de motivación y tips'],
-            ['welcome', '👋 Email de bienvenida', 'Se envía automáticamente cuando un cliente completa el pago y el setup'],
-          ].map(([id, name, desc]) => `
-            <div class="automation-item">
-              <div class="automation-info">
-                <div class="automation-name">${name}</div>
-                <div class="automation-desc">${desc}</div>
-              </div>
-              <div class="toggle ${automations[id] ? 'on' : ''}" data-auto="${id}"></div>
-            </div>`).join('')}
-          <div style="margin-top:16px;padding:14px;background:var(--surface2);border-radius:12px;">
-            <div style="font-size:12px;color:var(--muted);margin-bottom:8px;font-weight:600">📋 CONFIGURAR EMAILS AUTOMÁTICOS</div>
-            <div style="font-size:12px;color:var(--muted);line-height:1.8">
-              Para activar emails automáticos reales necesitas:<br>
-              1. Crear cuenta gratis en <strong style="color:var(--text)">resend.com</strong> (3.000 emails/mes gratis)<br>
-              2. Agregar variable <strong style="color:var(--purple)">RESEND_API_KEY</strong> en Netlify<br>
-              3. Crear función <strong style="color:var(--purple)">send-email.js</strong> en netlify/functions<br>
-              <span style="color:var(--purple);cursor:pointer" onclick="showResendGuide()">→ Ver guía completa</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- NOTIFICACIONES -->
-      <div class="page-section ${currentPage === 'notifications' ? 'active' : ''}" id="section-notifications">
-        <div class="page-title">Notificaciones Push</div>
-        <div class="page-sub">Notificaciones automáticas cada 15 días</div>
-
-        <div class="email-card">
-          <div class="email-title">🔔 Automatizaciones push</div>
-          <div class="automation-item">
-            <div class="automation-info">
-              <div class="automation-name">📱 Recordatorio quincenal</div>
-              <div class="automation-desc">Notificación push cada 15 días recordando registrar progreso y revisar el plan</div>
-            </div>
-            <div class="toggle ${automations.push15 ? 'on' : ''}" data-auto="push15"></div>
-          </div>
-          <div style="margin-top:16px;padding:14px;background:var(--surface2);border-radius:12px;">
-            <div style="font-size:12px;color:var(--muted);margin-bottom:8px;font-weight:600">📋 CONFIGURAR NOTIFICACIONES PUSH</div>
-            <div style="font-size:12px;color:var(--muted);line-height:1.8">
-              Para notificaciones push reales:<br>
-              1. Crear cuenta gratis en <strong style="color:var(--text)">onesignal.com</strong><br>
-              2. Agregar script de OneSignal al app.html<br>
-              3. Los usuarios deben aceptar permisos al abrir la app<br>
-              4. Desde OneSignal puedes programar envíos automáticos<br>
-              <span style="color:var(--purple);cursor:pointer" onclick="showPushGuide()">→ Ver guía completa</span>
-            </div>
-          </div>
-        </div>
-
-        <div class="email-card">
-          <div class="email-title">📤 Enviar notificación manual</div>
-          <div class="form-field" style="margin-bottom:12px">
-            <label>Título</label>
-            <input type="text" id="push-title" placeholder="Ej: ¡No olvides tu entrenamiento hoy! 💪"/>
-          </div>
-          <div class="form-field" style="margin-bottom:16px">
-            <label>Mensaje</label>
-            <input type="text" id="push-body" placeholder="Ej: Llevas 15 días en FitAI Pro. ¡Sigue así!"/>
-          </div>
-          <button class="action-btn primary" onclick="sendPushNotification()">📤 Enviar push ahora</button>
-        </div>
-      </div>
-
-    </main>
-  </div>`;
-}
-
-// ── SETUP INTERACTIONS ────────────────────
-function setupNav() {
-  document.querySelectorAll('[data-page]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      currentPage = btn.dataset.page;
-      // Update active nav
-      document.querySelectorAll('[data-page]').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      // Show correct section
-      document.querySelectorAll('.page-section').forEach(s => s.classList.remove('active'));
-      const section = document.getElementById('section-' + currentPage);
-      if (section) {
-        section.classList.add('active');
-        section.classList.add('fade-in');
-      }
-      // Rebuild charts if going to dashboard
-      if (currentPage === 'dashboard') {
-        setTimeout(buildCharts, 100);
-      }
-    });
+// --- TAB BAR ---
+function renderTabBar() {
+  const icons=['🏠','💪','🥗','📝','📈'], labels=['Inicio','Entrena','Nutrición','Registro','Progreso'];
+  const tb=document.createElement('div'); tb.className='tabbar';
+  icons.forEach((ic,i)=>{
+    const b=document.createElement('button'); b.className='tab-btn'+(STATE.tab===i?' active':'');
+    b.innerHTML=`<span class="icon">${ic}</span><span>${labels[i]}</span>`;
+    b.onclick=()=>{STATE.tab=i;STATE.aiMsg='';STATE.showUserMenu=false;render();};
+    tb.appendChild(b);
   });
-  document.getElementById('logout-btn')?.addEventListener('click', logout);
+  return tb;
 }
 
-function setupSearch() {
-  document.getElementById('search-input')?.addEventListener('input', e => {
-    searchQuery = e.target.value.toLowerCase();
-    const users = getUsers().filter(u =>
-      u.email.toLowerCase().includes(searchQuery) ||
-      u.name.toLowerCase().includes(searchQuery)
-    );
-    const tbody = document.querySelector('tbody');
-    if (tbody) {
-      tbody.innerHTML = users.length === 0
-        ? `<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:32px">Sin resultados</td></tr>`
-        : users.map(u => `
-          <tr>
-            <td><strong>${u.name}</strong></td>
-            <td style="color:var(--muted)">${u.email}</td>
-            <td><span class="badge ${u.paid ? 'paid' : 'pending'}">${u.paid ? '✅ Pagado' : '⏳ Pendiente'}</span></td>
-            <td><span class="badge ${u.setupDone ? 'setup' : 'nosetup'}">${u.setupDone ? '✅ Completo' : '❌ Pendiente'}</span></td>
-            <td><button class="action-btn" onclick="sendEmail('${u.email}','Hola desde FitAI Pro','Hola ${u.name}!')">✉️ Email</button></td>
-          </tr>`).join('');
-    }
-  });
+// --- DASHBOARD ---
+function renderDashboard() {
+  const prog=calcProgress();
+  const div=document.createElement('div');
+  div.innerHTML=`
+    <div class="stats-grid">
+      <div class="stat-box" style="background:#60a5fa12;border:1px solid #60a5fa25"><div class="stat-icon">🗓️</div><div class="stat-val" style="color:var(--blue)">${prog.days}</div><div class="stat-lbl">Días activo</div></div>
+      <div class="stat-box" style="background:#34d39912;border:1px solid #34d39925"><div class="stat-icon">⚖️</div><div class="stat-val" style="color:var(--green)">${Math.max(0,prog.lost)}kg</div><div class="stat-lbl">Kg perdidos</div></div>
+      <div class="stat-box" style="background:#a78bfa12;border:1px solid #a78bfa25"><div class="stat-icon">🎯</div><div class="stat-val" style="color:var(--purple)">${prog.pct}%</div><div class="stat-lbl">Progreso</div></div>
+    </div>
+    <div class="card card-purple">
+      <div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:14px;font-weight:700">🎯 Meta: ${STATE.profile.targetWeight}kg</span><span style="color:var(--purple);font-weight:800">${prog.pct}%</span></div>
+      <div class="prog-wrap"><div class="prog-fill" style="width:${prog.pct}%;background:linear-gradient(90deg,var(--purple),#7c3aed80)"></div></div>
+      <div style="font-size:11px;color:var(--muted);margin-top:6px">Actual: ${prog.lw}kg → Meta: ${STATE.profile.targetWeight}kg · ${STATE.profile.weeksGoal} semanas</div>
+    </div>
+    ${prog.trend.length>1?renderMiniChart(prog.trend):''}
+    ${STATE.aiMsg?`<div class="card card-green"><div class="card-sh">🧠 Análisis de hoy</div><div class="ai-text">${STATE.aiMsg}</div></div>`:''}
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <button class="btn btn-blue" id="to-log">📝 Registrar hoy</button>
+      <button class="btn" style="background:linear-gradient(135deg,var(--green),#059669);color:#fff" id="to-nut">🥗 Nutrición</button>
+    </div>`;
+  div.querySelector('#to-log').onclick=()=>{STATE.tab=3;render();};
+  div.querySelector('#to-nut').onclick=()=>{STATE.tab=2;render();};
+  return div;
+}
+function renderMiniChart(trend) {
+  const weights=trend.map(t=>t.w),mn=Math.min(...weights)-1,mx=Math.max(...weights)+1;
+  return `<div class="card"><div class="card-sh">📉 Tendencia de peso</div><div class="mini-chart">${trend.map(t=>{const h=Math.round(((t.w-mn)/(mx-mn))*40+8);return`<div class="bar-wrap"><div class="bar" style="height:${h}px"></div><div class="bar-lbl">${(t.date||'').slice(0,5)}</div></div>`;}).join('')}</div></div>`;
 }
 
-function setupEmailForm() {
-  // Email template buttons
+// --- WORKOUT ---
+function renderWorkout() {
+  const div=document.createElement('div');
+  div.innerHTML=`
+    <div class="card card-purple"><div class="card-h">💪 Plan de Entrenamiento</div><div class="ai-text">${STATE.plan||'Cargando…'}</div></div>
+    <button class="btn btn-purple" id="btn-newplan">${STATE.aiLoading?'Generando…':'🔄 Nueva semana'}</button>
+    <div class="card" style="margin-top:8px"><div class="card-sh">💬 Pregunta al coach</div><div id="chat-w"></div>
+    <div class="chat-row"><input type="text" id="ci-w" placeholder="¿Cómo reemplazo las sentadillas?"/><button id="cs-w">→</button></div></div>`;
+  STATE.chat.slice(-4).forEach(m=>{const el=document.createElement('div');el.className='chat-msg '+(m.role==='user'?'chat-user':'chat-ai');el.innerHTML=`<strong>${m.role==='user'?'Tú:':'🤖 '}</strong> ${m.content.slice(0,220)}${m.content.length>220?'…':''}`;div.querySelector('#chat-w').appendChild(el);});
+  div.querySelector('#btn-newplan').onclick=async()=>{STATE.aiLoading=true;render();const r=await claude([{role:'user',content:`Plan entrenamiento variado para ${STATE.profile.name}, ${STATE.profile.goal}, nivel: ${STATE.profile.activityLevel}, ${calcProgress().days} días en programa. Máx 700 palabras.`}]);STATE.plan=r;STATE.aiLoading=false;save();render();};
+  const send=async()=>{const inp=div.querySelector('#ci-w');const txt=inp?.value.trim();if(!txt)return;STATE.chat.push({role:'user',content:txt});inp.value='';STATE.aiLoading=true;render();const msgs=STATE.chat.slice(-6).map(m=>({role:m.role,content:m.content}));msgs[0]={...msgs[0],content:`${STATE.profile.name},${STATE.profile.goal}\n${msgs[0].content}`};const r=await claude(msgs);STATE.chat.push({role:'assistant',content:r});STATE.aiLoading=false;save();render();};
+  div.querySelector('#cs-w').onclick=send;
+  div.querySelector('#ci-w').onkeydown=e=>{if(e.key==='Enter')send();};
+  return div;
 }
 
-function setupToggle() {
-  document.querySelectorAll('.toggle[data-auto]').forEach(toggle => {
-    toggle.addEventListener('click', () => {
-      const key = toggle.dataset.auto;
-      automations[key] = !automations[key];
-      toggle.classList.toggle('on');
-      showNotif(`Automatización ${automations[key] ? 'activada' : 'desactivada'}`);
-    });
-  });
+// --- NUTRITION ---
+function renderNutrition() {
+  const div=document.createElement('div');
+  div.innerHTML=`
+    <div class="card card-green"><div class="card-h">🥗 Plan de Alimentación</div><div class="ai-text">${STATE.nutrition||'Cargando…'}</div></div>
+    <button class="btn btn-green" id="btn-newnut">${STATE.aiLoading?'Generando…':'🔄 Nuevo menú del día'}</button>
+    <div class="card" style="margin-top:8px"><div class="card-sh">💬 Consulta nutricional</div><div id="chat-n"></div>
+    <div class="chat-row"><input type="text" id="ci-n" placeholder="¿Puedo sustituir el pollo?"/><button id="cs-n" style="background:var(--green)">→</button></div></div>`;
+  STATE.chat.slice(-2).forEach(m=>{const el=document.createElement('div');el.className='chat-msg '+(m.role==='user'?'chat-user':'chat-ai');el.style.color=m.role==='assistant'?'#6ee7b7':'';el.innerHTML=`<strong>${m.role==='user'?'Tú:':'🤖 '}</strong> ${m.content.slice(0,200)}${m.content.length>200?'…':''}`;div.querySelector('#chat-n').appendChild(el);});
+  div.querySelector('#btn-newnut').onclick=async()=>{STATE.aiLoading=true;render();const p=STATE.profile;const r=await claude([{role:'user',content:`Plan alimentación VARIADO para ${p.name}, ${p.goal}, ${calcProgress().lw}kg, ${p.height}cm, ${p.gender}, ${p.age}años. Recetas sencillas. Harvard. Máx 700 palabras.`}]);STATE.nutrition=r;STATE.aiLoading=false;save();render();};
+  const send=async()=>{const inp=div.querySelector('#ci-n');const txt=inp?.value.trim();if(!txt)return;STATE.chat.push({role:'user',content:txt});inp.value='';STATE.aiLoading=true;render();const msgs=STATE.chat.slice(-4).map(m=>({role:m.role,content:m.content}));msgs[0]={...msgs[0],content:`${STATE.profile.name},${STATE.profile.goal}\n${msgs[0].content}`};const r=await claude(msgs);STATE.chat.push({role:'assistant',content:r});STATE.aiLoading=false;save();render();};
+  div.querySelector('#cs-n').onclick=send;
+  div.querySelector('#ci-n').onkeydown=e=>{if(e.key==='Enter')send();};
+  return div;
 }
 
-function previewEmail() {
-  const subject = document.getElementById('email-subject')?.value || '(sin asunto)';
-  const body = document.getElementById('email-body')?.value || '(sin contenido)';
-  alert(`VISTA PREVIA\n\nAsunto: ${subject}\n\n${body.replace('{{nombre}}', 'Juan')}`);
+// --- DAILY LOG ---
+function renderLog() {
+  const div=document.createElement('div');
+  const today=new Date().toLocaleDateString('es-CL',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  const log=STATE.todayLog;
+  div.innerHTML=`
+    <div class="card card-amber" style="margin-bottom:12px"><div class="card-h">📝 Registro de Hoy</div><div style="font-size:12px;color:var(--amber)">${today}</div></div>
+    ${[{k:'weight',l:'⚖️ Peso actual (kg)',t:'number',p:'Ej: 79.5'},{k:'bodyFat',l:'📊 % Grasa corporal',t:'number',p:'Opcional'},{k:'calories',l:'🔥 Calorías consumidas',t:'number',p:'Ej: 1800'},{k:'protein',l:'🥩 Proteína (g)',t:'number',p:'Ej: 150'},{k:'sleep',l:'😴 Horas de sueño',t:'number',p:'Ej: 7.5'},{k:'water',l:'💧 Agua (litros)',t:'number',p:'Ej: 2.5'}].map(f=>`<div class="field"><label>${f.l}</label><input type="${f.t}" placeholder="${f.p}" data-key="${f.k}" value="${log[f.k]||''}"/></div>`).join('')}
+    <div class="field"><label>🏋️ ¿Entrenaste hoy?</label><select data-key="training"><option value="no" ${log.training==='no'?'selected':''}>No entrené</option><option value="si" ${log.training==='si'?'selected':''}>Sí, entrené</option><option value="activo" ${log.training==='activo'?'selected':''}>Descanso activo</option></select></div>
+    <div class="field"><label>⚡ Nivel de energía (1-5)</label><div class="energy-row">${[1,2,3,4,5].map(n=>`<button class="energy-btn ${log.energy==n?'active':''}" data-e="${n}">${n}</button>`).join('')}</div></div>
+    <div class="field"><label>📓 Notas</label><textarea placeholder="¿Cómo te sentiste hoy?">${log.notes||''}</textarea></div>
+    <button class="btn btn-amber" id="btn-save">${STATE.aiLoading?'⏳ Analizando…':'✅ Guardar y analizar'}</button>
+    ${STATE.aiMsg?`<div class="card card-green" style="margin-top:12px"><div class="card-sh">🧠 Análisis personalizado</div><div class="ai-text">${STATE.aiMsg}</div></div>`:''}`;
+  div.querySelectorAll('input[data-key],select[data-key]').forEach(el=>el.addEventListener('input',e=>{STATE.todayLog[e.target.dataset.key]=e.target.value;}));
+  div.querySelectorAll('textarea').forEach(el=>el.addEventListener('input',e=>{STATE.todayLog.notes=e.target.value;}));
+  div.querySelectorAll('.energy-btn').forEach(b=>b.addEventListener('click',()=>{STATE.todayLog.energy=b.dataset.e;render();}));
+  div.querySelector('#btn-save').onclick=async()=>{
+    const todayStr=new Date().toLocaleDateString('es-CL');
+    const newLog={date:todayStr,...STATE.todayLog};
+    STATE.dailyLogs=[newLog,...STATE.dailyLogs.filter(l=>l.date!==todayStr)].slice(0,90);
+    save();
+    dbSaveDailyLog(STATE.user?.email, newLog); STATE.aiLoading=true; render();
+    const prog=calcProgress();const p=STATE.profile;
+    const r=await claude([{role:'user',content:`Análisis de hoy de ${p.name} (máx 200 palabras):\nDatos: ${JSON.stringify(newLog)}\nProgreso: ${prog.lost}kg perdidos, ${prog.days} días\nObjetivo: ${p.goal}, meta ${p.targetWeight}kg`}]);
+    STATE.aiMsg=r; STATE.aiLoading=false; render();
+  };
+  return div;
 }
 
-function sendPushNotification() {
-  const title = document.getElementById('push-title')?.value;
-  const body = document.getElementById('push-body')?.value;
-  if (!title || !body) { showNotif('Completa título y mensaje', 'var(--amber)'); return; }
-  showNotif('Push enviado (requiere OneSignal configurado)');
+// --- PROGRESS ---
+function renderProgress() {
+  const prog=calcProgress();
+  const div=document.createElement('div');
+  div.innerHTML=`
+    <div class="stats-grid stats-grid2">
+      ${[{l:'Días registrados',v:prog.days,i:'🗓️',c:'var(--blue)'},{l:'Kg perdidos',v:Math.max(0,prog.lost)+'kg',i:'🔥',c:'var(--amber)'},{l:'Progreso meta',v:prog.pct+'%',i:'🎯',c:'var(--purple)'},{l:'Peso actual',v:prog.lw+'kg',i:'⚖️',c:'var(--green)'}].map(s=>`<div class="stat-box" style="background:${s.c}12;border:1px solid ${s.c}25"><div class="stat-icon">${s.i}</div><div class="stat-val" style="color:${s.c}">${s.v}</div><div class="stat-lbl">${s.l}</div></div>`).join('')}
+    </div>
+    <div class="card card-purple">
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="font-weight:700">Progreso hacia la meta</span><span style="color:var(--purple);font-weight:800">${prog.pct}%</span></div>
+      <div class="prog-wrap"><div class="prog-fill" style="width:${prog.pct}%;background:linear-gradient(90deg,var(--purple),#7c3aed80)"></div></div>
+      <div style="display:flex;justify-content:space-between;margin-top:6px"><span style="font-size:11px;color:var(--muted)">Inicio: ${STATE.profile.weight}kg</span><span style="font-size:11px;color:var(--muted)">Meta: ${STATE.profile.targetWeight}kg</span></div>
+    </div>
+    <div class="card"><div class="card-h">📋 Historial reciente</div>
+      ${!STATE.dailyLogs.length?'<div style="color:var(--muted);font-size:13px;text-align:center;padding:20px">Sin registros aún 💪</div>':STATE.dailyLogs.slice(0,7).map(l=>`<div class="log-item"><div class="log-row"><span class="log-date">${l.date}</span><span class="badge" style="background:${l.training==='si'?'#34d39920':'#1e1e3a'};color:${l.training==='si'?'var(--green)':'var(--muted)'}">${l.training==='si'?'💪 Entrenó':l.training==='activo'?'🚶 Activo':'😴 Descanso'}</span></div><div class="tags">${l.weight?`<span class="tag">⚖️ ${l.weight}kg</span>`:''} ${l.calories?`<span class="tag">🔥 ${l.calories}kcal</span>`:''} ${l.protein?`<span class="tag">🥩 ${l.protein}g</span>`:''} ${l.sleep?`<span class="tag">😴 ${l.sleep}h</span>`:''} ${l.energy?`<span class="tag">⚡ ${l.energy}/5</span>`:''}</div></div>`).join('')}
+    </div>
+    <button class="btn btn-blue" id="btn-weekly">${STATE.aiLoading?'⏳ Analizando…':'🧠 Análisis semanal con IA'}</button>
+    ${STATE.aiMsg?`<div class="card card-blue" style="margin-top:12px"><div class="card-sh">📊 Informe de progreso</div><div class="ai-text">${STATE.aiMsg}</div></div>`:''}`;
+  div.querySelector('#btn-weekly').onclick=async()=>{STATE.aiLoading=true;render();const p=STATE.profile;const prog2=calcProgress();const r=await claude([{role:'user',content:`Análisis de progreso de ${p.name} (300 palabras):\nPerfil: ${JSON.stringify(p)}\nRegistros: ${JSON.stringify(STATE.dailyLogs.slice(0,7))}\nProgreso: ${prog2.lost}kg en ${prog2.days} días\nIncluye tasa de progreso, adherencia, recomendaciones.`}]);STATE.aiMsg=r;STATE.aiLoading=false;render();};
+  return div;
 }
 
-function showResendGuide() {
-  alert('GUÍA RESEND:\n\n1. Ve a resend.com y crea cuenta gratis\n2. Crea un API Key\n3. En Netlify → Environment Variables → agrega RESEND_API_KEY\n4. Crea netlify/functions/send-email.js con el código de la guía\n5. Listo — hasta 3.000 emails/mes gratis');
+// --- SERVICE WORKER ---
+if ('serviceWorker' in navigator) {
+  const sw=`const C='fitai-v2';self.addEventListener('install',e=>e.waitUntil(caches.open(C).then(c=>c.addAll(['./']))));self.addEventListener('fetch',e=>{if(e.request.url.includes('api.anthropic.com')||e.request.url.includes('sdk.mercadopago.com'))return;e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request)));});`;
+  navigator.serviceWorker.register(URL.createObjectURL(new Blob([sw],{type:'application/javascript'}))).catch(()=>{});
 }
 
-function showPushGuide() {
-  alert('GUÍA ONESIGNAL:\n\n1. Ve a onesignal.com y crea cuenta gratis\n2. Crea una nueva app Web Push\n3. Copia el script que te dan y agrégalo al app.html\n4. Desde el panel de OneSignal puedes programar notificaciones automáticas\n5. Listo — gratis hasta 10.000 suscriptores');
-}
-
-// ── INIT ──────────────────────────────────
+// --- INIT ---
 render();
 </script>
 </body>
