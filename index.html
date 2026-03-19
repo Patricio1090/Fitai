@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta name="theme-color" content="#03030a"/>
+<meta name="description" content="FitAI Pro — Tu entrenador personal con IA. Planes de entrenamiento y nutrición basados en Harvard. Solo $9.990 CLP para siempre."/>
+<title>FitAI Pro — Entrenador Personal con IA · $9.990 CLP</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+:root{--black:#03030a;--deep:#07070f;--surface:#0d0d1a;--s2:#121224;--border:#1e1e38;--text:#f0f0ff;--muted:#6b6b8a;--lime:#c1ff4e;--lime2:#a8e63a;--cyan:#00e8c8;--purple:#7c4dff;--pink:#ff4d8d;--amber:#ffb800;--red:#ff4444;}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+body{background:var(--black);color:var(--text);font-family:'Space Grotesk',sans-serif;overflow-x:hidden;}
+a{color:inherit;text-decoration:none;}
+::-webkit-scrollbar{width:4px;}::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px;}
+
+nav{position:fixed;top:0;left:0;right:0;z-index:200;padding:14px 24px;display:flex;align-items:center;justify-content:space-between;background:rgba(3,3,10,0.92);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);}
+.nav-logo{font-family:'Syne',sans-serif;font-size:20px;font-weight:800;background:linear-gradient(135deg,var(--lime),var(--cyan));-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+.nav-right{display:flex;align-items:center;gap:12px;}
+.nav-users{font-size:12px;color:var(--muted);}
+.nav-users strong{color:var(--lime);}
+.nav-cta{background:var(--lime);color:#000;border:none;border-radius:100px;padding:10px 22px;font-size:13px;font-weight:700;cursor:pointer;font-family:'Space Grotesk',sans-serif;transition:all 0.2s;white-space:nowrap;}
+.nav-cta:hover{background:var(--lime2);transform:translateY(-1px);}
+
+.notif-container{position:fixed;bottom:20px;left:16px;z-index:300;pointer-events:none;}
+.notif{display:flex;align-items:center;gap:10px;background:var(--s2);border:1px solid var(--border);border-radius:14px;padding:10px 14px;margin-bottom:8px;font-size:12px;max-width:260px;box-shadow:0 8px 32px rgba(0,0,0,0.6);opacity:0;transform:translateX(-20px);transition:all 0.4s cubic-bezier(0.34,1.56,0.64,1);}
+.notif.show{opacity:1;transform:translateX(0);}
+.notif-av{width:32px;height:32px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:16px;}
+.notif-text{line-height:1.4;}
+.notif-text strong{color:var(--lime);display:block;font-size:11px;}
+.notif-dot{width:6px;height:6px;border-radius:50%;background:var(--lime);flex-shrink:0;animation:blink 1.5s infinite;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.2}}
+
+.hero{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:100px 20px 60px;position:relative;overflow:hidden;background:radial-gradient(ellipse 80% 50% at 50% 0%,#7c4dff18 0%,transparent 60%),radial-gradient(ellipse 60% 40% at 80% 80%,#00e8c818 0%,transparent 50%),var(--black);}
+.live-badge{display:inline-flex;align-items:center;gap:8px;background:#c1ff4e10;border:1px solid #c1ff4e30;border-radius:100px;padding:6px 16px;font-size:12px;font-weight:600;color:var(--lime);margin-bottom:24px;animation:fadeUp 0.6s ease both;}
+.live-dot{width:6px;height:6px;border-radius:50%;background:var(--lime);animation:blink 1s infinite;}
+.hero-title{font-family:'Syne',sans-serif;font-size:clamp(40px,9vw,96px);font-weight:800;line-height:0.95;letter-spacing:-3px;margin-bottom:8px;animation:fadeUp 0.6s 0.1s ease both;}
+.hero-title .accent{display:block;background:linear-gradient(135deg,var(--lime) 0%,var(--cyan) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+.hero-sub{font-size:clamp(15px,2.5vw,20px);color:var(--muted);max-width:520px;line-height:1.65;margin:20px auto 36px;animation:fadeUp 0.6s 0.2s ease both;}
+.hero-sub strong{color:var(--text);}
+.price-wrap{display:flex;align-items:center;justify-content:center;gap:20px;margin-bottom:32px;animation:fadeUp 0.6s 0.3s ease both;}
+.price-old{font-family:'Syne',sans-serif;font-size:24px;color:var(--muted);text-decoration:line-through;}
+.price-new{font-family:'Syne',sans-serif;font-size:clamp(56px,9vw,88px);font-weight:800;color:var(--lime);line-height:1;}
+.price-sub{font-size:13px;color:var(--muted);margin-top:4px;}
+.cta-wrap{display:flex;flex-direction:column;align-items:center;gap:12px;animation:fadeUp 0.6s 0.4s ease both;}
+.btn-main{display:inline-flex;align-items:center;gap:10px;background:var(--lime);color:#000;border:none;border-radius:16px;padding:18px 48px;font-family:'Syne',sans-serif;font-size:16px;font-weight:700;cursor:pointer;transition:all 0.2s;white-space:nowrap;}
+.btn-main:hover{background:var(--lime2);transform:translateY(-3px);box-shadow:0 20px 60px #c1ff4e40;}
+.guarantee{font-size:12px;color:var(--muted);}
+.social-proof{display:flex;align-items:center;gap:10px;margin-top:16px;font-size:13px;color:var(--muted);animation:fadeUp 0.6s 0.5s ease both;}
+.avatars{display:flex;}
+.av{width:28px;height:28px;border-radius:50%;border:2px solid var(--black);margin-left:-8px;font-size:13px;display:flex;align-items:center;justify-content:center;}
+.av:first-child{margin-left:0;}
+.stars{color:var(--amber);font-size:12px;}
+.urgency{background:linear-gradient(90deg,#ff4d8d22,#7c4dff22);border:1px solid #ff4d8d30;border-radius:12px;padding:12px 20px;margin-top:24px;display:flex;align-items:center;justify-content:center;gap:8px;font-size:13px;max-width:420px;animation:fadeUp 0.6s 0.6s ease both;}
+.urgency strong{color:var(--pink);}
+@keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+
+.ticker-wrap{background:var(--lime);padding:10px 0;overflow:hidden;}
+.ticker{display:flex;width:max-content;animation:ticker 25s linear infinite;}
+.ticker-item{display:flex;align-items:center;gap:8px;padding:0 32px;font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:#000;white-space:nowrap;}
+.ticker-dot{width:4px;height:4px;border-radius:50%;background:#00000040;}
+@keyframes ticker{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+
+.stats-bar{background:var(--surface);border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:32px 20px;}
+.stats-grid{max-width:900px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr);}
+.stat-item{text-align:center;padding:16px;border-right:1px solid var(--border);}
+.stat-item:last-child{border-right:none;}
+.stat-num{font-family:'Syne',sans-serif;font-size:clamp(26px,4vw,42px);font-weight:800;color:var(--lime);display:block;line-height:1;}
+.stat-label{font-size:12px;color:var(--muted);margin-top:6px;}
+@media(max-width:600px){.stats-grid{grid-template-columns:repeat(2,1fr);}.stat-item:nth-child(2){border-right:none;}.stat-item:nth-child(3){border-right:1px solid var(--border);}}
+
+section{padding:72px 20px;position:relative;}
+.container{max-width:1100px;margin:0 auto;}
+.s-label{font-size:11px;letter-spacing:3px;text-transform:uppercase;color:var(--lime);font-weight:700;margin-bottom:12px;}
+.s-title{font-family:'Syne',sans-serif;font-size:clamp(26px,4vw,48px);font-weight:800;line-height:1.1;letter-spacing:-2px;margin-bottom:16px;}
+.s-sub{font-size:17px;color:var(--muted);line-height:1.65;max-width:560px;}
+
+.steps-section{background:var(--deep);}
+.steps-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:2px;margin-top:48px;background:var(--border);border-radius:20px;overflow:hidden;}
+.step-card{background:var(--surface);padding:32px 28px;transition:background 0.2s;}
+.step-card:hover{background:var(--s2);}
+.step-num{font-family:'Syne',sans-serif;font-size:52px;font-weight:800;line-height:1;margin-bottom:16px;background:linear-gradient(135deg,var(--lime),var(--cyan));-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+.step-title{font-family:'Syne',sans-serif;font-size:17px;font-weight:700;margin-bottom:10px;}
+.step-desc{font-size:14px;color:var(--muted);line-height:1.6;}
+
+.features-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;margin-top:48px;}
+.feat-card{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:28px 24px;transition:all 0.2s;position:relative;overflow:hidden;}
+.feat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--lime),var(--cyan));opacity:0;transition:opacity 0.2s;}
+.feat-card:hover{border-color:#c1ff4e30;transform:translateY(-2px);}
+.feat-card:hover::before{opacity:1;}
+.feat-icon{font-size:32px;margin-bottom:16px;}
+.feat-title{font-family:'Syne',sans-serif;font-size:17px;font-weight:700;margin-bottom:8px;}
+.feat-desc{font-size:14px;color:var(--muted);line-height:1.6;}
+.feat-tag{display:inline-block;margin-top:12px;background:#c1ff4e15;color:var(--lime);border-radius:100px;padding:3px 12px;font-size:11px;font-weight:600;}
+
+.compare-section{background:var(--deep);}
+.compare-table{width:100%;border-collapse:collapse;margin-top:48px;border-radius:20px;overflow:hidden;}
+.compare-table th{padding:16px 20px;font-size:14px;font-weight:700;text-align:center;}
+.compare-table th:first-child{text-align:left;}
+.col-fitai{background:#c1ff4e15;color:var(--lime);}
+.col-other{color:var(--muted);}
+.compare-table td{padding:14px 20px;font-size:14px;border-bottom:1px solid var(--border);background:var(--surface);}
+.compare-table td:first-child{color:var(--muted);}
+.col-fitai-cell{background:#c1ff4e08;text-align:center;}
+.col-other-cell{text-align:center;color:var(--muted);}
+.chk{color:var(--lime);font-size:18px;}
+.crs{color:var(--red);font-size:16px;}
+.price-row td{border-bottom:none;}
+.price-row .col-fitai-cell{font-family:'Syne',sans-serif;font-weight:800;color:var(--lime);font-size:20px;}
+
+.test-section{background:var(--black);overflow:hidden;padding-bottom:72px;}
+.test-track{display:flex;gap:16px;animation:scroll 30s linear infinite;width:max-content;margin-top:16px;}
+.test-track:hover{animation-play-state:paused;}
+.test-track.rev{animation-direction:reverse;animation-duration:35s;}
+@keyframes scroll{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+.test-card{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:24px;width:300px;flex-shrink:0;transition:border-color 0.2s;}
+.test-card:hover{border-color:#c1ff4e30;}
+.test-stars{color:var(--amber);font-size:14px;margin-bottom:12px;}
+.test-text{font-size:14px;line-height:1.65;color:#d0d0ee;margin-bottom:16px;}
+.test-text strong{color:var(--lime);}
+.test-author{display:flex;align-items:center;gap:10px;}
+.test-av{width:36px;height:36px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:18px;}
+.test-name{font-size:13px;font-weight:700;}
+.test-meta{font-size:11px;color:var(--muted);margin-top:2px;}
+.test-badge{display:inline-block;background:#c1ff4e20;color:var(--lime);border-radius:100px;padding:2px 8px;font-size:10px;font-weight:700;margin-left:6px;}
+
+.results-section{background:var(--surface);}
+.results-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;margin-top:48px;}
+.result-card{background:var(--black);border:1px solid var(--border);border-radius:20px;padding:24px;}
+.r-tag{display:inline-block;border-radius:100px;padding:4px 14px;font-size:11px;font-weight:700;margin-bottom:16px;}
+.r-fat{background:#ff4d8d20;color:var(--pink);}
+.r-muscle{background:#7c4dff20;color:var(--purple);}
+.r-both{background:#00e8c820;color:var(--cyan);}
+.r-num{font-family:'Syne',sans-serif;font-size:48px;font-weight:800;line-height:1;margin-bottom:6px;}
+.r-desc{font-size:14px;color:var(--muted);line-height:1.5;}
+.r-user{font-size:12px;color:var(--muted);margin-top:12px;padding-top:12px;border-top:1px solid var(--border);}
+
+.pricing-section{background:var(--deep);text-align:center;}
+.pricing-card{background:var(--surface);border:2px solid var(--lime);border-radius:28px;padding:48px 40px;max-width:500px;margin:48px auto 0;position:relative;overflow:hidden;}
+.pricing-card::before{content:'';position:absolute;top:-100px;left:-100px;width:300px;height:300px;border-radius:50%;background:radial-gradient(circle,#c1ff4e15,transparent 70%);pointer-events:none;}
+.p-best{display:inline-block;background:var(--lime);color:#000;border-radius:100px;padding:4px 16px;font-size:11px;font-weight:800;letter-spacing:1px;text-transform:uppercase;margin-bottom:20px;}
+.p-amount{font-family:'Syne',sans-serif;font-size:72px;font-weight:900;color:var(--lime);line-height:1;margin-bottom:6px;}
+.p-period{font-size:14px;color:var(--muted);margin-bottom:32px;}
+.p-feats{text-align:left;margin-bottom:32px;}
+.p-feat{display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);font-size:14px;}
+.p-feat:last-child{border-bottom:none;}
+.p-feat-icon{color:var(--lime);font-size:16px;flex-shrink:0;margin-top:1px;}
+.p-cta{width:100%;padding:18px;border:none;border-radius:16px;background:var(--lime);color:#000;font-family:'Syne',sans-serif;font-size:16px;font-weight:800;cursor:pointer;transition:all 0.2s;margin-bottom:16px;}
+.p-cta:hover{background:var(--lime2);transform:translateY(-2px);box-shadow:0 16px 40px #c1ff4e40;}
+.p-note{font-size:12px;color:var(--muted);}
+.p-methods{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:16px;}
+.pm{background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:6px 12px;font-size:11px;color:var(--muted);}
+
+.faq-section{background:var(--black);}
+.faq-list{margin-top:48px;max-width:720px;margin-left:auto;margin-right:auto;}
+.faq-item{border-bottom:1px solid var(--border);}
+.faq-q{width:100%;background:none;border:none;color:var(--text);font-family:'Space Grotesk',sans-serif;font-size:16px;font-weight:600;padding:20px 0;text-align:left;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:16px;transition:color 0.2s;}
+.faq-q:hover{color:var(--lime);}
+.faq-icon{font-size:20px;transition:transform 0.3s;flex-shrink:0;color:var(--lime);}
+.faq-item.open .faq-icon{transform:rotate(45deg);}
+.faq-a{font-size:15px;color:var(--muted);line-height:1.7;max-height:0;overflow:hidden;transition:max-height 0.4s ease,padding 0.3s;}
+.faq-item.open .faq-a{max-height:300px;padding-bottom:20px;}
+
+.trust-strip{background:var(--surface);border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:24px 20px;}
+.trust-items{max-width:900px;margin:0 auto;display:flex;flex-wrap:wrap;justify-content:center;gap:24px;}
+.trust-item{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);}
+
+.final-cta{padding:100px 20px;text-align:center;background:radial-gradient(ellipse 80% 60% at 50% 50%,#7c4dff20 0%,transparent 70%),var(--deep);}
+.final-big{font-family:'Syne',sans-serif;font-size:clamp(60px,12vw,140px);font-weight:900;line-height:0.9;letter-spacing:-4px;background:linear-gradient(135deg,var(--lime),var(--cyan));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:24px;}
+.final-title{font-family:'Syne',sans-serif;font-size:clamp(28px,5vw,52px);font-weight:800;letter-spacing:-2px;margin-bottom:16px;}
+.final-sub{font-size:17px;color:var(--muted);margin-bottom:40px;}
+
+footer{background:var(--black);border-top:1px solid var(--border);padding:32px 24px;text-align:center;}
+.f-logo{font-family:'Syne',sans-serif;font-size:18px;font-weight:800;background:linear-gradient(135deg,var(--lime),var(--cyan));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:16px;}
+.f-links{display:flex;justify-content:center;gap:20px;margin-bottom:16px;}
+.f-links a{font-size:13px;color:var(--muted);transition:color 0.2s;}
+.f-links a:hover{color:var(--lime);}
+.f-copy{font-size:12px;color:#3a3a5a;}
+
+.reveal{opacity:0;transform:translateY(24px);transition:opacity 0.6s ease,transform 0.6s ease;}
+.reveal.visible{opacity:1;transform:translateY(0);}
+
+@media(max-width:768px){nav{padding:12px 16px;}.nav-users{display:none;}.hero-title{letter-spacing:-2px;}.pricing-card{padding:32px 24px;}}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-logo">⚡ FitAI Pro</div>
+  <div class="nav-right">
+    <span class="nav-users">+<strong id="uc">1.247</strong> usuarios activos</span>
+    <button class="nav-cta" onclick="location.href='app.html'">Empezar $9.990 →</button>
+  </div>
+</nav>
+
+<div class="notif-container" id="notifs"></div>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="live-badge"><div class="live-dot"></div><span id="live-txt">3 personas compraron en la última hora</span></div>
+  <h1 class="hero-title">Tu cuerpo.<br><span class="accent">Tu plan.<br>Tu vida.</span></h1>
+  <p class="hero-sub">El primer entrenador personal con IA que usa <strong>investigación de Harvard</strong> para crear tu plan exacto — y te guía cada día hasta tu objetivo.</p>
+  <div class="price-wrap">
+    <div><div class="price-old">$59.990/año</div></div>
+    <div><div class="price-new">$9.990</div><div class="price-sub">pesos chilenos · pago único · de por vida</div></div>
+  </div>
+  <div class="cta-wrap">
+    <button class="btn-main" onclick="location.href='app.html'">⚡ Empezar ahora por $9.990 CLP</button>
+    <span class="guarantee">🔒 Garantía de 7 días · Sin suscripciones</span>
+  </div>
+  <div class="social-proof">
+    <div class="avatars">
+      <div class="av" style="background:linear-gradient(135deg,#8b5cf6,#ec4899)">👨</div>
+      <div class="av" style="background:linear-gradient(135deg,#06b6d4,#8b5cf6)">👩</div>
+      <div class="av" style="background:linear-gradient(135deg,#34d399,#06b6d4)">🧔</div>
+      <div class="av" style="background:linear-gradient(135deg,#f59e0b,#ef4444)">👩</div>
+      <div class="av" style="background:linear-gradient(135deg,#8b5cf6,#34d399)">👨</div>
+    </div>
+    <div><div class="stars">★★★★★</div><span>+1.200 personas transformadas</span></div>
+  </div>
+  <div class="urgency">🔥 Precio sube a <strong>$19.990</strong> muy pronto — aprovechá ahora</div>
+</div>
+
+<!-- TICKER -->
+<div class="ticker-wrap"><div class="ticker">
+  <div class="ticker-item"><span>⚡ PAGO ÚNICO</span><span class="ticker-dot"></span></div>
+  <div class="ticker-item"><span>🎯 PLAN PERSONALIZADO CON IA</span><span class="ticker-dot"></span></div>
+  <div class="ticker-item"><span>🏋️ ENTRENAMIENTO SEMANAL</span><span class="ticker-dot"></span></div>
+  <div class="ticker-item"><span>🥗 NUTRICIÓN DIARIA</span><span class="ticker-dot"></span></div>
+  <div class="ticker-item"><span>📊 SEGUIMIENTO DE PROGRESO</span><span class="ticker-dot"></span></div>
+  <div class="ticker-item"><span>🤖 COACH IA 24/7</span><span class="ticker-dot"></span></div>
+  <div class="ticker-item"><span>🔬 CIENCIA DE HARVARD</span><span class="ticker-dot"></span></div>
+  <div class="ticker-item"><span>📱 APP INSTALABLE</span><span class="ticker-dot"></span></div>
+  <div class="ticker-item"><span>✅ GARANTÍA 7 DÍAS</span><span class="ticker-dot"></span></div>
+  <div class="ticker-item"><span>⚡ PAGO ÚNICO</span><span class="ticker-dot"></span></div>
+  <div class="ticker-item"><span>🎯 PLAN PERSONALIZADO CON IA</span><span class="ticker-dot"></span></div>
+  <div class="ticker-item"><span>🏋️ ENTRENAMIENTO SEMANAL</span><span class="ticker-dot"></span></div>
+  <div class="ticker-item"><span>🥗 NUTRICIÓN DIARIA</span><span class="ticker-dot"></span></div>
+  <div class="ticker-item"><span>📊 SEGUIMIENTO DE PROGRESO</span><span class="ticker-dot"></span></div>
+  <div class="ticker-item"><span>🤖 COACH IA 24/7</span><span class="ticker-dot"></span></div>
+  <div class="ticker-item"><span>🔬 CIENCIA DE HARVARD</span><span class="ticker-dot"></span></div>
+  <div class="ticker-item"><span>📱 APP INSTALABLE</span><span class="ticker-dot"></span></div>
+  <div class="ticker-item"><span>✅ GARANTÍA 7 DÍAS</span><span class="ticker-dot"></span></div>
+</div></div>
+
+<!-- STATS -->
+<div class="stats-bar"><div class="stats-grid">
+  <div class="stat-item"><span class="stat-num">+1.200</span><div class="stat-label">Usuarios activos</div></div>
+  <div class="stat-item"><span class="stat-num">4.9★</span><div class="stat-label">Calificación promedio</div></div>
+  <div class="stat-item"><span class="stat-num">-6.2kg</span><div class="stat-label">Promedio 8 semanas</div></div>
+  <div class="stat-item"><span class="stat-num">$0</span><div class="stat-label">Cobros adicionales</div></div>
+</div></div>
+
+<!-- HOW IT WORKS -->
+<section class="steps-section">
+  <div class="container">
+    <p class="s-label reveal">Cómo funciona</p>
+    <h2 class="s-title reveal">En 4 pasos estás<br>entrenando con IA.</h2>
+    <div class="steps-grid">
+      <div class="step-card reveal"><div class="step-num">01</div><div class="step-title">Cuéntanos sobre ti</div><div class="step-desc">Setup rápido de 3 minutos: objetivo, peso, altura, nivel de experiencia y equipamiento disponible.</div></div>
+      <div class="step-card reveal" style="transition-delay:.1s"><div class="step-num">02</div><div class="step-title">La IA genera tu plan</div><div class="step-desc">Basado en ciencia de Harvard, genera tu plan de entrenamiento semanal y nutrición diaria completamente personalizados.</div></div>
+      <div class="step-card reveal" style="transition-delay:.2s"><div class="step-num">03</div><div class="step-title">Registrás y progresás</div><div class="step-desc">Cada día registrás tu progreso. La IA analiza tus datos y ajusta las recomendaciones en tiempo real.</div></div>
+      <div class="step-card reveal" style="transition-delay:.3s"><div class="step-num">04</div><div class="step-title">Consultás 24/7</div><div class="step-desc">¿Dudas sobre un ejercicio o sustitución de alimento? El coach IA responde en segundos, cuando quieras.</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section>
+  <div class="container">
+    <p class="s-label reveal">Qué incluye</p>
+    <h2 class="s-title reveal">Todo lo que necesitás.<br>Nada que no.</h2>
+    <div class="features-grid">
+      <div class="feat-card reveal"><div class="feat-icon">🏋️</div><div class="feat-title">Plan de entrenamiento semanal</div><div class="feat-desc">Rutinas completas adaptadas a tu nivel, objetivo y equipamiento. En casa o en el gimnasio.</div><span class="feat-tag">Renovable semanalmente</span></div>
+      <div class="feat-card reveal" style="transition-delay:.05s"><div class="feat-icon">🥗</div><div class="feat-title">Plan de alimentación diario</div><div class="feat-desc">5 comidas con macros calculados según tu peso y objetivo. Recetas simples y específicas.</div><span class="feat-tag">Regenerable cada día</span></div>
+      <div class="feat-card reveal" style="transition-delay:.1s"><div class="feat-icon">📊</div><div class="feat-title">Seguimiento de progreso</div><div class="feat-desc">Registrá peso, calorías, agua, sueño y energía. Ve tu progreso hacia la meta en tiempo real.</div><span class="feat-tag">Historial 90 días</span></div>
+      <div class="feat-card reveal" style="transition-delay:.15s"><div class="feat-icon">🧠</div><div class="feat-title">Análisis de IA diario</div><div class="feat-desc">Cada día que registrás, la IA analiza tus datos y te da feedback personalizado y científico.</div><span class="feat-tag">Basado en Harvard</span></div>
+      <div class="feat-card reveal" style="transition-delay:.2s"><div class="feat-icon">💬</div><div class="feat-title">Coach IA 24/7</div><div class="feat-desc">Chat con tu entrenador virtual. Preguntá sobre ejercicios, sustituciones, motivación — cuando quieras.</div><span class="feat-tag">Respuesta inmediata</span></div>
+      <div class="feat-card reveal" style="transition-delay:.25s"><div class="feat-icon">📱</div><div class="feat-title">App instalable (PWA)</div><div class="feat-desc">Se instala en tu teléfono como app nativa. Sin App Store, sin actualizaciones forzadas.</div><span class="feat-tag">Android · iOS · Web</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- COMPARISON -->
+<section class="compare-section">
+  <div class="container">
+    <p class="s-label reveal">Comparación</p>
+    <h2 class="s-title reveal">¿Por qué FitAI Pro<br>gana siempre?</h2>
+    <div style="overflow-x:auto">
+      <table class="compare-table">
+        <thead><tr>
+          <th style="background:var(--surface);text-align:left;padding:20px">Característica</th>
+          <th class="col-fitai" style="border-radius:12px 12px 0 0">⚡ FitAI Pro</th>
+          <th class="col-other">Nutricionista</th>
+          <th class="col-other">Apps fitness</th>
+        </tr></thead>
+        <tbody>
+          <tr><td>Plan 100% personalizado</td><td class="col-fitai-cell"><span class="chk">✓</span></td><td class="col-other-cell"><span class="chk">✓</span></td><td class="col-other-cell"><span class="crs">✗</span></td></tr>
+          <tr><td>Disponible 24/7</td><td class="col-fitai-cell"><span class="chk">✓</span></td><td class="col-other-cell"><span class="crs">✗</span></td><td class="col-other-cell"><span class="chk">✓</span></td></tr>
+          <tr><td>Análisis diario con IA</td><td class="col-fitai-cell"><span class="chk">✓</span></td><td class="col-other-cell"><span class="crs">✗</span></td><td class="col-other-cell"><span class="crs">✗</span></td></tr>
+          <tr><td>Entrenamiento + Nutrición</td><td class="col-fitai-cell"><span class="chk">✓</span></td><td class="col-other-cell" style="color:var(--muted)">Solo nutrición</td><td class="col-other-cell" style="color:var(--muted)">Solo entrena</td></tr>
+          <tr><td>Sin suscripción mensual</td><td class="col-fitai-cell"><span class="chk">✓</span></td><td class="col-other-cell"><span class="crs">✗</span></td><td class="col-other-cell"><span class="crs">✗</span></td></tr>
+          <tr class="price-row"><td style="font-weight:700">Precio</td><td class="col-fitai-cell">$9.990 único</td><td class="col-other-cell">$30.000+/mes</td><td class="col-other-cell">$8.000+/mes</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- TESTIMONIALS -->
+<section class="test-section">
+  <div class="container">
+    <p class="s-label reveal" style="text-align:center">Resultados reales</p>
+    <h2 class="s-title reveal" style="text-align:center">Lo que dicen<br>nuestros usuarios.</h2>
+  </div>
+  <div style="margin-top:48px;overflow:hidden">
+    <div class="test-track">
+      <div class="test-card"><div class="test-stars">★★★★★</div><div class="test-text">"Llevo 8 semanas y bajé <strong>6.2 kg de grasa</strong> sin perder músculo. El plan de alimentación es increíblemente específico."</div><div class="test-author"><div class="test-av" style="background:linear-gradient(135deg,#8b5cf6,#ec4899)">👨</div><div><div class="test-name">Carlos M. <span class="test-badge">-6.2kg</span></div><div class="test-meta">Quema de grasa · Santiago</div></div></div></div>
+      <div class="test-card"><div class="test-stars">★★★★★</div><div class="test-text">"Por $9.990 obtuve lo que me cobraban $30.000/mes con mi nutricionista. <strong>El análisis diario es lo que marca la diferencia.</strong>"</div><div class="test-author"><div class="test-av" style="background:linear-gradient(135deg,#06b6d4,#8b5cf6)">👩</div><div><div class="test-name">Valentina R.</div><div class="test-meta">Recomposición · Buenos Aires</div></div></div></div>
+      <div class="test-card"><div class="test-stars">★★★★★</div><div class="test-text">"El chat con el coach IA es brutal. Respuestas científicas a cualquier hora. <strong>Subí 4 kg de músculo en 10 semanas.</strong>"</div><div class="test-author"><div class="test-av" style="background:linear-gradient(135deg,#34d399,#06b6d4)">🧔</div><div><div class="test-name">Diego F. <span class="test-badge">+4kg</span></div><div class="test-meta">Masa muscular · Bogotá</div></div></div></div>
+      <div class="test-card"><div class="test-stars">★★★★★</div><div class="test-text">"Soy principiante y FitAI me genera rutinas para hacer en casa y me explica <strong>cada ejercicio paso a paso.</strong>"</div><div class="test-author"><div class="test-av" style="background:linear-gradient(135deg,#f59e0b,#ef4444)">👩</div><div><div class="test-name">Sofía L.</div><div class="test-meta">Principiante · México DF</div></div></div></div>
+      <div class="test-card"><div class="test-stars">★★★★★</div><div class="test-text">"Perdí 8 kg en 3 meses. La IA me adapta las comidas cuando no tengo algún ingrediente. <strong>Increíble.</strong>"</div><div class="test-author"><div class="test-av" style="background:linear-gradient(135deg,#8b5cf6,#34d399)">👨</div><div><div class="test-name">Martín P. <span class="test-badge">-8kg</span></div><div class="test-meta">Quema de grasa · Lima</div></div></div></div>
+      <div class="test-card"><div class="test-stars">★★★★★</div><div class="test-text">"Tengo 52 años y pensé que era tarde para cambiar. <strong>Bajé 5 kg y tengo energía que no tenía hace 10 años.</strong>"</div><div class="test-author"><div class="test-av" style="background:linear-gradient(135deg,#ec4899,#f59e0b)">👩</div><div><div class="test-name">Patricia G. <span class="test-badge">-5kg</span></div><div class="test-meta">52 años · Montevideo</div></div></div></div>
+      <!-- duplicados -->
+      <div class="test-card"><div class="test-stars">★★★★★</div><div class="test-text">"Llevo 8 semanas y bajé <strong>6.2 kg de grasa</strong> sin perder músculo. El plan de alimentación es increíblemente específico."</div><div class="test-author"><div class="test-av" style="background:linear-gradient(135deg,#8b5cf6,#ec4899)">👨</div><div><div class="test-name">Carlos M. <span class="test-badge">-6.2kg</span></div><div class="test-meta">Quema de grasa · Santiago</div></div></div></div>
+      <div class="test-card"><div class="test-stars">★★★★★</div><div class="test-text">"Por $9.990 obtuve lo que me cobraban $30.000/mes con mi nutricionista. <strong>El análisis diario es lo que marca la diferencia.</strong>"</div><div class="test-author"><div class="test-av" style="background:linear-gradient(135deg,#06b6d4,#8b5cf6)">👩</div><div><div class="test-name">Valentina R.</div><div class="test-meta">Recomposición · Buenos Aires</div></div></div></div>
+      <div class="test-card"><div class="test-stars">★★★★★</div><div class="test-text">"El chat con el coach IA es brutal. Respuestas científicas a cualquier hora. <strong>Subí 4 kg de músculo en 10 semanas.</strong>"</div><div class="test-author"><div class="test-av" style="background:linear-gradient(135deg,#34d399,#06b6d4)">🧔</div><div><div class="test-name">Diego F. <span class="test-badge">+4kg</span></div><div class="test-meta">Masa muscular · Bogotá</div></div></div></div>
+      <div class="test-card"><div class="test-stars">★★★★★</div><div class="test-text">"Soy principiante y FitAI me genera rutinas para hacer en casa y me explica <strong>cada ejercicio paso a paso.</strong>"</div><div class="test-author"><div class="test-av" style="background:linear-gradient(135deg,#f59e0b,#ef4444)">👩</div><div><div class="test-name">Sofía L.</div><div class="test-meta">Principiante · México DF</div></div></div></div>
+      <div class="test-card"><div class="test-stars">★★★★★</div><div class="test-text">"Perdí 8 kg en 3 meses. La IA me adapta las comidas cuando no tengo algún ingrediente. <strong>Increíble.</strong>"</div><div class="test-author"><div class="test-av" style="background:linear-gradient(135deg,#8b5cf6,#34d399)">👨</div><div><div class="test-name">Martín P. <span class="test-badge">-8kg</span></div><div class="test-meta">Quema de grasa · Lima</div></div></div></div>
+      <div class="test-card"><div class="test-stars">★★★★★</div><div class="test-text">"Tengo 52 años y pensé que era tarde para cambiar. <strong>Bajé 5 kg y tengo energía que no tenía hace 10 años.</strong>"</div><div class="test-author"><div class="test-av" style="background:linear-gradient(135deg,#ec4899,#f59e0b)">👩</div><div><div class="test-name">Patricia G. <span class="test-badge">-5kg</span></div><div class="test-meta">52 años · Montevideo</div></div></div></div>
+    </div>
+    <div class="test-track rev" style="margin-top:16px">
+      <div class="test-card"><div class="test-stars">★★★★★</div><div class="test-text">"Después de 2 años sin resultados, FitAI me dio un plan que <strong>realmente funciona para mi cuerpo.</strong> -4.5 kg en 6 semanas."</div><div class="test-author"><div class="test-av" style="background:linear-gradient(135deg,#7c4dff,#00e8c8)">👨</div><div><div class="test-name">Rodrigo A. <span class="test-badge">-4.5kg</span></div><div class="test-meta">Recomposición · Santiago</div></div></div></div>
+      <div class="test-card"><div class="test-stars">★★★★★</div><div class="test-text">"La IA detecta cuando no dormí bien y ajusta la intensidad del entreno. <strong>Muy inteligente, muy personalizado.</strong>"</div><div class="test-author"><div class="test-av" style="background:linear-gradient(135deg,#f472b6,#8b5cf6)">👩</div><div><div class="test-name">Camila V.</div><div class="test-meta">Masa muscular · Medellín</div></div></div></div>
+      <div class="test-card"><div class="test-stars">★★★★★</div><div class="test-text">"Tengo lesión de rodilla y el coach me dio una rutina completa sin impacto. <strong>No esperaba eso, excelente.</strong>"</div><div class="test-author"><div class="test-av" style="background:linear-gradient(135deg,#34d399,#8b5cf6)">🧔</div><div><div class="test-name">Fernando C.</div><div class="test-meta">Recuperación · Buenos Aires</div></div></div></div>
+      <div class="test-card"><div class="test-stars">★★★★★</div><div class="test-text">"Empecé pesando 98 kg. Hoy peso 84 kg. <strong>14 kg en 5 meses</strong> siguiendo el plan. No lo puedo creer todavía."</div><div class="test-author"><div class="test-av" style="background:linear-gradient(135deg,#fbbf24,#ef4444)">👨</div><div><div class="test-name">Jorge M. <span class="test-badge">-14kg</span></div><div class="test-meta">Quema de grasa · Lima</div></div></div></div>
+      <div class="test-card"><div class="test-stars">★★★★★</div><div class="test-text">"Soy vegana y la IA adaptó todo el plan con proteína vegetal. <strong>Perfecta para mí, impresionante.</strong>"</div><div class="test-author"><div class="test-av" style="background:linear-gradient(135deg,#06b6d4,#34d399)">👩</div><div><div class="test-name">Lucía T.</div><div class="test-meta">Recomposición · Madrid</div></div></div></div>
+      <div class="test-card"><div class="test-stars">★★★★★</div><div class="test-text">"El informe semanal me muestra exactamente qué mejoró. Es como tener un entrenador que <strong>realmente te conoce.</strong>"</div><div class="test-author"><div class="test-av" style="background:linear-gradient(135deg,#8b5cf6,#ec4899)">👨</div><div><div class="test-name">Sebastián O.</div><div class="test-meta">Masa muscular · Bogotá</div></div></div></div>
+      <!-- duplicados -->
+      <div class="test-card"><div class="test-stars">★★★★★</div><div class="test-text">"Después de 2 años sin resultados, FitAI me dio un plan que <strong>realmente funciona para mi cuerpo.</strong> -4.5 kg en 6 semanas."</div><div class="test-author"><div class="test-av" style="background:linear-gradient(135deg,#7c4dff,#00e8c8)">👨</div><div><div class="test-name">Rodrigo A. <span class="test-badge">-4.5kg</span></div><div class="test-meta">Recomposición · Santiago</div></div></div></div>
+      <div class="test-card"><div class="test-stars">★★★★★</div><div class="test-text">"La IA detecta cuando no dormí bien y ajusta la intensidad del entreno. <strong>Muy inteligente, muy personalizado.</strong>"</div><div class="test-author"><div class="test-av" style="background:linear-gradient(135deg,#f472b6,#8b5cf6)">👩</div><div><div class="test-name">Camila V.</div><div class="test-meta">Masa muscular · Medellín</div></div></div></div>
+      <div class="test-card"><div class="test-stars">★★★★★</div><div class="test-text">"Tengo lesión de rodilla y el coach me dio una rutina completa sin impacto. <strong>No esperaba eso, excelente.</strong>"</div><div class="test-author"><div class="test-av" style="background:linear-gradient(135deg,#34d399,#8b5cf6)">🧔</div><div><div class="test-name">Fernando C.</div><div class="test-meta">Recuperación · Buenos Aires</div></div></div></div>
+      <div class="test-card"><div class="test-stars">★★★★★</div><div class="test-text">"Empecé pesando 98 kg. Hoy peso 84 kg. <strong>14 kg en 5 meses</strong> siguiendo el plan. No lo puedo creer todavía."</div><div class="test-author"><div class="test-av" style="background:linear-gradient(135deg,#fbbf24,#ef4444)">👨</div><div><div class="test-name">Jorge M. <span class="test-badge">-14kg</span></div><div class="test-meta">Quema de grasa · Lima</div></div></div></div>
+      <div class="test-card"><div class="test-stars">★★★★★</div><div class="test-text">"Soy vegana y la IA adaptó todo el plan con proteína vegetal. <strong>Perfecta para mí, impresionante.</strong>"</div><div class="test-author"><div class="test-av" style="background:linear-gradient(135deg,#06b6d4,#34d399)">👩</div><div><div class="test-name">Lucía T.</div><div class="test-meta">Recomposición · Madrid</div></div></div></div>
+      <div class="test-card"><div class="test-stars">★★★★★</div><div class="test-text">"El informe semanal me muestra exactamente qué mejoró. Es como tener un entrenador que <strong>realmente te conoce.</strong>"</div><div class="test-author"><div class="test-av" style="background:linear-gradient(135deg,#8b5cf6,#ec4899)">👨</div><div><div class="test-name">Sebastián O.</div><div class="test-meta">Masa muscular · Bogotá</div></div></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- RESULTS -->
+<section class="results-section">
+  <div class="container">
+    <p class="s-label reveal">Resultados promedio</p>
+    <h2 class="s-title reveal">Números reales de<br>usuarios reales.</h2>
+    <div class="results-grid">
+      <div class="result-card reveal"><span class="r-tag r-fat">🔥 Quema de grasa</span><div class="r-num" style="color:var(--pink)">-6.2kg</div><div class="r-desc">Promedio de grasa perdida en las primeras 8 semanas siguiendo el plan completo.</div><div class="r-user">📍 Carlos M., Santiago · 8 semanas</div></div>
+      <div class="result-card reveal" style="transition-delay:.1s"><span class="r-tag r-muscle">💪 Masa muscular</span><div class="r-num" style="color:var(--purple)">+4kg</div><div class="r-desc">Aumento de masa muscular promedio en 10 semanas con protocolo de hipertrofia.</div><div class="r-user">📍 Diego F., Bogotá · 10 semanas</div></div>
+      <div class="result-card reveal" style="transition-delay:.2s"><span class="r-tag r-both">⚡ Transformación</span><div class="r-num" style="color:var(--cyan)">-14kg</div><div class="r-desc">Transformación total combinando pérdida de grasa y ganancia muscular simultánea.</div><div class="r-user">📍 Jorge M., Lima · 5 meses</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- SCIENCE -->
+<section style="background:var(--deep)">
+  <div class="container">
+    <p class="s-label reveal">Respaldo científico</p>
+    <h2 class="s-title reveal">No es una app más.<br>Es ciencia aplicada.</h2>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:40px;align-items:start;margin-top:48px">
+      <div class="reveal">
+        <p style="font-size:16px;color:var(--muted);line-height:1.8;margin-bottom:20px">Cada recomendación está basada en los principios más actuales de metabolismo deportivo. No en tendencias de redes sociales.</p>
+        <p style="font-size:16px;color:var(--muted);line-height:1.8">La diferencia entre resultados mediocres y transformación real está en la <strong style="color:var(--text)">precisión científica</strong> del enfoque.</p>
+        <div style="margin-top:28px;display:flex;flex-direction:column;gap:12px">
+          <div style="display:flex;align-items:center;gap:10px;font-size:14px"><span style="color:var(--lime);font-size:18px">→</span><span>Zonas de intensidad óptimas para oxidación lipídica</span></div>
+          <div style="display:flex;align-items:center;gap:10px;font-size:14px"><span style="color:var(--lime);font-size:18px">→</span><span>Distribución de proteína para hipertrofia máxima</span></div>
+          <div style="display:flex;align-items:center;gap:10px;font-size:14px"><span style="color:var(--lime);font-size:18px">→</span><span>Timing nutricional y ventanas anabólicas</span></div>
+          <div style="display:flex;align-items:center;gap:10px;font-size:14px"><span style="color:var(--lime);font-size:18px">→</span><span>Combinación óptima HIIT vs cardio según objetivo</span></div>
+        </div>
+      </div>
+      <div class="reveal" style="transition-delay:.1s">
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:28px">
+          <div style="font-size:11px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin-bottom:16px">FUENTE CIENTÍFICA</div>
+          <div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:800;color:var(--lime);margin-bottom:20px;line-height:1.2">Harvard Medical School</div>
+          <div style="display:flex;flex-direction:column;gap:12px">
+            <div style="background:var(--s2);border-radius:12px;padding:14px;font-size:13px;color:var(--muted);line-height:1.5"><strong style="color:var(--text)">Metabolismo de grasas:</strong> Zonas de intensidad para oxidación lipídica máxima</div>
+            <div style="background:var(--s2);border-radius:12px;padding:14px;font-size:13px;color:var(--muted);line-height:1.5"><strong style="color:var(--text)">Síntesis proteica:</strong> Distribución para hipertrofia y preservación muscular</div>
+            <div style="background:var(--s2);border-radius:12px;padding:14px;font-size:13px;color:var(--muted);line-height:1.5"><strong style="color:var(--text)">Recuperación:</strong> Protocolo de sueño y descanso activo optimizado</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TRUST -->
+<div class="trust-strip">
+  <div class="trust-items">
+    <div class="trust-item"><span>🔒</span> Pago 100% seguro</div>
+    <div class="trust-item"><span>↩️</span> Garantía 7 días</div>
+    <div class="trust-item"><span>♾️</span> Acceso de por vida</div>
+    <div class="trust-item"><span>🚫</span> Sin renovaciones</div>
+    <div class="trust-item"><span>📱</span> Android e iOS</div>
+    <div class="trust-item"><span>🌎</span> Para toda Latinoamérica</div>
+  </div>
+</div>
+
+<!-- PRICING -->
+<section class="pricing-section" id="pricing">
+  <div class="container">
+    <p class="s-label reveal">Precio</p>
+    <h2 class="s-title reveal">Sin suscripciones.<br>Sin trampas.</h2>
+    <p class="s-sub reveal" style="margin:0 auto">Un solo pago. Acceso completo para siempre. Sin letras chicas.</p>
+    <div class="pricing-card reveal">
+      <div class="p-best">🏆 Mejor valor</div>
+      <div style="text-decoration:line-through;color:var(--muted);font-size:18px;margin-bottom:4px">$59.990</div>
+      <div class="p-amount">$9.990</div>
+      <div class="p-period">pesos chilenos · pago único · acceso de por vida</div>
+      <div class="p-feats">
+        <div class="p-feat"><span class="p-feat-icon">✓</span>Plan de entrenamiento semanal personalizado</div>
+        <div class="p-feat"><span class="p-feat-icon">✓</span>Plan de alimentación diario con macros</div>
+        <div class="p-feat"><span class="p-feat-icon">✓</span>Registro y seguimiento de progreso diario</div>
+        <div class="p-feat"><span class="p-feat-icon">✓</span>Análisis de IA personalizado cada día</div>
+        <div class="p-feat"><span class="p-feat-icon">✓</span>Coach IA disponible 24/7 vía chat</div>
+        <div class="p-feat"><span class="p-feat-icon">✓</span>Informes semanales de progreso científico</div>
+        <div class="p-feat"><span class="p-feat-icon">✓</span>App instalable en Android e iOS</div>
+        <div class="p-feat"><span class="p-feat-icon">✓</span>Actualizaciones gratuitas para siempre</div>
+      </div>
+      <button class="p-cta" onclick="location.href='app.html'">⚡ Empezar por $9.990 CLP ahora →</button>
+      <div class="p-note">🔒 Pago seguro con MercadoPago · Garantía de 7 días sin preguntas</div>
+      <div class="p-methods">
+        <span class="pm">💳 Débito / Crédito</span>
+        <span class="pm">🔵 Redcompra</span>
+        <span class="pm">💰 Saldo MP</span>
+        <span class="pm">🏦 Transferencia</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section class="faq-section">
+  <div class="container">
+    <p class="s-label reveal" style="text-align:center">FAQ</p>
+    <h2 class="s-title reveal" style="text-align:center">Preguntas frecuentes.</h2>
+    <div class="faq-list reveal">
+      <div class="faq-item"><button class="faq-q" onclick="this.parentElement.classList.toggle('open')">¿Por qué solo $9.990 CLP? ¿Hay costos ocultos?<span class="faq-icon">+</span></button><div class="faq-a">No hay costos ocultos, suscripciones ni renovaciones automáticas. El modelo de $9.990 CLP existe porque queremos que cualquier persona en Latinoamérica acceda a un entrenador de calidad. Un pago, acceso completo para siempre.</div></div>
+      <div class="faq-item"><button class="faq-q" onclick="this.parentElement.classList.toggle('open')">¿Funciona para bajar de peso y para ganar músculo?<span class="faq-icon">+</span></button><div class="faq-a">Sí. Podés elegir entre 3 objetivos: quema de grasa, ganancia de masa muscular, o recomposición corporal (ambos simultáneamente). La IA genera planes completamente diferentes según tu objetivo.</div></div>
+      <div class="faq-item"><button class="faq-q" onclick="this.parentElement.classList.toggle('open')">¿Es necesario ir al gimnasio?<span class="faq-icon">+</span></button><div class="faq-a">No. Podés indicar si entrenás en casa o en gimnasio, y el plan se adapta a tu equipamiento disponible. Hay rutinas para todos los niveles y contextos.</div></div>
+      <div class="faq-item"><button class="faq-q" onclick="this.parentElement.classList.toggle('open')">¿Cada cuánto se actualiza el plan?<span class="faq-icon">+</span></button><div class="faq-a">El plan de entrenamiento se puede renovar semanalmente. El plan de nutrición puede regenerarse diariamente con diferentes alimentos. Los cambios son ilimitados.</div></div>
+      <div class="faq-item"><button class="faq-q" onclick="this.parentElement.classList.toggle('open')">¿Funciona en iPhone y Android?<span class="faq-icon">+</span></button><div class="faq-a">Sí. Es una PWA que se instala desde el navegador en cualquier dispositivo. No necesitás descargarla de ninguna tienda de apps.</div></div>
+      <div class="faq-item"><button class="faq-q" onclick="this.parentElement.classList.toggle('open')">¿Qué pasa si no estoy satisfecho?<span class="faq-icon">+</span></button><div class="faq-a">Tenés 7 días de garantía de devolución completa. Escribinos y te devolvemos los $9.990 sin preguntas. Queremos que estés 100% seguro.</div></div>
+      <div class="faq-item"><button class="faq-q" onclick="this.parentElement.classList.toggle('open')">¿Cuántas consultas al coach IA tengo por día?<span class="faq-icon">+</span></button><div class="faq-a">El plan incluye 2 consultas de IA por día para los planes de entrenamiento, nutrición y análisis personalizados. Es más que suficiente para transformar tu cuerpo con resultados reales.</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- FINAL CTA -->
+<section class="final-cta">
+  <div class="container">
+    <div class="final-big reveal">$9.990</div>
+    <h2 class="final-title reveal">¿Qué esperás?<br>Tu cuerpo no.</h2>
+    <p class="final-sub reveal">Empezá hoy. Resultados en semanas. Un pago único para siempre.</p>
+    <button class="btn-main reveal" onclick="location.href='app.html'">⚡ Comenzar ahora por $9.990 CLP</button>
+    <p style="margin-top:16px;font-size:12px;color:var(--muted)" class="reveal">🔒 Garantía de 7 días · Sin renovaciones · Acceso de por vida</p>
+  </div>
+</section>
+
+<footer>
+  <div class="f-logo">⚡ FitAI Pro</div>
+  <div class="f-links"><a href="#">Privacidad</a><a href="#">Términos</a><a href="mailto:contacto@fitai.cl">Contacto</a></div>
+  <div class="f-copy">© 2026 FitAI Pro · Todos los derechos reservados · Hecho con ❤️ en Chile</div>
+</footer>
+
+<script>
+// REVEAL
+const obs = new IntersectionObserver(entries => {
+  entries.forEach(e => { if(e.isIntersecting){e.target.classList.add('visible');obs.unobserve(e.target);} });
+},{threshold:0.1});
+document.querySelectorAll('.reveal').forEach(el=>obs.observe(el));
+
+// NOTIFICATIONS
+const notifs=[
+  {av:'👨',col:'linear-gradient(135deg,#8b5cf6,#ec4899)',txt:'<strong>Carlos de Santiago</strong> acaba de comprar FitAI Pro'},
+  {av:'👩',col:'linear-gradient(135deg,#06b6d4,#8b5cf6)',txt:'<strong>Valentina de Buenos Aires</strong> perdió 3.2 kg esta semana'},
+  {av:'🧔',col:'linear-gradient(135deg,#34d399,#06b6d4)',txt:'<strong>Diego de Bogotá</strong> completó 7 días seguidos de entreno'},
+  {av:'👩',col:'linear-gradient(135deg,#f59e0b,#ef4444)',txt:'<strong>Sofía de México</strong> acaba de registrar su progreso'},
+  {av:'👨',col:'linear-gradient(135deg,#7c4dff,#00e8c8)',txt:'<strong>Rodrigo de Lima</strong> alcanzó su peso objetivo 🎉'},
+  {av:'👩',col:'linear-gradient(135deg,#ec4899,#f59e0b)',txt:'<strong>Patricia de Montevideo</strong> acaba de comprar FitAI Pro'},
+  {av:'👨',col:'linear-gradient(135deg,#34d399,#8b5cf6)',txt:'<strong>Martín de Santiago</strong> generó su plan semanal'},
+];
+let ni=0;
+const nc=document.getElementById('notifs');
+function showN(){
+  const d=notifs[ni%notifs.length];ni++;
+  const el=document.createElement('div');
+  el.className='notif';
+  el.innerHTML=`<div class="notif-av" style="background:${d.col}">${d.av}</div><div class="notif-text">${d.txt}<strong>Hace ${Math.floor(Math.random()*9)+1} minutos</strong></div><div class="notif-dot"></div>`;
+  nc.appendChild(el);
+  setTimeout(()=>el.classList.add('show'),100);
+  setTimeout(()=>{el.classList.remove('show');setTimeout(()=>el.remove(),400);},4000);
+}
+setTimeout(()=>{showN();setInterval(showN,6000);},3000);
+
+// LIVE TEXT
+const liveT=['3 personas compraron en la última hora','127 usuarios entrenaron hoy','2 personas compraron en los últimos 30 min','+1.200 usuarios activos ahora'];
+let li=0;
+setInterval(()=>{li=(li+1)%liveT.length;const el=document.getElementById('live-txt');if(el)el.textContent=liveT[li];},5000);
+
+// COUNTER
+let cnt=1247;
+setInterval(()=>{if(Math.random()>0.6){cnt+=Math.floor(Math.random()*3)+1;const el=document.getElementById('uc');if(el)el.textContent=cnt.toLocaleString('es-CL');}},8000);
+</script>
+</body>
+</html>
