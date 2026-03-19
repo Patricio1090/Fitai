@@ -152,9 +152,9 @@ textarea { resize: none; height: 72px; }
 const CONFIG = {
   MP_PUBLIC_KEY: 'APP_USR-ade94a33-3e1d-416d-9241-1f744a93bc6f',
   PAYMENT_ENDPOINT: 'https://mysuperfitness.netlify.app/.netlify/functions/create-preference',
-  AMOUNT: 990,
+  AMOUNT: 9990,
   CURRENCY: 'CLP',
-  PRICE_DISPLAY: '$990',
+  PRICE_DISPLAY: '$9.990',
 };
 // ---
 
@@ -336,25 +336,34 @@ function getSYS() {
 }
 
 async function claude(messages, max=1000) {
+  // Control de límite diario: 2 consultas por día
+  const today = new Date().toLocaleDateString('es-CL');
+  const usageKey = 'fitai_usage_' + today;
+  const usage = parseInt(localStorage.getItem(usageKey) || '0');
+  if (usage >= 2) {
+    return '⚠️ Alcanzaste el límite de 2 consultas de IA por hoy. Vuelve mañana 💪';
+  }
+  localStorage.setItem(usageKey, usage + 1);
+
   try {
-    const GEMINI_KEY = ['AIzaSyDVPNvJSo89aVlCGzeXJfDIWb', 'Ru6rmouj8'].join('');
-    const sys = getSYS();
-    const contents = messages.map(m => ({
-      role: m.role === 'assistant' ? 'model' : 'user',
-      parts: [{ text: m.content }]
-    }));
-    const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=' + GEMINI_KEY, {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': ['sk-ant-api03-uI8l0mS2FhQc0ijODkBxRCPsp5ofNS4XstfGne_TPrtZK6S8ok5Rh', 'gZIShkIwhvNwiIVQBektcmHUBQepkf_Sw-JPp2uAAA'].join(''),
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
       body: JSON.stringify({
-        systemInstruction: { parts: [{ text: sys }] },
-        contents,
-        generationConfig: { maxOutputTokens: max }
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: max,
+        system: getSYS(),
+        messages
       })
     });
     const d = await res.json();
     if (d.error) return '⚠️ Error: ' + d.error.message;
-    return d.candidates?.[0]?.content?.parts?.[0]?.text || '⚠️ Sin respuesta';
+    return d.content?.map(b => b.text || '').join('') || '⚠️ Sin respuesta';
   } catch(e) {
     return '⚠️ Error de conexión: ' + e.message;
   }
@@ -501,7 +510,7 @@ function renderAuth() {
   div.innerHTML = `
     <div class="screen-logo">⚡</div>
     <div class="screen-title">FitAI Pro</div>
-    <div class="screen-sub">Tu entrenador personal con IA · Solo $990 CLP</div>
+    <div class="screen-sub">Tu entrenador personal con IA · Solo $9.990 CLP</div>
     <div class="auth-card">
       <div class="auth-tabs">
         <button class="auth-tab ${STATE.authMode==='login'?'active':''}" id="tab-login">Ingresar</button>
@@ -565,7 +574,7 @@ function renderPaywall() {
     <div class="paywall-card">
       <div style="display:inline-block;background:var(--lime);color:#000;border-radius:100px;padding:4px 16px;font-size:11px;font-weight:800;letter-spacing:1px;text-transform:uppercase;margin-bottom:12px">Acceso de por vida</div>
       <div class="paywall-price">${CONFIG.PRICE_DISPLAY}</div>
-      <div class="paywall-period">pesos chilenos · pago único · sin renovaciones</div>
+      <div class="paywall-period">pesos chilenos · pago único · acceso de por vida</div>
 
       <div class="paywall-features">
         ${['Plan de entrenamiento semanal con IA','Plan de alimentación diario personalizado','Seguimiento de progreso diario','Análisis de IA y feedback científico','Coach IA disponible 24/7','App instalable en tu teléfono'].map(f=>`<div class="paywall-feat">${f}</div>`).join('')}
@@ -585,7 +594,7 @@ function renderPaywall() {
         ${STATE.payLoading
           ? '⏳ Conectando con MercadoPago…'
           : isDemo
-            ? '⚡ Pagar $990 CLP (modo demo)'
+            ? '⚡ Pagar $9.990 CLP (modo demo)'
             : `⚡ Ir a pagar ${CONFIG.PRICE_DISPLAY} ${CONFIG.CURRENCY} →`}
       </button>
 
