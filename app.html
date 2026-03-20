@@ -369,30 +369,64 @@ async function claude(messages, max=1000) {
   }
 }
 
-// --- AUTH (simulado con localStorage - en producción usa tu backend) ---
-// En producción real, reemplaza estas funciones con llamadas a tu API de auth
-function authRegister(email, password, name) {
-  // Simula registro - en producción: POST /api/register
-  const users = JSON.parse(localStorage.getItem('fitai_users')||'{}');
-  if (users[email]) throw new Error('Este email ya está registrado.');
+// --- AUTH con Supabase como fuente de verdad ---
+async function authRegister(email, password, name) {
+  // Admin superusuario
+  if (email === 'admin@fitai.cl') throw new Error('Email reservado.');
+  initSupabase();
+  if (!supa) throw new Error('Error de conexión.');
+
+  // Verificar si ya existe
+  const { data: existing } = await supa.from('users').select('email').eq('email', email).single();
+  if (existing) throw new Error('Este email ya está registrado.');
+
   const user = { email, name, paid: false, token: btoa(email+':'+Date.now()) };
+  const { error } = await supa.from('users').insert({
+    email,
+    name,
+    password_hash: btoa(password),
+    paid: false,
+    setup_done: false,
+    created_at: new Date().toISOString(),
+  });
+  if (error) throw new Error('Error al registrar: ' + error.message);
+
+  // Guardar también en localStorage como caché
+  const users = JSON.parse(localStorage.getItem('fitai_users')||'{}');
   users[email] = { ...user, passwordHash: btoa(password) };
   localStorage.setItem('fitai_users', JSON.stringify(users));
-  dbSaveUser({...user, passwordHash: btoa(password)});
   return user;
 }
-function authLogin(email, password) {
-  // SUPERUSUARIO ADMIN - acceso sin pago para pruebas
+
+async function authLogin(email, password) {
+  // Admin superusuario
   if (email === 'admin@fitai.cl' && password === 'fitai2024admin') {
     return { email: 'admin@fitai.cl', name: 'Admin', paid: true, token: 'admin-token' };
   }
-  // Login normal
+
+  initSupabase();
+  if (!supa) {
+    // Fallback a localStorage si no hay conexión
+    const users = JSON.parse(localStorage.getItem('fitai_users')||'{}');
+    const u = users[email];
+    if (!u) throw new Error('Email no encontrado.');
+    if (u.passwordHash !== btoa(password)) throw new Error('Contraseña incorrecta.');
+    return { email: u.email, name: u.name, paid: u.paid, token: u.token };
+  }
+
+  // Login desde Supabase
+  const { data: u, error } = await supa.from('users').select('*').eq('email', email).single();
+  if (error || !u) throw new Error('Email no encontrado.');
+  if (u.password_hash !== btoa(password)) throw new Error('Contraseña incorrecta.');
+
+  // Actualizar caché local
   const users = JSON.parse(localStorage.getItem('fitai_users')||'{}');
-  const u = users[email];
-  if (!u) throw new Error('Email no encontrado.');
-  if (u.passwordHash !== btoa(password)) throw new Error('Contraseña incorrecta.');
-  return { email: u.email, name: u.name, paid: u.paid, token: u.token };
+  users[email] = { email: u.email, name: u.name, paid: u.paid, passwordHash: u.password_hash, token: btoa(email+':'+Date.now()) };
+  localStorage.setItem('fitai_users', JSON.stringify(users));
+
+  return { email: u.email, name: u.name, paid: u.paid, token: btoa(email+':'+Date.now()) };
 }
+
 function markAsPaid(email) {
   const users = JSON.parse(localStorage.getItem('fitai_users')||'{}');
   if (users[email]) { users[email].paid = true; localStorage.setItem('fitai_users', JSON.stringify(users)); }
@@ -545,9 +579,9 @@ function renderAuth() {
     try {
       if (STATE.authMode === 'register') {
         if (!name) { throw new Error('Ingresa tu nombre.'); }
-        STATE.user = authRegister(email, pass, name);
+        STATE.user = await authRegister(email, pass, name);
       } else {
-        STATE.user = authLogin(email, pass);
+        STATE.user = await authLogin(email, pass);
       }
       save();
       STATE.screen = STATE.user.paid ? (STATE.profile ? 'app' : 'setup') : 'paywall';
