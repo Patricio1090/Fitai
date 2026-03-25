@@ -102,7 +102,7 @@ textarea { resize: none; height: 72px; }
 .qa-item { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 14px; margin-bottom: 10px; }
 .qa-date { font-size: 10px; color: var(--muted); margin-bottom: 6px; }
 .qa-q { font-size: 13px; font-weight: 600; color: var(--purple); margin-bottom: 6px; }
-.qa-a { font-size: 12px; color: var(--muted); line-height: 1.6; }
+.qa-a { font-size: 12px; color: var(--muted); line-height: 1.6; white-space: pre-wrap; word-wrap: break-word; }
 .tab-btn .icon { font-size: 20px; line-height: 1; }
 .card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 16px; margin-bottom: 12px; }
 .card-purple { background: linear-gradient(135deg, #a78bfa18, var(--surface)); border: 1px solid #a78bfa28; }
@@ -133,7 +133,7 @@ textarea { resize: none; height: 72px; }
 .bar-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; }
 .bar { width: 100%; background: linear-gradient(180deg, #60a5fa, #3b82f680); border-radius: 4px 4px 0 0; }
 .bar-lbl { font-size: 8px; color: #374151; }
-.chat-msg { padding: 9px 12px; border-radius: 12px; font-size: 12px; line-height: 1.6; margin-bottom: 6px; }
+.chat-msg { padding: 10px 14px; border-radius: 14px; font-size: 13px; line-height: 1.7; margin-bottom: 8px; white-space: pre-wrap; word-wrap: break-word; overflow-wrap: break-word; }
 .chat-user { background: var(--surface2); color: var(--text); }
 .chat-ai   { background: #a78bfa12; color: #c4b5fd; border: 1px solid #a78bfa20; }
 .chat-row  { display: flex; gap: 8px; margin-top: 10px; }
@@ -284,6 +284,10 @@ let STATE = {
   showSideMenu: false,
   sideSection: null, // 'supplements' | 'harvard' | 'qa'
   qaHistory: [], // {date, q, a}
+  couponApplied: false,
+  couponCode: '',
+  couponDiscount: 0,
+  couponFinalAmount: 9990,
 };
 
 // --- PERSISTENCE ---
@@ -326,6 +330,15 @@ if (_paymentStatus === 'success' || _urlParams.get('collection_status') === 'app
   if (STATE.user) {
     markAsPaid(STATE.user.email);
     STATE.screen = STATE.profile ? 'app' : 'setup';
+    
+    // Confirmar uso de cupón si había uno
+    const returnCoupon = _urlParams.get('coupon');
+    if (returnCoupon && supa) {
+      supa.from('coupon_uses').update({
+        payment_confirmed: true,
+        payment_confirmed_at: new Date().toISOString(),
+      }).eq('user_email', STATE.user.email).eq('coupon_code', returnCoupon).eq('payment_confirmed', false).then(()=>{});
+    }
   }
   localStorage.removeItem('fitai_pending_email');
   localStorage.removeItem('fitai_pending_user');
@@ -345,6 +358,15 @@ function getInitialScreen() {
   return 'app';
 }
 STATE.screen = getInitialScreen();
+
+// Si llega con #login desde la landing, asegurar pantalla de auth con modo login
+if (window.location.hash === '#login') {
+  if (!STATE.user) {
+    STATE.authMode = 'login';
+    STATE.screen = 'auth';
+  }
+  window.history.replaceState({}, '', window.location.pathname);
+}
 
 // --- CLAUDE API ---
 const LANG_SYS = {
@@ -467,8 +489,8 @@ async function loadProfileFromSupabase(email) {
     // Cargar datos del usuario
     const { data: u } = await supa.from('users').select('*').eq('email', email).single();
     if (u && u.setup_done && u.goal) {
-      // Reconstruir perfil desde Supabase
-      const savedProfile = {
+      // Reconstruir perfil desde Supabase (siempre prioriza DB)
+      STATE.profile = {
         name: u.name,
         goal: u.goal,
         age: u.age,
@@ -482,19 +504,22 @@ async function loadProfileFromSupabase(email) {
         bodyFat: u.body_fat,
         setup: true
       };
-      if (!STATE.profile) STATE.profile = savedProfile;
     }
-    // Cargar registros diarios
+    if (u && u.paid) {
+      STATE.user.paid = true;
+    }
+    // Cargar registros diarios (siempre prioriza DB)
     const { data: logs } = await supa.from('daily_logs')
       .select('*').eq('user_email', email)
       .order('date', { ascending: false }).limit(90);
-    if (logs && logs.length > 0 && STATE.dailyLogs.length === 0) {
+    if (logs && logs.length > 0) {
       STATE.dailyLogs = logs.map(l => ({
         date: l.date, weight: l.weight, bodyFat: l.body_fat,
         calories: l.calories, protein: l.protein, sleep: l.sleep,
         water: l.water, training: l.training, energy: l.energy, notes: l.notes
       }));
     }
+    save(); // Guardar localmente para acceso offline
   } catch(e) { console.log('loadProfile error:', e); }
 }
 
@@ -531,6 +556,8 @@ async function processPayment() {
         email: STATE.user.email,
         amount: CONFIG.AMOUNT,
         currency: CONFIG.CURRENCY,
+        coupon_code: STATE.couponCode || '',
+        user_name: STATE.user.name || '',
       })
     });
 
@@ -686,7 +713,7 @@ function renderSideSection() {
           <div class="qa-item">
             <div class="qa-date">${qa.date}</div>
             <div class="qa-q">❓ ${qa.q}</div>
-            <div class="qa-a">🤖 ${qa.a.slice(0,300)}${qa.a.length>300?'…':''}</div>
+            <div class="qa-a">🤖 ${qa.a}</div>
           </div>`).join('')
       }
     </div>`;
@@ -865,25 +892,76 @@ function renderPaywall() {
 
       <div class="err ${STATE.payError?'show':''}">${STATE.payError}</div>
 
+      <!-- Cupón de descuento -->
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:12px">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:8px;font-weight:600">🏷️ ¿Tienes un cupón de descuento?</div>
+        <div style="display:flex;gap:8px">
+          <input type="text" id="coupon-input" placeholder="Ingresa tu cupón" style="flex:1;text-transform:uppercase;font-size:13px;padding:10px 12px"/>
+          <button id="btn-apply-coupon" class="btn btn-sm" style="background:var(--purple);color:#fff;white-space:nowrap;border-radius:10px;padding:10px 14px;font-size:12px;margin:0;width:auto">Aplicar</button>
+        </div>
+        <div id="coupon-msg" style="font-size:11px;margin-top:6px;display:none"></div>
+      </div>
+
+      <div id="price-summary" style="display:${STATE.couponApplied?'block':'none'};background:#34d39915;border:1px solid #34d39930;border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:13px">
+        <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">Precio original:</span><span style="text-decoration:line-through;color:var(--muted)">$9.990</span></div>
+        <div style="display:flex;justify-content:space-between"><span style="color:var(--green)">Descuento:</span><span style="color:var(--green)">-$${(STATE.couponDiscount||0).toLocaleString('es-CL')}</span></div>
+        <div style="display:flex;justify-content:space-between;font-weight:800;margin-top:4px;padding-top:4px;border-top:1px solid var(--border)"><span>Total:</span><span style="color:var(--lime)">$${((STATE.couponFinalAmount||9990)).toLocaleString('es-CL')}</span></div>
+      </div>
+
       <button class="btn btn-lime" id="btn-pay" ${STATE.payLoading?'disabled':''}>
         ${STATE.payLoading
           ? '⏳ Conectando con MercadoPago…'
           : isDemo
             ? '⚡ Pagar $9.990 CLP (modo demo)'
-            : `⚡ Ir a pagar ${CONFIG.PRICE_DISPLAY} ${CONFIG.CURRENCY} →`}
+            : STATE.couponApplied
+              ? `⚡ Ir a pagar $${(STATE.couponFinalAmount||9990).toLocaleString('es-CL')} CLP →`
+              : `⚡ Ir a pagar ${CONFIG.PRICE_DISPLAY} ${CONFIG.CURRENCY} →`}
       </button>
 
       ${isDemo ? `<div style="background:#fbbf2410;border:1px solid #fbbf2430;border-radius:10px;padding:10px;margin-top:10px;font-size:11px;color:var(--amber);text-align:center">⚠️ Modo demo activo. Agrega tu Public Key de MP para cobros reales.</div>` : ''}
 
       <div class="secure-badge" style="margin-top:14px">
         <img src="https://www.mercadopago.cl/favicon.ico" style="width:14px;height:14px;border-radius:3px" onerror="this.style.display='none'"/>
-        🔒 Pago 100% seguro con MercadoPago · Garantía 7 días
+        🔒 Pago 100% seguro con MercadoPago
       </div>
     </div>
     <button class="btn btn-ghost" style="max-width:420px;margin-top:8px" id="btn-logout-pay">← Cambiar cuenta</button>`;
 
   div.querySelector('#btn-pay').onclick = processPayment;
   div.querySelector('#btn-logout-pay').onclick = () => { STATE.user=null; STATE.screen='auth'; save(); render(); };
+  
+  // Coupon handler
+  div.querySelector('#btn-apply-coupon').onclick = async () => {
+    const code = div.querySelector('#coupon-input')?.value?.trim().toUpperCase();
+    const msgEl = div.querySelector('#coupon-msg');
+    if (!code) { msgEl.style.display='block'; msgEl.style.color='#f87171'; msgEl.textContent='Ingresa un código de cupón'; return; }
+    
+    msgEl.style.display='block'; msgEl.style.color='var(--muted)'; msgEl.textContent='Verificando cupón…';
+    
+    initSupabase();
+    if (supa) {
+      try {
+        const { data: coupon, error } = await supa.from('coupons').select('*').eq('code', code).eq('active', true).single();
+        if (error || !coupon) {
+          msgEl.style.color='#f87171'; msgEl.textContent='❌ Cupón inválido o expirado';
+          STATE.couponApplied = false; STATE.couponCode = ''; STATE.couponDiscount = 0; STATE.couponFinalAmount = 9990;
+        } else {
+          const finalAmount = Math.max(100, CONFIG.AMOUNT - coupon.discount_amount);
+          STATE.couponApplied = true;
+          STATE.couponCode = code;
+          STATE.couponDiscount = coupon.discount_amount;
+          STATE.couponFinalAmount = finalAmount;
+          msgEl.style.color='var(--green)'; msgEl.textContent=`✅ Cupón aplicado: -$${coupon.discount_amount.toLocaleString('es-CL')} de descuento`;
+        }
+        render();
+      } catch(e) {
+        msgEl.style.color='#f87171'; msgEl.textContent='Error al verificar cupón';
+      }
+    } else {
+      msgEl.style.color='#f87171'; msgEl.textContent='Error de conexión';
+    }
+  };
+  
   return div;
 }
 
@@ -1073,15 +1151,53 @@ function renderMiniChart(trend) {
 function renderWorkout() {
   const div=document.createElement('div');
   const place = STATE.profile?.trainingPlace?.includes('casa') ? '🏠 En casa' : '🏋️ Gimnasio';
+  
+  // Parse plan into sections for better display
+  const planText = STATE.plan || '';
+  
   div.innerHTML=`
-    <div style="background:var(--surface2);border-radius:12px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:var(--purple);display:flex;align-items:center;gap:8px">
-      <span>${place}</span><span style="color:var(--muted)">·</span><span style="color:var(--muted)">${STATE.profile?.goal||''}</span>
+    <div style="background:linear-gradient(135deg,#a78bfa18,#7c3aed08);border:1px solid #a78bfa28;border-radius:16px;padding:14px 16px;margin-bottom:14px;display:flex;align-items:center;gap:12px">
+      <div style="font-size:28px">${place.includes('casa')?'🏠':'🏋️'}</div>
+      <div>
+        <div style="font-family:Syne,sans-serif;font-size:15px;font-weight:700;color:var(--purple)">Plan de Entrenamiento</div>
+        <div style="font-size:11px;color:var(--muted)">${place} · ${STATE.profile?.goal||''} · Semana ${Math.ceil((calcProgress().days||1)/7)}</div>
+      </div>
     </div>
-    <div class="card card-purple"><div class="card-h">💪 Plan de Entrenamiento Semanal</div><div class="ai-text">${STATE.plan||'Cargando…'}</div></div>
-    <button class="btn btn-purple" id="btn-newplan">${STATE.aiLoading?'Generando…':'🔄 Nueva semana'}</button>
-    <div class="card" style="margin-top:8px"><div class="card-sh">💬 Pregunta al coach de entrenamiento</div><div id="chat-w"></div>
-    <div class="chat-row"><input type="text" id="ci-w" placeholder="¿Cómo reemplazo las sentadillas?"/><button id="cs-w">→</button></div></div>`;
-  STATE.chat.slice(-4).forEach(m=>{const el=document.createElement('div');el.className='chat-msg '+(m.role==='user'?'chat-user':'chat-ai');el.innerHTML=`<strong>${m.role==='user'?'Tú:':'🤖 '}</strong> ${m.content.slice(0,220)}${m.content.length>220?'…':''}`;div.querySelector('#chat-w').appendChild(el);});
+    
+    <div class="card" style="padding:0;overflow:hidden;margin-bottom:14px">
+      <div style="position:relative;height:160px;background:linear-gradient(135deg,#14083a,#1a0a4a);display:flex;align-items:center;justify-content:center;overflow:hidden">
+        <img src="https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=600&h=300&fit=crop" style="width:100%;height:100%;object-fit:cover;opacity:0.4" onerror="this.style.display='none'"/>
+        <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:16px">
+          <div style="font-family:Syne,sans-serif;font-size:20px;font-weight:800;color:#fff;text-shadow:0 2px 8px rgba(0,0,0,0.5)">💪 Tu Rutina Semanal</div>
+          <div style="font-size:12px;color:#d1d5db;margin-top:4px;text-shadow:0 1px 4px rgba(0,0,0,0.5)">Personalizada con ciencia de Harvard</div>
+        </div>
+      </div>
+      <div style="padding:16px">
+        <div class="ai-text">${planText}</div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">
+      <div class="card" style="text-align:center;padding:12px;margin:0">
+        <img src="https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=200&h=140&fit=crop" style="width:100%;height:80px;object-fit:cover;border-radius:10px;margin-bottom:8px" onerror="this.style.display='none'"/>
+        <div style="font-size:11px;font-weight:700;color:var(--purple)">Ejercicios compuestos</div>
+        <div style="font-size:10px;color:var(--muted)">Máxima activación muscular</div>
+      </div>
+      <div class="card" style="text-align:center;padding:12px;margin:0">
+        <img src="https://images.unsplash.com/photo-1517963879433-6ad2b056d712?w=200&h=140&fit=crop" style="width:100%;height:80px;object-fit:cover;border-radius:10px;margin-bottom:8px" onerror="this.style.display='none'"/>
+        <div style="font-size:11px;font-weight:700;color:var(--green)">Cardio estratégico</div>
+        <div style="font-size:10px;color:var(--muted)">Quema de grasa optimizada</div>
+      </div>
+    </div>
+
+    <button class="btn btn-purple" id="btn-newplan">${STATE.aiLoading?'⏳ Generando tu plan…':'🔄 Nueva semana de entrenamiento'}</button>
+    
+    <div class="card" style="margin-top:12px">
+      <div class="card-h">💬 Pregunta al coach de entrenamiento</div>
+      <div id="chat-w" style="max-height:400px;overflow-y:auto"></div>
+      <div class="chat-row"><input type="text" id="ci-w" placeholder="¿Cómo reemplazo las sentadillas?"/><button id="cs-w">→</button></div>
+    </div>`;
+  STATE.chat.slice(-4).forEach(m=>{const el=document.createElement('div');el.className='chat-msg '+(m.role==='user'?'chat-user':'chat-ai');el.innerHTML=`<strong>${m.role==='user'?'Tú:':'🤖 '}</strong> ${m.content}`;div.querySelector('#chat-w').appendChild(el);});
   div.querySelector('#btn-newplan').onclick=async()=>{STATE.aiLoading=true;render();const r=await claude([{role:'user',content:`Plan entrenamiento semanal adaptado para ${STATE.profile.name}, ${STATE.profile.goal}, nivel: ${STATE.profile.activityLevel}, lugar: ${STATE.profile.trainingPlace||'gimnasio'}, ${calcProgress().days} días en programa. ${STATE.profile.trainingPlace?.includes('casa')?'Ejercicios SIN equipamiento de gimnasio, solo peso corporal, bandas o materiales caseros.':'Ejercicios con equipamiento completo de gimnasio (pesas, máquinas, barras).'} Máx 700 palabras. Formato: día por día con ejercicios, series, repeticiones.`}]);STATE.plan=r;STATE.aiLoading=false;save();render();};
   const send=async()=>{const inp=div.querySelector('#ci-w');const txt=inp?.value.trim();if(!txt)return;STATE.chat.push({role:'user',content:txt});inp.value='';STATE.aiLoading=true;render();const msgs=STATE.chat.slice(-6).map(m=>({role:m.role,content:m.content}));msgs[0]={...msgs[0],content:`${STATE.profile.name},${STATE.profile.goal}\n${msgs[0].content}`};const r=await claude(msgs);STATE.chat.push({role:'assistant',content:r});STATE.qaHistory.push({date:new Date().toLocaleDateString('es-CL'),q:txt,a:r});STATE.qaHistory=STATE.qaHistory.slice(-100);STATE.aiLoading=false;save();render();};
   div.querySelector('#cs-w').onclick=send;
@@ -1092,12 +1208,53 @@ function renderWorkout() {
 // --- NUTRITION ---
 function renderNutrition() {
   const div=document.createElement('div');
+  const nutText = STATE.nutrition || '';
+  
   div.innerHTML=`
-    <div class="card card-green"><div class="card-h">🥗 Plan de Alimentación</div><div class="ai-text">${STATE.nutrition||'Cargando…'}</div></div>
-    <button class="btn btn-green" id="btn-newnut">${STATE.aiLoading?'Generando…':'🔄 Nuevo menú del día'}</button>
-    <div class="card" style="margin-top:8px"><div class="card-sh">💬 Consulta nutricional</div><div id="chat-n"></div>
-    <div class="chat-row"><input type="text" id="ci-n" placeholder="¿Puedo sustituir el pollo?"/><button id="cs-n" style="background:var(--green)">→</button></div></div>`;
-  STATE.chat.slice(-2).forEach(m=>{const el=document.createElement('div');el.className='chat-msg '+(m.role==='user'?'chat-user':'chat-ai');el.style.color=m.role==='assistant'?'#6ee7b7':'';el.innerHTML=`<strong>${m.role==='user'?'Tú:':'🤖 '}</strong> ${m.content.slice(0,200)}${m.content.length>200?'…':''}`;div.querySelector('#chat-n').appendChild(el);});
+    <div style="background:linear-gradient(135deg,#34d39918,#05966908);border:1px solid #34d39928;border-radius:16px;padding:14px 16px;margin-bottom:14px;display:flex;align-items:center;gap:12px">
+      <div style="font-size:28px">🥗</div>
+      <div>
+        <div style="font-family:Syne,sans-serif;font-size:15px;font-weight:700;color:var(--green)">Plan de Alimentación</div>
+        <div style="font-size:11px;color:var(--muted)">${STATE.profile?.goal||''} · Día ${calcProgress().days + 1}</div>
+      </div>
+    </div>
+
+    <div class="card" style="padding:0;overflow:hidden;margin-bottom:14px">
+      <div style="position:relative;height:160px;background:linear-gradient(135deg,#0a2a1a,#0d3320);display:flex;align-items:center;justify-content:center;overflow:hidden">
+        <img src="https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600&h=300&fit=crop" style="width:100%;height:100%;object-fit:cover;opacity:0.45" onerror="this.style.display='none'"/>
+        <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:16px">
+          <div style="font-family:Syne,sans-serif;font-size:20px;font-weight:800;color:#fff;text-shadow:0 2px 8px rgba(0,0,0,0.5)">🥗 Tu Menú del Día</div>
+          <div style="font-size:12px;color:#d1d5db;margin-top:4px;text-shadow:0 1px 4px rgba(0,0,0,0.5)">Nutrición optimizada según Harvard</div>
+        </div>
+      </div>
+      <div style="padding:16px">
+        <div class="ai-text">${nutText}</div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;text-align:center">
+        <img src="https://images.unsplash.com/photo-1525351484163-7529414344d8?w=200&h=120&fit=crop" style="width:100%;height:70px;object-fit:cover" onerror="this.style.display='none'"/>
+        <div style="padding:8px 4px"><div style="font-size:10px;font-weight:700;color:var(--green)">Desayuno</div><div style="font-size:9px;color:var(--muted)">Energía matutina</div></div>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;text-align:center">
+        <img src="https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=200&h=120&fit=crop" style="width:100%;height:70px;object-fit:cover" onerror="this.style.display='none'"/>
+        <div style="padding:8px 4px"><div style="font-size:10px;font-weight:700;color:var(--green)">Almuerzo</div><div style="font-size:9px;color:var(--muted)">Proteína + fibra</div></div>
+      </div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;text-align:center">
+        <img src="https://images.unsplash.com/photo-1467003909585-2f8a72700288?w=200&h=120&fit=crop" style="width:100%;height:70px;object-fit:cover" onerror="this.style.display='none'"/>
+        <div style="padding:8px 4px"><div style="font-size:10px;font-weight:700;color:var(--green)">Cena</div><div style="font-size:9px;color:var(--muted)">Recuperación</div></div>
+      </div>
+    </div>
+
+    <button class="btn btn-green" id="btn-newnut">${STATE.aiLoading?'⏳ Generando menú…':'🔄 Nuevo menú del día'}</button>
+    
+    <div class="card" style="margin-top:12px">
+      <div class="card-h">💬 Consulta nutricional</div>
+      <div id="chat-n" style="max-height:400px;overflow-y:auto"></div>
+      <div class="chat-row"><input type="text" id="ci-n" placeholder="¿Puedo sustituir el pollo?"/><button id="cs-n" style="background:var(--green)">→</button></div>
+    </div>`;
+  STATE.chat.slice(-2).forEach(m=>{const el=document.createElement('div');el.className='chat-msg '+(m.role==='user'?'chat-user':'chat-ai');el.style.color=m.role==='assistant'?'#6ee7b7':'';el.innerHTML=`<strong>${m.role==='user'?'Tú:':'🤖 '}</strong> ${m.content}`;div.querySelector('#chat-n').appendChild(el);});
   div.querySelector('#btn-newnut').onclick=async()=>{STATE.aiLoading=true;render();const p=STATE.profile;const r=await claude([{role:'user',content:`Plan alimentación VARIADO para ${p.name}, ${p.goal}, ${calcProgress().lw}kg, ${p.height}cm, ${p.gender}, ${p.age}años. Recetas sencillas. Harvard. Máx 700 palabras.`}]);STATE.nutrition=r;STATE.aiLoading=false;save();render();};
   const send=async()=>{const inp=div.querySelector('#ci-n');const txt=inp?.value.trim();if(!txt)return;STATE.chat.push({role:'user',content:txt});inp.value='';STATE.aiLoading=true;render();const msgs=STATE.chat.slice(-4).map(m=>({role:m.role,content:m.content}));msgs[0]={...msgs[0],content:`${STATE.profile.name},${STATE.profile.goal}\n${msgs[0].content}`};const r=await claude(msgs);STATE.chat.push({role:'assistant',content:r});STATE.qaHistory.push({date:new Date().toLocaleDateString('es-CL'),q:txt,a:r});STATE.qaHistory=STATE.qaHistory.slice(-100);STATE.aiLoading=false;save();render();};
   div.querySelector('#cs-n').onclick=send;
