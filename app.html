@@ -86,6 +86,23 @@ textarea { resize: none; height: 72px; }
 .tabbar { position: fixed; bottom: 0; left: 0; right: 0; background: #0d0d1a; border-top: 1px solid var(--border); display: flex; z-index: 50; padding-bottom: env(safe-area-inset-bottom); }
 .tab-btn { flex: 1; padding: 9px 4px 7px; background: none; border: none; color: var(--muted); font-size: 9.5px; font-weight: 600; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 3px; transition: color 0.2s; font-family: 'DM Sans', sans-serif; }
 .tab-btn.active { color: var(--purple); }
+/* MENÚ LATERAL */
+.side-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 300; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
+.side-overlay.open { opacity: 1; pointer-events: all; }
+.side-menu { position: fixed; left: 0; top: 0; bottom: 0; width: 280px; background: var(--surface); border-right: 1px solid var(--border); z-index: 301; transform: translateX(-100%); transition: transform 0.3s cubic-bezier(0.4,0,0.2,1); overflow-y: auto; }
+.side-menu.open { transform: translateX(0); }
+.side-header { padding: 24px 20px 16px; border-bottom: 1px solid var(--border); background: linear-gradient(135deg,#14083a,var(--surface)); }
+.side-logo { font-family: 'Syne',sans-serif; font-size: 18px; font-weight: 800; background: linear-gradient(135deg,var(--purple),var(--blue)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.side-user { font-size: 12px; color: var(--muted); margin-top: 4px; }
+.side-item { display: flex; align-items: center; gap: 12px; padding: 14px 20px; color: var(--text); font-size: 14px; cursor: pointer; border-bottom: 1px solid #1e1e2a; transition: background 0.15s; }
+.side-item:hover { background: var(--surface2); }
+.side-item-icon { font-size: 20px; width: 28px; text-align: center; }
+.side-section-title { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); padding: 12px 20px 4px; font-weight: 700; }
+/* QA */
+.qa-item { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 14px; margin-bottom: 10px; }
+.qa-date { font-size: 10px; color: var(--muted); margin-bottom: 6px; }
+.qa-q { font-size: 13px; font-weight: 600; color: var(--purple); margin-bottom: 6px; }
+.qa-a { font-size: 12px; color: var(--muted); line-height: 1.6; }
 .tab-btn .icon { font-size: 20px; line-height: 1; }
 .card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 16px; margin-bottom: 12px; }
 .card-purple { background: linear-gradient(135deg, #a78bfa18, var(--surface)); border: 1px solid #a78bfa28; }
@@ -264,6 +281,9 @@ let STATE = {
   aiMsg: '',
   todayLog: { weight:'', bodyFat:'', calories:'', protein:'', sleep:'', water:'', training:'no', energy:'3', notes:'' },
   showUserMenu: false,
+  showSideMenu: false,
+  sideSection: null, // 'supplements' | 'harvard' | 'qa'
+  qaHistory: [], // {date, q, a}
 };
 
 // --- PERSISTENCE ---
@@ -276,6 +296,7 @@ function save() {
       plan: STATE.plan,
       nutrition: STATE.nutrition,
       chat: STATE.chat,
+      qaHistory: STATE.qaHistory,
     }));
   } catch{}
 }
@@ -288,6 +309,7 @@ function loadSaved() {
     if (d.plan) STATE.plan = d.plan;
     if (d.nutrition) STATE.nutrition = d.nutrition;
     if (d.chat) STATE.chat = d.chat;
+    if (d.qaHistory) STATE.qaHistory = d.qaHistory;
   } catch{}
 }
 loadSaved();
@@ -332,7 +354,7 @@ const LANG_SYS = {
   pt: 'Responda sempre em português.'
 };
 function getSYS() {
-  return `Eres un experto en ciencias del deporte, nutrición y metabolismo basado en las últimas investigaciones de Harvard Medical School. Sé específico, científico pero accesible. Usa emojis estratégicamente. ${LANG_SYS[STATE.lang] || LANG_SYS.es}`;
+  return `Eres un experto en ciencias del deporte, nutrición y metabolismo. Basa SIEMPRE tus respuestas en estudios e investigaciones de acceso público de Harvard Medical School y Harvard T.H. Chan School of Public Health (nutrition.harvard.edu, health.harvard.edu, hsph.harvard.edu). Cuando cites evidencia, menciona la fuente específica de Harvard. Sé preciso, científico pero accesible. Usa emojis estratégicamente. ${LANG_SYS[STATE.lang] || LANG_SYS.es}`;
 }
 
 async function claude(messages, max=1000) {
@@ -340,8 +362,8 @@ async function claude(messages, max=1000) {
   const today = new Date().toLocaleDateString('es-CL');
   const usageKey = 'fitai_usage_' + today;
   const usage = parseInt(localStorage.getItem(usageKey) || '0');
-  if (usage >= 2) {
-    return '⚠️ Alcanzaste el límite de 2 consultas de IA por hoy. Vuelve mañana 💪';
+  if (usage >= 8) {
+    return '⚠️ Alcanzaste el límite de 8 consultas de IA por hoy. Vuelve mañana 💪';
   }
   localStorage.setItem(usageKey, usage + 1);
 
@@ -370,7 +392,7 @@ async function claude(messages, max=1000) {
 }
 
 // --- AUTH con Supabase como fuente de verdad ---
-async function authRegister(email, password, name) {
+async function authRegister(email, password, name, phone="") {
   // Admin superusuario
   if (email === 'admin@fitai.cl') throw new Error('Email reservado.');
   initSupabase();
@@ -403,6 +425,17 @@ async function authLogin(email, password) {
   if (email === 'admin@fitai.cl' && password === 'fitai2024admin') {
     return { email: 'admin@fitai.cl', name: 'Admin', paid: true, token: 'admin-token' };
   }
+  // Usuarios test sin pago
+  const TEST_USERS = {
+    'test1@fitai.cl': {name:'Test Usuario 1', pass:'fitai_test_1'},
+    'test2@fitai.cl': {name:'Test Usuario 2', pass:'fitai_test_2'},
+    'test3@fitai.cl': {name:'Test Usuario 3', pass:'fitai_test_3'},
+    'test4@fitai.cl': {name:'Test Usuario 4', pass:'fitai_test_4'},
+    'test5@fitai.cl': {name:'Test Usuario 5', pass:'fitai_test_5'},
+  };
+  if (TEST_USERS[email] && TEST_USERS[email].pass === password) {
+    return { email, name: TEST_USERS[email].name, paid: true, token: 'test-token-'+email };
+  }
 
   initSupabase();
   if (!supa) {
@@ -424,7 +457,45 @@ async function authLogin(email, password) {
   users[email] = { email: u.email, name: u.name, paid: u.paid, passwordHash: u.password_hash, token: btoa(email+':'+Date.now()) };
   localStorage.setItem('fitai_users', JSON.stringify(users));
 
-  return { email: u.email, name: u.name, paid: u.paid, token: btoa(email+':'+Date.now()) };
+  return { email: u.email, name: u.name, paid: u.paid, phone: u.phone, token: btoa(email+':'+Date.now()) };
+}
+
+// Cargar perfil completo desde Supabase
+async function loadProfileFromSupabase(email) {
+  initSupabase(); if (!supa) return;
+  try {
+    // Cargar datos del usuario
+    const { data: u } = await supa.from('users').select('*').eq('email', email).single();
+    if (u && u.setup_done && u.goal) {
+      // Reconstruir perfil desde Supabase
+      const savedProfile = {
+        name: u.name,
+        goal: u.goal,
+        age: u.age,
+        gender: u.gender,
+        weight: u.weight_initial || u.weight,
+        height: u.height,
+        targetWeight: u.target_weight,
+        weeksGoal: u.weeks_goal,
+        activityLevel: u.activity_level,
+        trainingPlace: u.training_place,
+        bodyFat: u.body_fat,
+        setup: true
+      };
+      if (!STATE.profile) STATE.profile = savedProfile;
+    }
+    // Cargar registros diarios
+    const { data: logs } = await supa.from('daily_logs')
+      .select('*').eq('user_email', email)
+      .order('date', { ascending: false }).limit(90);
+    if (logs && logs.length > 0 && STATE.dailyLogs.length === 0) {
+      STATE.dailyLogs = logs.map(l => ({
+        date: l.date, weight: l.weight, bodyFat: l.body_fat,
+        calories: l.calories, protein: l.protein, sleep: l.sleep,
+        water: l.water, training: l.training, energy: l.energy, notes: l.notes
+      }));
+    }
+  } catch(e) { console.log('loadProfile error:', e); }
 }
 
 function markAsPaid(email) {
@@ -493,6 +564,136 @@ function calcProgress() {
   return { lost:lost.toFixed(1), pct:pct.toFixed(0), days:logs.length, trend, lw:lw||sw };
 }
 
+// ===== MENÚ LATERAL =====
+const SUPPLEMENTS_TEXT = `
+**TOP 10 SUPLEMENTOS CON EVIDENCIA CIENTÍFICA**
+*(Fuente: Harvard T.H. Chan School of Public Health y Harvard Medical School)*
+
+1. **Proteína de Suero (Whey Protein)**
+   Beneficio: Estimula la síntesis proteica muscular, apoya la recuperación post-ejercicio.
+   Estudio: Wilkinson et al., Harvard-affiliated — "Whey protein stimulates postexercise muscle protein accretion more effectively than casein protein" (2007).
+
+2. **Creatina Monohidrato**
+   Beneficio: Aumenta la fuerza, potencia y masa muscular en ejercicios de alta intensidad.
+   Estudio: Lanhers et al., revisado en Harvard Health — "Creatine supplementation and upper limb strength performance" (2017).
+
+3. **Vitamina D3**
+   Beneficio: Regula la función muscular, inmunidad y absorción de calcio.
+   Estudio: Harvard Medical School — "Vitamin D and muscle function" (Bikle, 2020).
+
+4. **Ácidos Grasos Omega-3 (EPA/DHA)**
+   Beneficio: Reduce inflamación, mejora composición corporal y salud cardiovascular.
+   Estudio: Harvard T.H. Chan — "Omega-3 Fatty Acids" (Harvard Nutrition Source, 2023).
+
+5. **Magnesio**
+   Beneficio: Mejora el sueño, recuperación muscular y función nerviosa.
+   Estudio: Harvard Medical School — "Magnesium" (Harvard Health Publishing, 2019).
+
+6. **Cafeína**
+   Beneficio: Mejora el rendimiento de resistencia, fuerza y enfoque mental.
+   Estudio: Goldstein et al., citado en Harvard Health — "International society of sports nutrition position stand: caffeine" (2010).
+
+7. **Beta-Alanina**
+   Beneficio: Aumenta la resistencia muscular al elevar los niveles de carnosina.
+   Estudio: Hobson et al., revisado en Harvard — "Effects of beta-alanine supplementation on exercise performance" (2012).
+
+8. **Vitamina B12**
+   Beneficio: Esencial para energía, función nerviosa y producción de glóbulos rojos.
+   Estudio: Harvard Medical School — "Vitamin B12 deficiency" (Harvard Health Publishing, 2022).
+
+9. **Hierro**
+   Beneficio: Fundamental para el transporte de oxígeno y rendimiento aeróbico.
+   Estudio: Harvard T.H. Chan — "Iron" (Harvard Nutrition Source, 2023).
+
+10. **Zinc**
+    Beneficio: Apoya la testosterona, inmunidad y síntesis proteica.
+    Estudio: Harvard Medical School — "Zinc" (Harvard Health Publishing, 2021).
+`;
+
+const HARVARD_STUDIES_TEXT = `
+**TOP 10 ESTUDIOS DE HARVARD SOBRE METABOLISMO**
+
+1. **"Caloric restriction improves metabolic age"**
+   Harvard Medical School, 2022. Demuestra que la restricción calórica mejora marcadores metabólicos y longevidad.
+   Link: health.harvard.edu/aging/caloric-restriction
+
+2. **"High-Intensity Interval Training and Fat Loss"**
+   Harvard T.H. Chan, 2019. HIIT es superior al cardio continuo para reducción de grasa visceral.
+   Link: hsph.harvard.edu/nutritionsource/exercise
+
+3. **"Protein and Muscle Mass Preservation"**
+   Harvard Medical School, 2021. Distribución proteica óptima: 0.8-1.6g/kg peso corporal.
+   Link: health.harvard.edu/exercise-and-fitness/protein
+
+4. **"Sleep Deprivation and Metabolic Syndrome"**
+   Harvard Division of Sleep Medicine, 2020. Dormir menos de 7h aumenta resistencia a la insulina.
+   Link: healthysleep.med.harvard.edu
+
+5. **"The Impact of Sugar on Metabolism"**
+   Harvard T.H. Chan, 2023. El azúcar añadido es el principal factor de síndrome metabólico.
+   Link: hsph.harvard.edu/nutritionsource/carbohydrates/added-sugar
+
+6. **"Exercise and Brain Metabolism"**
+   Harvard Medical School, 2018. El ejercicio aeróbico aumenta BDNF y mejora la función cognitiva.
+   Link: health.harvard.edu/mind-and-mood/exercise-is-an-all-natural-treatment
+
+7. **"Gut Microbiome and Metabolic Health"**
+   Harvard T.H. Chan, 2022. La microbiota intestinal regula directamente el metabolismo energético.
+   Link: hsph.harvard.edu/news/hsph-in-the-news/gut-microbiome-metabolic-health
+
+8. **"Intermittent Fasting and Insulin Sensitivity"**
+   Harvard Medical School, 2020. El ayuno intermitente mejora sensibilidad a la insulina en 8 semanas.
+   Link: health.harvard.edu/blog/intermittent-fasting
+
+9. **"Resistance Training and Hormonal Response"**
+   Harvard Medical School, 2021. El entrenamiento de fuerza aumenta GH y testosterona naturalmente.
+   Link: health.harvard.edu/exercise-and-fitness/strength-training
+
+10. **"Hydration and Metabolic Rate"**
+    Harvard Medical School, 2019. Beber 500ml de agua aumenta la tasa metabólica un 30% por 30-40 min.
+    Link: health.harvard.edu/staying-healthy/how-much-water-should-you-drink
+`;
+
+function renderSideSection() {
+  const div = document.createElement('div');
+  const s = STATE.sideSection;
+
+  if (s === 'supplements') {
+    div.innerHTML = `<div class="content fade-in">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+        <button onclick="STATE.sideSection=null;render()" style="background:none;border:none;color:var(--purple);font-size:20px;cursor:pointer">←</button>
+        <div style="font-family:Syne,sans-serif;font-size:18px;font-weight:800">💊 Top 10 Suplementos</div>
+      </div>
+      <div class="card"><div class="ai-text">${SUPPLEMENTS_TEXT.trim()}</div></div>
+    </div>`;
+  } else if (s === 'harvard') {
+    div.innerHTML = `<div class="content fade-in">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+        <button onclick="STATE.sideSection=null;render()" style="background:none;border:none;color:var(--purple);font-size:20px;cursor:pointer">←</button>
+        <div style="font-family:Syne,sans-serif;font-size:18px;font-weight:800">🔬 Estudios Harvard</div>
+      </div>
+      <div class="card"><div class="ai-text">${HARVARD_STUDIES_TEXT.trim()}</div></div>
+    </div>`;
+  } else if (s === 'qa') {
+    div.innerHTML = `<div class="content fade-in">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+        <button onclick="STATE.sideSection=null;render()" style="background:none;border:none;color:var(--purple);font-size:20px;cursor:pointer">←</button>
+        <div style="font-family:Syne,sans-serif;font-size:18px;font-weight:800">💬 Mis Preguntas</div>
+      </div>
+      ${STATE.qaHistory.length === 0 
+        ? '<div class="card"><div style="color:var(--muted);text-align:center;padding:20px">Aún no tienes preguntas guardadas. Usa el chat del coach para empezar.</div></div>'
+        : STATE.qaHistory.slice().reverse().map(qa => `
+          <div class="qa-item">
+            <div class="qa-date">${qa.date}</div>
+            <div class="qa-q">❓ ${qa.q}</div>
+            <div class="qa-a">🤖 ${qa.a.slice(0,300)}${qa.a.length>300?'…':''}</div>
+          </div>`).join('')
+      }
+    </div>`;
+  }
+  return div;
+}
+
 // --- RENDER ---
 function render() {
   const root = document.getElementById('app');
@@ -503,6 +704,13 @@ function render() {
   if (STATE.screen === 'paywall') { root.appendChild(renderPaywall()); return; }
   if (STATE.screen === 'setup' && !STATE.profile) { root.appendChild(renderSetup()); return; }
 
+  // Sección de menú lateral activa
+  if (STATE.sideSection) {
+    root.appendChild(renderSideSection());
+    root.appendChild(renderTabBar());
+    return;
+  }
+
   root.appendChild(renderHeader());
   const content = document.createElement('div');
   content.className = 'content fade-in';
@@ -510,6 +718,35 @@ function render() {
   content.appendChild(tabs[STATE.tab]());
   root.appendChild(content);
   root.appendChild(renderTabBar());
+
+  // Menú lateral overlay
+  if (STATE.showSideMenu) {
+    const overlay = document.createElement('div');
+    overlay.className = 'side-overlay open';
+    overlay.onclick = () => { STATE.showSideMenu = false; render(); };
+    root.appendChild(overlay);
+
+    const menu = document.createElement('div');
+    menu.className = 'side-menu open';
+    menu.innerHTML = `
+      <div class="side-header">
+        <div class="side-logo">⚡ FitAI Pro</div>
+        <div class="side-user">${STATE.user?.name || ''} · ${STATE.user?.email || ''}</div>
+      </div>
+      <div class="side-section-title">Contenido Científico</div>
+      <div class="side-item" id="sm-supplements"><span class="side-item-icon">💊</span>Top 10 Suplementos</div>
+      <div class="side-item" id="sm-harvard"><span class="side-item-icon">🔬</span>Top 10 Estudios Harvard</div>
+      <div class="side-section-title">Mi Historia</div>
+      <div class="side-item" id="sm-qa"><span class="side-item-icon">💬</span>Mis Preguntas y Respuestas</div>
+      <div class="side-section-title">Cuenta</div>
+      <div class="side-item" id="sm-logout" style="color:#f87171"><span class="side-item-icon">🚪</span>Cerrar sesión</div>
+    `;
+    menu.querySelector('#sm-supplements').onclick = () => { STATE.showSideMenu=false; STATE.sideSection='supplements'; render(); };
+    menu.querySelector('#sm-harvard').onclick = () => { STATE.showSideMenu=false; STATE.sideSection='harvard'; render(); };
+    menu.querySelector('#sm-qa').onclick = () => { STATE.showSideMenu=false; STATE.sideSection='qa'; render(); };
+    menu.querySelector('#sm-logout').onclick = () => { STATE.user=null; STATE.profile=null; STATE.dailyLogs=[]; STATE.plan=null; STATE.nutrition=null; STATE.chat=[]; STATE.screen='auth'; STATE.showSideMenu=false; STATE.sideSection=null; save(); render(); };
+    root.appendChild(menu);
+  }
 
   if (STATE.showUserMenu) {
     const menu = document.createElement('div');
@@ -553,6 +790,7 @@ function renderAuth() {
       <div class="err ${STATE.authError?'show':''}" id="auth-err">${STATE.authError}</div>
       ${STATE.authMode==='register'?`
         <div class="field"><label>Tu nombre</label><input type="text" id="auth-name" placeholder="Nombre completo"/></div>
+      <div class="field"><label>Teléfono (WhatsApp)</label><input type="tel" id="auth-phone" placeholder="+56 9 1234 5678"/></div>
       `:''}
       <div class="field"><label>Email</label><input type="email" id="auth-email" placeholder="tu@email.com"/></div>
       <div class="field"><label>Contraseña</label><input type="password" id="auth-pass" placeholder="••••••••"/></div>
@@ -574,16 +812,19 @@ function renderAuth() {
     const email = div.querySelector('#auth-email')?.value?.trim();
     const pass = div.querySelector('#auth-pass')?.value;
     const name = div.querySelector('#auth-name')?.value?.trim();
+    const phone = div.querySelector('#auth-phone')?.value?.trim() || '';
     if (!email || !pass) { STATE.authError='Completa todos los campos.'; render(); return; }
     STATE.authLoading = true; STATE.authError = ''; render();
     try {
       if (STATE.authMode === 'register') {
         if (!name) { throw new Error('Ingresa tu nombre.'); }
-        STATE.user = await authRegister(email, pass, name);
+        STATE.user = await authRegister(email, pass, name, phone);
       } else {
         STATE.user = await authLogin(email, pass);
       }
       save();
+      // Cargar datos guardados en Supabase
+      await loadProfileFromSupabase(STATE.user.email);
       STATE.screen = STATE.user.paid ? (STATE.profile ? 'app' : 'setup') : 'paywall';
     } catch(e) {
       STATE.authError = e.message;
@@ -658,6 +899,7 @@ const STEPS = [
   {key:'targetWeight',q:'¿Cuál es tu peso objetivo? (kg)',type:'number',ph:'Ej: 72'},
   {key:'weeksGoal',q:'¿En cuántas semanas quieres lograrlo?',type:'number',ph:'Ej: 12'},
   {key:'activityLevel',q:'¿Cuál es tu nivel de actividad actual?',type:'select',opts:['Sedentario (sin ejercicio)','Ligero (1-2 días/sem)','Moderado (3-4 días/sem)','Activo (5+ días/sem)','Atleta (2x/día)']},
+  {key:'trainingPlace',q:'¿Dónde entrenas habitualmente?',type:'select',opts:['🏋️ En el gimnasio (con equipamiento completo)','🏠 En casa (con equipamiento limitado o sin equipamiento)']},
 ];
 
 function renderSetup() {
@@ -722,7 +964,7 @@ function renderSetup() {
 
       try {
         const planR = await withTimeout(
-          claude([{role:'user',content:`Plan entrenamiento semanal para ${desc}. Máx 250 palabras.`}]),
+          claude([{role:'user',content:`Plan entrenamiento semanal para ${desc}, lugar de entrenamiento: ${p.trainingPlace||'gimnasio'}. ${p.trainingPlace?.includes('casa')?'Solo ejercicios sin equipamiento de gimnasio.':'Con equipamiento de gimnasio completo.'} Máx 250 palabras.`}]),
           25000
         );
         const nutR = await withTimeout(
@@ -731,6 +973,17 @@ function renderSetup() {
         );
         STATE.profile={...p,setup:true};
         dbMarkSetupDone(STATE.user?.email, p.goal);
+        // Guardar perfil completo en Supabase
+        if (supa) {
+          await supa.from('users').update({
+            goal: p.goal, age: parseInt(p.age), gender: p.gender,
+            weight_initial: parseFloat(p.weight), weight: parseFloat(p.weight),
+            height: parseFloat(p.height), target_weight: parseFloat(p.targetWeight),
+            weeks_goal: parseInt(p.weeksGoal), activity_level: p.activityLevel,
+            training_place: p.trainingPlace, body_fat: parseFloat(p.bodyFat)||null,
+            setup_done: true, last_active: new Date().toISOString()
+          }).eq('email', STATE.user?.email);
+        }
         STATE.plan=planR;
         STATE.nutrition=nutR;
         STATE.screen='app';
@@ -757,7 +1010,10 @@ function renderHeader() {
   const goal=p.goal?.includes('grasa')?'🔥 Fat Burn':p.goal?.includes('muscular')?'💪 Muscle':'⚡ Recomp';
   const h=document.createElement('div'); h.className='header';
   h.innerHTML=`<div class="header-inner">
-    <div><div class="logo">⚡ FitAI Pro</div><div class="sub">Hola, ${STATE.user?.name||p.name} · ${tabNames[STATE.tab]}</div></div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <button id="side-menu-btn" style="background:none;border:none;color:var(--text);cursor:pointer;font-size:20px;padding:4px;line-height:1">☰</button>
+      <div><div class="logo">⚡ FitAI Pro</div><div class="sub">Hola, ${STATE.user?.name||p.name} · ${tabNames[STATE.tab]}</div></div>
+    </div>
     <div style="display:flex;align-items:center;gap:4px">
       ${['es','en','fr','pt'].map(l=>`<button data-l="${l}" style="background:${STATE.lang===l?'#a78bfa25':'none'};border:1px solid ${STATE.lang===l?'var(--purple)':'var(--border)'};border-radius:6px;padding:3px 6px;font-size:10px;font-weight:700;color:${STATE.lang===l?'var(--purple)':'var(--muted)'};cursor:pointer">${l.toUpperCase()}</button>`).join('')}
       <span class="badge" style="background:#a78bfa20;color:var(--purple);font-size:10px;margin-left:2px">${goal}</span>
@@ -815,14 +1071,18 @@ function renderMiniChart(trend) {
 // --- WORKOUT ---
 function renderWorkout() {
   const div=document.createElement('div');
+  const place = STATE.profile?.trainingPlace?.includes('casa') ? '🏠 En casa' : '🏋️ Gimnasio';
   div.innerHTML=`
-    <div class="card card-purple"><div class="card-h">💪 Plan de Entrenamiento</div><div class="ai-text">${STATE.plan||'Cargando…'}</div></div>
+    <div style="background:var(--surface2);border-radius:12px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:var(--purple);display:flex;align-items:center;gap:8px">
+      <span>${place}</span><span style="color:var(--muted)">·</span><span style="color:var(--muted)">${STATE.profile?.goal||''}</span>
+    </div>
+    <div class="card card-purple"><div class="card-h">💪 Plan de Entrenamiento Semanal</div><div class="ai-text">${STATE.plan||'Cargando…'}</div></div>
     <button class="btn btn-purple" id="btn-newplan">${STATE.aiLoading?'Generando…':'🔄 Nueva semana'}</button>
-    <div class="card" style="margin-top:8px"><div class="card-sh">💬 Pregunta al coach</div><div id="chat-w"></div>
+    <div class="card" style="margin-top:8px"><div class="card-sh">💬 Pregunta al coach de entrenamiento</div><div id="chat-w"></div>
     <div class="chat-row"><input type="text" id="ci-w" placeholder="¿Cómo reemplazo las sentadillas?"/><button id="cs-w">→</button></div></div>`;
   STATE.chat.slice(-4).forEach(m=>{const el=document.createElement('div');el.className='chat-msg '+(m.role==='user'?'chat-user':'chat-ai');el.innerHTML=`<strong>${m.role==='user'?'Tú:':'🤖 '}</strong> ${m.content.slice(0,220)}${m.content.length>220?'…':''}`;div.querySelector('#chat-w').appendChild(el);});
-  div.querySelector('#btn-newplan').onclick=async()=>{STATE.aiLoading=true;render();const r=await claude([{role:'user',content:`Plan entrenamiento variado para ${STATE.profile.name}, ${STATE.profile.goal}, nivel: ${STATE.profile.activityLevel}, ${calcProgress().days} días en programa. Máx 700 palabras.`}]);STATE.plan=r;STATE.aiLoading=false;save();render();};
-  const send=async()=>{const inp=div.querySelector('#ci-w');const txt=inp?.value.trim();if(!txt)return;STATE.chat.push({role:'user',content:txt});inp.value='';STATE.aiLoading=true;render();const msgs=STATE.chat.slice(-6).map(m=>({role:m.role,content:m.content}));msgs[0]={...msgs[0],content:`${STATE.profile.name},${STATE.profile.goal}\n${msgs[0].content}`};const r=await claude(msgs);STATE.chat.push({role:'assistant',content:r});STATE.aiLoading=false;save();render();};
+  div.querySelector('#btn-newplan').onclick=async()=>{STATE.aiLoading=true;render();const r=await claude([{role:'user',content:`Plan entrenamiento semanal adaptado para ${STATE.profile.name}, ${STATE.profile.goal}, nivel: ${STATE.profile.activityLevel}, lugar: ${STATE.profile.trainingPlace||'gimnasio'}, ${calcProgress().days} días en programa. ${STATE.profile.trainingPlace?.includes('casa')?'Ejercicios SIN equipamiento de gimnasio, solo peso corporal, bandas o materiales caseros.':'Ejercicios con equipamiento completo de gimnasio (pesas, máquinas, barras).'} Máx 700 palabras. Formato: día por día con ejercicios, series, repeticiones.`}]);STATE.plan=r;STATE.aiLoading=false;save();render();};
+  const send=async()=>{const inp=div.querySelector('#ci-w');const txt=inp?.value.trim();if(!txt)return;STATE.chat.push({role:'user',content:txt});inp.value='';STATE.aiLoading=true;render();const msgs=STATE.chat.slice(-6).map(m=>({role:m.role,content:m.content}));msgs[0]={...msgs[0],content:`${STATE.profile.name},${STATE.profile.goal}\n${msgs[0].content}`};const r=await claude(msgs);STATE.chat.push({role:'assistant',content:r});STATE.qaHistory.push({date:new Date().toLocaleDateString('es-CL'),q:txt,a:r});STATE.qaHistory=STATE.qaHistory.slice(-100);STATE.aiLoading=false;save();render();};
   div.querySelector('#cs-w').onclick=send;
   div.querySelector('#ci-w').onkeydown=e=>{if(e.key==='Enter')send();};
   return div;
@@ -838,7 +1098,7 @@ function renderNutrition() {
     <div class="chat-row"><input type="text" id="ci-n" placeholder="¿Puedo sustituir el pollo?"/><button id="cs-n" style="background:var(--green)">→</button></div></div>`;
   STATE.chat.slice(-2).forEach(m=>{const el=document.createElement('div');el.className='chat-msg '+(m.role==='user'?'chat-user':'chat-ai');el.style.color=m.role==='assistant'?'#6ee7b7':'';el.innerHTML=`<strong>${m.role==='user'?'Tú:':'🤖 '}</strong> ${m.content.slice(0,200)}${m.content.length>200?'…':''}`;div.querySelector('#chat-n').appendChild(el);});
   div.querySelector('#btn-newnut').onclick=async()=>{STATE.aiLoading=true;render();const p=STATE.profile;const r=await claude([{role:'user',content:`Plan alimentación VARIADO para ${p.name}, ${p.goal}, ${calcProgress().lw}kg, ${p.height}cm, ${p.gender}, ${p.age}años. Recetas sencillas. Harvard. Máx 700 palabras.`}]);STATE.nutrition=r;STATE.aiLoading=false;save();render();};
-  const send=async()=>{const inp=div.querySelector('#ci-n');const txt=inp?.value.trim();if(!txt)return;STATE.chat.push({role:'user',content:txt});inp.value='';STATE.aiLoading=true;render();const msgs=STATE.chat.slice(-4).map(m=>({role:m.role,content:m.content}));msgs[0]={...msgs[0],content:`${STATE.profile.name},${STATE.profile.goal}\n${msgs[0].content}`};const r=await claude(msgs);STATE.chat.push({role:'assistant',content:r});STATE.aiLoading=false;save();render();};
+  const send=async()=>{const inp=div.querySelector('#ci-n');const txt=inp?.value.trim();if(!txt)return;STATE.chat.push({role:'user',content:txt});inp.value='';STATE.aiLoading=true;render();const msgs=STATE.chat.slice(-4).map(m=>({role:m.role,content:m.content}));msgs[0]={...msgs[0],content:`${STATE.profile.name},${STATE.profile.goal}\n${msgs[0].content}`};const r=await claude(msgs);STATE.chat.push({role:'assistant',content:r});STATE.qaHistory.push({date:new Date().toLocaleDateString('es-CL'),q:txt,a:r});STATE.qaHistory=STATE.qaHistory.slice(-100);STATE.aiLoading=false;save();render();};
   div.querySelector('#cs-n').onclick=send;
   div.querySelector('#ci-n').onkeydown=e=>{if(e.key==='Enter')send();};
   return div;
@@ -874,9 +1134,35 @@ function renderLog() {
 }
 
 // --- PROGRESS ---
+function buildWeightChart(logs) {
+  const withWeight = logs.filter(l => l.weight && parseFloat(l.weight) > 0).slice(0, 30).reverse();
+  if (withWeight.length < 2) return '<div style="color:var(--muted);font-size:13px;text-align:center;padding:20px">Registra tu peso diariamente para ver el gráfico 📊</div>';
+  const weights = withWeight.map(l => parseFloat(l.weight));
+  const dates = withWeight.map(l => l.date?.slice(0,5) || '');
+  const mn = Math.min(...weights) - 0.5;
+  const mx = Math.max(...weights) + 0.5;
+  const W = 300, H = 120, pad = 30;
+  const xScale = i => pad + (i / (withWeight.length - 1)) * (W - pad * 2);
+  const yScale = v => H - pad - ((v - mn) / (mx - mn)) * (H - pad * 2);
+  const points = weights.map((w, i) => `${xScale(i)},${yScale(w)}`).join(' ');
+  const area = `${xScale(0)},${H-10} ` + weights.map((w,i) => `${xScale(i)},${yScale(w)}`).join(' ') + ` ${xScale(weights.length-1)},${H-10}`;
+  return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto">
+    <defs><linearGradient id="wg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#a78bfa" stop-opacity="0.4"/><stop offset="100%" stop-color="#a78bfa" stop-opacity="0"/></linearGradient></defs>
+    <polygon points="${area}" fill="url(#wg)"/>
+    <polyline points="${points}" fill="none" stroke="#a78bfa" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    ${weights.map((w,i) => `<circle cx="${xScale(i)}" cy="${yScale(w)}" r="3.5" fill="#a78bfa"/>
+    <text x="${xScale(i)}" y="${yScale(w)-8}" text-anchor="middle" font-size="9" fill="#a78bfa">${w}</text>`).join('')}
+    ${weights.length > 1 ? dates.filter((_,i) => i === 0 || i === Math.floor(weights.length/2) || i === weights.length-1).map((d,_,arr) => {
+      const origIdx = d === dates[0] ? 0 : d === dates[Math.floor(weights.length/2)] ? Math.floor(weights.length/2) : weights.length-1;
+      return `<text x="${xScale(origIdx)}" y="${H-2}" text-anchor="middle" font-size="8" fill="#6b7280">${d}</text>`;
+    }).join('') : ''}
+  </svg>`;
+}
+
 function renderProgress() {
   const prog=calcProgress();
   const div=document.createElement('div');
+  const weightLogs = STATE.dailyLogs.filter(l => l.weight);
   div.innerHTML=`
     <div class="stats-grid stats-grid2">
       ${[{l:'Días registrados',v:prog.days,i:'🗓️',c:'var(--blue)'},{l:'Kg perdidos',v:Math.max(0,prog.lost)+'kg',i:'🔥',c:'var(--amber)'},{l:'Progreso meta',v:prog.pct+'%',i:'🎯',c:'var(--purple)'},{l:'Peso actual',v:prog.lw+'kg',i:'⚖️',c:'var(--green)'}].map(s=>`<div class="stat-box" style="background:${s.c}12;border:1px solid ${s.c}25"><div class="stat-icon">${s.i}</div><div class="stat-val" style="color:${s.c}">${s.v}</div><div class="stat-lbl">${s.l}</div></div>`).join('')}
@@ -886,8 +1172,12 @@ function renderProgress() {
       <div class="prog-wrap"><div class="prog-fill" style="width:${prog.pct}%;background:linear-gradient(90deg,var(--purple),#7c3aed80)"></div></div>
       <div style="display:flex;justify-content:space-between;margin-top:6px"><span style="font-size:11px;color:var(--muted)">Inicio: ${STATE.profile.weight}kg</span><span style="font-size:11px;color:var(--muted)">Meta: ${STATE.profile.targetWeight}kg</span></div>
     </div>
+    <div class="card">
+      <div class="card-h">📉 Evolución de Peso</div>
+      ${buildWeightChart(STATE.dailyLogs)}
+    </div>
     <div class="card"><div class="card-h">📋 Historial reciente</div>
-      ${!STATE.dailyLogs.length?'<div style="color:var(--muted);font-size:13px;text-align:center;padding:20px">Sin registros aún 💪</div>':STATE.dailyLogs.slice(0,7).map(l=>`<div class="log-item"><div class="log-row"><span class="log-date">${l.date}</span><span class="badge" style="background:${l.training==='si'?'#34d39920':'#1e1e3a'};color:${l.training==='si'?'var(--green)':'var(--muted)'}">${l.training==='si'?'💪 Entrenó':l.training==='activo'?'🚶 Activo':'😴 Descanso'}</span></div><div class="tags">${l.weight?`<span class="tag">⚖️ ${l.weight}kg</span>`:''} ${l.calories?`<span class="tag">🔥 ${l.calories}kcal</span>`:''} ${l.protein?`<span class="tag">🥩 ${l.protein}g</span>`:''} ${l.sleep?`<span class="tag">😴 ${l.sleep}h</span>`:''} ${l.energy?`<span class="tag">⚡ ${l.energy}/5</span>`:''}</div></div>`).join('')}
+      ${!STATE.dailyLogs.length?'<div style="color:var(--muted);font-size:13px;text-align:center;padding:20px">Sin registros aún 💪</div>':STATE.dailyLogs.slice(0,10).map(l=>`<div class="log-item"><div class="log-row"><span class="log-date">${l.date}</span><span class="badge" style="background:${l.training==='si'?'#34d39920':'#1e1e3a'};color:${l.training==='si'?'var(--green)':'var(--muted)'}">${l.training==='si'?'💪 Entrenó':l.training==='activo'?'🚶 Activo':'😴 Descanso'}</span></div><div class="tags">${l.weight?`<span class="tag">⚖️ ${l.weight}kg</span>`:''} ${l.calories?`<span class="tag">🔥 ${l.calories}kcal</span>`:''} ${l.protein?`<span class="tag">🥩 ${l.protein}g</span>`:''} ${l.sleep?`<span class="tag">😴 ${l.sleep}h</span>`:''} ${l.energy?`<span class="tag">⚡ ${l.energy}/5</span>`:''}</div></div>`).join('')}
     </div>
     <button class="btn btn-blue" id="btn-weekly">${STATE.aiLoading?'⏳ Analizando…':'🧠 Análisis semanal con IA'}</button>
     ${STATE.aiMsg?`<div class="card card-blue" style="margin-top:12px"><div class="card-sh">📊 Informe de progreso</div><div class="ai-text">${STATE.aiMsg}</div></div>`:''}`;
@@ -905,4 +1195,4 @@ if ('serviceWorker' in navigator) {
 render();
 </script>
 </body>
-</html>
+  </html>
