@@ -1021,6 +1021,7 @@ function renderHeader() {
     </div>
   </div>`;
   h.querySelectorAll('[data-l]').forEach(b=>b.addEventListener('click',(e)=>{e.stopPropagation();STATE.lang=b.dataset.l;STATE.aiMsg='';render();}));
+  h.querySelector('#side-menu-btn').onclick=(e)=>{e.stopPropagation();STATE.showSideMenu=true;render();};
   h.querySelector('#btn-user').onclick=(e)=>{e.stopPropagation();STATE.showUserMenu=!STATE.showUserMenu;render();};
   return h;
 }
@@ -1195,4 +1196,4 @@ if ('serviceWorker' in navigator) {
 render();
 </script>
 </body>
-  </html>
+</html>
