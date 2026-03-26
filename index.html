@@ -494,7 +494,6 @@ footer{background:var(--black);border-top:1px solid var(--border);padding:32px 2
 <div class="trust-strip">
   <div class="trust-items">
     <div class="trust-item"><span>🔒</span> Pago 100% seguro</div>
-    <div class="trust-item"><span>↩️</span> </div>
     <div class="trust-item"><span>♾️</span> Acceso de por vida</div>
     <div class="trust-item"><span>🚫</span> Sin renovaciones</div>
     <div class="trust-item"><span>📱</span> Android e iOS</div>
@@ -543,8 +542,8 @@ footer{background:var(--black);border-top:1px solid var(--border);padding:32px 2
       <div class="faq-item"><button class="faq-q" onclick="this.parentElement.classList.toggle('open')">¿Es necesario ir al gimnasio?<span class="faq-icon">+</span></button><div class="faq-a">No. Puedes indicar si entrenas en casa o en gimnasio, y el plan se adapta a tu equipamiento disponible. Hay rutinas para todos los niveles y contextos.</div></div>
       <div class="faq-item"><button class="faq-q" onclick="this.parentElement.classList.toggle('open')">¿Cada cuánto se actualiza el plan?<span class="faq-icon">+</span></button><div class="faq-a">El plan de entrenamiento se puede renovar semanalmente. El plan de nutrición puede regenerarse diariamente con diferentes alimentos. Los cambios son ilimitados.</div></div>
       <div class="faq-item"><button class="faq-q" onclick="this.parentElement.classList.toggle('open')">¿Funciona en iPhone y Android?<span class="faq-icon">+</span></button><div class="faq-a">Sí. Es una PWA que se instala desde el navegador en cualquier dispositivo. No necesitas descargarla de ninguna tienda de apps.</div></div>
-      <div class="faq-item"><button class="faq-q" onclick="this.parentElement.classList.toggle('open')">¿Qué pasa si no estoy satisfecho?<span class="faq-icon">+</span></button><div class="faq-a">Tienes 7 días de garantía de devolución completa. Escríbenos y te devolvemos los $9.990 sin preguntas. Queremos que estés 100% seguro.</div></div>
-      <div class="faq-item"><button class="faq-q" onclick="this.parentElement.classList.toggle('open')">¿Cuántas consultas al coach IA tengo por día?<span class="faq-icon">+</span></button><div class="faq-a">El plan incluye 2 consultas de IA por día para los planes de entrenamiento, nutrición y análisis personalizados. Es más que suficiente para transformar tu cuerpo con resultados reales.</div></div>
+      <div class="faq-item"><button class="faq-q" onclick="this.parentElement.classList.toggle('open')">¿Qué pasa si no estoy satisfecho?<span class="faq-icon">+</span></button><div class="faq-a">Nos importa tu experiencia. Si tienes cualquier problema, escríbenos a contacto@fitai.cl y te ayudamos a resolverlo. Queremos que logres tus objetivos.</div></div>
+      <div class="faq-item"><button class="faq-q" onclick="this.parentElement.classList.toggle('open')">¿Cuántas consultas al coach IA tengo por día?<span class="faq-icon">+</span></button><div class="faq-a">El plan incluye 8 consultas de IA por día para los planes de entrenamiento, nutrición y análisis personalizados. Es más que suficiente para transformar tu cuerpo con resultados reales.</div></div>
     </div>
   </div>
 </section>
@@ -562,16 +561,23 @@ footer{background:var(--black);border-top:1px solid var(--border);padding:32px 2
 
 <footer>
   <div class="f-logo">⚡ FitAI Pro</div>
-  <div class="f-links"><a href="#">Privacidad</a><a href="#">Términos</a><a href="/cdn-cgi/l/email-protection#6a0905041e0b091e052a0c031e0b03440906">Contacto</a></div>
+  <div class="f-links"><a href="#">Privacidad</a><a href="#">Términos</a><a href="mailto:contacto@fitai.cl">Contacto</a></div>
   <div class="f-copy">© 2026 FitAI Pro · Todos los derechos reservados · Hecho con ❤️ en Chile</div>
 </footer>
 
-<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
-// REVEAL
-const obs = new IntersectionObserver(entries => {
-  entries.forEach(e => { if(e.isIntersecting){e.target.classList.add('visible');obs.unobserve(e.target);} });
-},{threshold:0.1});
-document.querySelectorAll('.reveal').forEach(el=>obs.observe(el));
+<script>
+// REVEAL - with fallback for mobile
+if ('IntersectionObserver' in window) {
+  const obs = new IntersectionObserver(entries => {
+    entries.forEach(e => { if(e.isIntersecting){e.target.classList.add('visible');obs.unobserve(e.target);} });
+  },{threshold:0.01, rootMargin:'0px 0px 50px 0px'});
+  document.querySelectorAll('.reveal').forEach(el=>obs.observe(el));
+  // Fallback: if after 2 seconds some are still hidden, force show
+  setTimeout(()=>{document.querySelectorAll('.reveal:not(.visible)').forEach(el=>el.classList.add('visible'));},2000);
+} else {
+  // No IntersectionObserver support - show everything
+  document.querySelectorAll('.reveal').forEach(el=>el.classList.add('visible'));
+}
 
 // NOTIFICATIONS
 const notifs=[
@@ -603,4 +609,7 @@ setInterval(()=>{li=(li+1)%liveT.length;const el=document.getElementById('live-t
 
 // COUNTER
 let cnt=1247;
-setInterval(()=>{if(Math.random()>0.6){cnt+=Math.f
+setInterval(()=>{if(Math.random()>0.6){cnt+=Math.floor(Math.random()*3)+1;const el=document.getElementById('uc');if(el)el.textContent=cnt.toLocaleString('es-CL');}},8000);
+</script>
+</body>
+</html>
