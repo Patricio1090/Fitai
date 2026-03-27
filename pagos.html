@@ -204,7 +204,7 @@ async function loadPagos() {
   try {
     [payments, profiles] = await Promise.all([
       sb('payments', { select: '*', order: 'created_at.desc' }),
-      sb('profiles', { select: 'id,email,full_name' }),
+      sb('users', { select: 'id,email,full_name' }),
     ]);
   } catch(e) {
     document.body.insertAdjacentHTML('afterbegin',
