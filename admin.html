@@ -1,540 +1,854 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>FitAI Admin</title>
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet"/>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>FitAI — Admin Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#07080f;--s:#0f1018;--s2:#161720;--b:#1e2030;--t:#eeeef8;--m:#5a607a;--p:#a78bfa;--bl:#60a5fa;--g:#34d399;--a:#fbbf24;--r:#f87171;--l:#b8ff57;}
-*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
-body{background:var(--bg);color:var(--t);font-family:'DM Sans',sans-serif;min-height:100vh;}
-a{color:inherit;text-decoration:none;}
-button{font-family:'DM Sans',sans-serif;}
-h1,h2{font-family:'Syne',sans-serif;}
+  /* ── RESET & BASE ─────────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-/* LOGIN */
-#login-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;}
-.lcard{background:var(--s);border:1px solid var(--b);border-radius:20px;padding:40px 32px;width:100%;max-width:380px;text-align:center;}
-.lcard h1{font-size:22px;background:linear-gradient(135deg,var(--p),var(--bl));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:4px;}
-.lcard p{font-size:12px;color:var(--m);margin-bottom:28px;}
-.lcard input{width:100%;background:var(--s2);border:1px solid var(--b);border-radius:10px;padding:12px;color:var(--t);font-size:14px;outline:none;margin-bottom:12px;font-family:'DM Sans',sans-serif;}
-.lcard input:focus{border-color:var(--p);}
-.lcard button{width:100%;background:linear-gradient(135deg,var(--p),#7c3aed);color:#fff;border:none;border-radius:12px;padding:13px;font-size:14px;font-weight:700;cursor:pointer;}
-.lerr{background:#f8717115;border:1px solid #f8717140;border-radius:8px;padding:8px;font-size:12px;color:var(--r);margin-bottom:10px;display:none;}
+  :root {
+    --bg:       #0b0b1a;
+    --bg-card:  #12122a;
+    --border:   #1e1e3a;
+    --accent1:  #00e676;
+    --accent2:  #a78bfa;
+    --accent3:  #38bdf8;
+    --accent4:  #fb923c;
+    --text:     #e8e8f0;
+    --muted:    #6b6b88;
+    --price:    #9.990;
+  }
 
-/* APP */
-#app-screen{display:none;}
+  html { background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; }
+  body { min-height: 100vh; padding-bottom: 80px; }
 
-/* TOP NAV */
-.topnav{background:var(--s);border-bottom:1px solid var(--b);padding:0 20px;display:flex;align-items:center;gap:4px;overflow-x:auto;-webkit-overflow-scrolling:touch;position:sticky;top:0;z-index:50;}
-.topnav::-webkit-scrollbar{display:none;}
-.logo{font-family:'Syne',sans-serif;font-size:14px;font-weight:800;color:var(--l);padding:14px 12px 14px 0;margin-right:8px;white-space:nowrap;border-right:1px solid var(--b);}
-.nav-btn{padding:14px 14px;font-size:13px;font-weight:600;color:var(--m);background:none;border:none;cursor:pointer;white-space:nowrap;border-bottom:2px solid transparent;transition:all 0.2s;}
-.nav-btn.active{color:var(--p);border-bottom-color:var(--p);}
-.nav-btn:active{opacity:0.7;}
-.logout{margin-left:auto;padding:8px 14px;font-size:12px;color:var(--r);background:none;border:1px solid var(--b);border-radius:8px;cursor:pointer;white-space:nowrap;}
+  /* ── HEADER NAV ──────────────────────────────────── */
+  .topnav {
+    display: flex; align-items: center;
+    padding: 14px 16px 0;
+    position: sticky; top: 0; z-index: 100;
+    background: var(--bg);
+  }
+  .logo { font-family: 'Bebas Neue', sans-serif; font-size: 1.5rem; color: var(--accent1); display: flex; align-items: center; gap: 6px; }
+  .logo svg { width: 20px; height: 20px; }
+  .tabs { display: flex; gap: 0; margin-left: auto; border-bottom: 2px solid var(--border); }
+  .tab {
+    padding: 10px 18px; font-size: .82rem; font-weight: 600;
+    color: var(--muted); cursor: pointer; position: relative;
+    transition: color .2s; white-space: nowrap;
+  }
+  .tab.active { color: var(--text); }
+  .tab.active::after {
+    content: ''; position: absolute; bottom: -2px; left: 0; right: 0;
+    height: 2px; background: var(--accent2); border-radius: 2px;
+  }
 
-/* CONTENT */
-.content{padding:20px;max-width:1100px;margin:0 auto;}
-.section{display:none;}
-.section.active{display:block;}
+  /* ── SECTIONS ────────────────────────────────────── */
+  .section { display: none; padding: 16px; animation: fadeUp .3s ease; }
+  .section.active { display: block; }
+  @keyframes fadeUp { from { opacity:0; transform: translateY(10px); } to { opacity:1; transform: translateY(0); } }
 
-/* STATS */
-.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:20px;}
-.stat{background:var(--s);border:1px solid var(--b);border-radius:14px;padding:16px;border-top:3px solid var(--p);}
-.stat.g{border-top-color:var(--g);}
-.stat.b{border-top-color:var(--bl);}
-.stat.a{border-top-color:var(--a);}
-.stat.l{border-top-color:var(--l);}
-.stat-n{font-family:'Syne',sans-serif;font-size:28px;font-weight:800;}
-.stat-l{font-size:11px;color:var(--m);margin-top:4px;}
+  /* ── KPI GRID ────────────────────────────────────── */
+  .kpi-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;
+  }
+  .kpi-card {
+    background: var(--bg-card); border-radius: 16px;
+    border: 1px solid var(--border);
+    padding: 16px; display: flex; flex-direction: column; gap: 6px;
+    position: relative; overflow: hidden;
+    transition: transform .15s;
+  }
+  .kpi-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  }
+  .kpi-card.c1::before { background: var(--accent2); }
+  .kpi-card.c2::before { background: var(--accent1); }
+  .kpi-card.c3::before { background: var(--accent4); }
+  .kpi-card.c4::before { background: var(--accent3); }
+  .kpi-card.c5::before { background: #f59e0b; }
+  .kpi-card.clickable { cursor: pointer; }
+  .kpi-card.clickable:active { transform: scale(.97); }
+  .kpi-value { font-family: 'Bebas Neue', sans-serif; font-size: 2.4rem; line-height: 1; color: #fff; }
+  .kpi-label { font-size: .75rem; color: var(--muted); font-weight: 500; }
+  .kpi-hint  { font-size: .65rem; color: #444; margin-top: 2px; }
+  .kpi-card.span2 { grid-column: span 2; }
 
-/* CHARTS */
-.charts{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;margin-bottom:20px;}
-.chart-box{background:var(--s);border:1px solid var(--b);border-radius:14px;padding:16px;}
-.chart-box h3{font-size:13px;font-weight:700;margin-bottom:4px;}
-.chart-box p{font-size:11px;color:var(--m);margin-bottom:12px;}
-.chart-box canvas{max-height:180px;}
+  /* ── CHART CARDS ─────────────────────────────────── */
+  .chart-card {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 16px; padding: 18px; margin-bottom: 14px;
+  }
+  .chart-title { font-size: .95rem; font-weight: 700; color: #fff; margin-bottom: 2px; }
+  .chart-sub   { font-size: .75rem; color: var(--muted); margin-bottom: 14px; }
 
-/* TABLE */
-.card{background:var(--s);border:1px solid var(--b);border-radius:14px;padding:16px;margin-bottom:16px;}
-.card h2{font-size:14px;margin-bottom:12px;}
-.card-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:8px;flex-wrap:wrap;}
-input[type=search]{background:var(--s2);border:1px solid var(--b);border-radius:8px;padding:8px 12px;color:var(--t);font-size:13px;outline:none;width:180px;}
-input[type=search]:focus{border-color:var(--p);}
-.tbl{width:100%;border-collapse:collapse;font-size:13px;}
-.tbl th{font-size:11px;color:var(--m);text-transform:uppercase;letter-spacing:0.5px;padding:8px 10px;text-align:left;border-bottom:1px solid var(--b);}
-.tbl td{padding:10px;border-bottom:1px solid #1e203030;}
-.tbl tr:last-child td{border:none;}
-.tbl tr:hover td{background:var(--s2);}
-.badge{display:inline-block;border-radius:20px;padding:2px 10px;font-size:11px;font-weight:600;}
-.bp{background:#34d39920;color:var(--g);}
-.bn{background:#f8717120;color:var(--r);}
-.bb{background:#60a5fa20;color:var(--bl);}
+  /* SVG Line / Bar charts */
+  .svg-chart { width: 100%; overflow: visible; }
 
-/* BUTTONS */
-.btn{border:none;border-radius:10px;padding:10px 16px;font-size:13px;font-weight:600;cursor:pointer;transition:opacity 0.2s;}
-.btn:active{opacity:0.7;}
-.btn-p{background:linear-gradient(135deg,var(--p),#7c3aed);color:#fff;}
-.btn-g{background:linear-gradient(135deg,var(--g),#059669);color:#fff;}
-.btn-sm{padding:6px 12px;font-size:12px;}
-.btn-ghost{background:none;border:1px solid var(--b);color:var(--m);}
+  /* Donut wrapper */
+  .donut-wrap {
+    display: flex; flex-direction: column; align-items: center; gap: 12px;
+  }
+  .donut-ring-wrap { position: relative; width: 160px; height: 160px; }
+  .donut-ring-wrap canvas { width: 160px !important; height: 160px !important; }
+  .donut-center-label {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    pointer-events: none;
+  }
+  .donut-center-label .dnum { font-family: 'Bebas Neue', sans-serif; font-size: 2rem; color: #fff; line-height: 1; }
+  .donut-center-label .dsub { font-size: .65rem; color: var(--muted); text-align: center; }
+  .donut-legend { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; }
+  .donut-legend-item { display: flex; align-items: center; gap: 6px; font-size: .75rem; color: var(--muted); }
+  .dot { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
 
-/* FORM */
-.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;}
-@media(max-width:500px){.form-row{grid-template-columns:1fr;}}
-.field label{font-size:12px;color:var(--m);margin-bottom:5px;display:block;}
-.field input,.field select,.field textarea{width:100%;background:var(--s2);border:1px solid var(--b);border-radius:10px;padding:10px 12px;color:var(--t);font-size:13px;outline:none;font-family:'DM Sans',sans-serif;}
-.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--p);}
-.field textarea{height:90px;resize:none;}
+  /* ── USERS MODAL ─────────────────────────────────── */
+  #modal-overlay {
+    display: none; position: fixed; inset: 0; z-index: 999;
+    background: rgba(0,0,0,.8); backdrop-filter: blur(6px);
+    align-items: flex-end; justify-content: center;
+  }
+  #modal-overlay.open { display: flex; }
+  .modal-sheet {
+    background: #0f0f24; border-radius: 20px 20px 0 0;
+    border: 1px solid var(--border); border-bottom: none;
+    width: 100%; max-height: 82vh;
+    display: flex; flex-direction: column;
+    animation: slideUp .3s ease;
+  }
+  @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+  .modal-handle {
+    width: 40px; height: 4px; background: #333;
+    border-radius: 2px; margin: 12px auto 0; flex-shrink: 0;
+  }
+  .modal-head {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 14px 18px 10px; border-bottom: 1px solid var(--border); flex-shrink: 0;
+  }
+  .modal-head h2 { font-size: 1rem; font-weight: 700; color: #fff; }
+  .modal-close {
+    background: #1e1e3a; border: none; color: var(--muted);
+    width: 30px; height: 30px; border-radius: 50%; cursor: pointer; font-size: 1rem;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .modal-pills {
+    display: flex; gap: 8px; padding: 10px 18px;
+    border-bottom: 1px solid var(--border); flex-shrink: 0; flex-wrap: wrap;
+  }
+  .pill {
+    background: var(--border); border-radius: 20px;
+    padding: 4px 12px; font-size: .72rem; color: var(--muted);
+  }
+  .pill span { font-weight: 700; color: #fff; }
+  .modal-body { overflow-y: auto; flex: 1; padding: 0 18px 20px; }
+  .user-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 12px 0; border-bottom: 1px solid var(--border);
+  }
+  .user-row:last-child { border-bottom: none; }
+  .user-num {
+    font-family: 'Bebas Neue', sans-serif; font-size: 1.1rem;
+    color: #333; width: 28px; text-align: right; flex-shrink: 0;
+  }
+  .user-avatar {
+    width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: .85rem;
+  }
+  .user-info { flex: 1; min-width: 0; }
+  .user-name  { font-size: .85rem; font-weight: 600; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .user-email { font-size: .72rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .user-meta  { text-align: right; flex-shrink: 0; }
+  .user-date  { font-size: .68rem; color: #444; }
+  .badge {
+    display: inline-block; padding: 2px 8px; border-radius: 12px;
+    font-size: .68rem; font-weight: 700; margin-bottom: 3px;
+  }
+  .badge.paid { background: #00e67620; color: var(--accent1); }
+  .badge.free { background: #ffffff0d; color: #555; }
+  .badge.setup { background: #a78bfa20; color: var(--accent2); font-size: .62rem; }
 
-/* AUTOMATION */
-.auto-item{display:flex;justify-content:space-between;align-items:center;padding:12px;background:var(--s2);border-radius:10px;margin-bottom:8px;}
-.auto-name{font-size:13px;font-weight:600;}
-.auto-desc{font-size:11px;color:var(--m);margin-top:2px;}
-.toggle{width:42px;height:22px;background:var(--b);border-radius:100px;position:relative;cursor:pointer;transition:background 0.2s;flex-shrink:0;}
-.toggle.on{background:var(--g);}
-.toggle::after{content:'';position:absolute;width:16px;height:16px;background:#fff;border-radius:50%;top:3px;left:3px;transition:transform 0.2s;}
-.toggle.on::after{transform:translateX(20px);}
+  /* ── CUPONES SECTION ─────────────────────────────── */
+  .section-header { margin-bottom: 14px; }
+  .section-header h2 { font-size: 1rem; font-weight: 700; color: #fff; }
+  .section-header p  { font-size: .75rem; color: var(--muted); }
 
-/* INFO BOX */
-.info-box{background:var(--s2);border-radius:10px;padding:14px;margin-top:12px;}
-.info-box p{font-size:12px;color:var(--m);line-height:1.8;}
-.info-box a{color:var(--p);cursor:pointer;}
+  .coupon-card {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 16px; margin-bottom: 12px; overflow: hidden;
+  }
+  .coupon-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 16px; cursor: pointer; user-select: none;
+  }
+  .coupon-head-left { display: flex; align-items: center; gap: 10px; }
+  .coupon-code-badge {
+    background: #a78bfa20; color: var(--accent2);
+    padding: 4px 12px; border-radius: 20px;
+    font-family: 'Bebas Neue', sans-serif; font-size: 1rem; letter-spacing: 1px;
+  }
+  .coupon-inf { font-size: .78rem; color: var(--muted); }
+  .coupon-chevron { color: var(--muted); transition: transform .25s; font-size: 1rem; }
+  .coupon-card.open .coupon-chevron { transform: rotate(180deg); }
+  .coupon-stats {
+    display: grid; grid-template-columns: repeat(4,1fr);
+    border-top: 1px solid var(--border);
+  }
+  .cstat {
+    padding: 12px 8px; text-align: center;
+    border-right: 1px solid var(--border); font-size: .65rem; color: var(--muted);
+  }
+  .cstat:last-child { border-right: none; }
+  .cstat strong { display: block; font-family: 'Bebas Neue', sans-serif; font-size: 1.3rem; color: #fff; margin-bottom: 2px; }
+  .cstat.green strong { color: var(--accent1); }
+  .coupon-detail { display: none; border-top: 1px solid var(--border); }
+  .coupon-card.open .coupon-detail { display: block; }
+  .coupon-month-title {
+    font-size: .72rem; color: var(--muted); font-weight: 600;
+    padding: 10px 16px 4px; text-transform: uppercase; letter-spacing: .5px;
+  }
+  .coupon-use-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 9px 16px; border-bottom: 1px solid #0d0d1e;
+  }
+  .coupon-use-row:last-child { border-bottom: none; }
+  .cuse-email { font-size: .78rem; color: var(--text); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cuse-date  { font-size: .68rem; color: #444; margin: 0 10px; flex-shrink: 0; }
+  .cuse-badge { font-size: .65rem; font-weight: 700; padding: 2px 8px; border-radius: 10px; flex-shrink: 0; }
+  .cuse-badge.paid { background: #00e67620; color: var(--accent1); }
+  .cuse-badge.free { background: #ffffff0d; color: #555; }
+  .no-coupons { text-align: center; padding: 40px 20px; color: #444; font-size: .85rem; }
 
-/* TOAST */
-#toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--s);border:1px solid var(--g);border-radius:12px;padding:10px 20px;font-size:13px;color:var(--g);z-index:999;display:none;white-space:nowrap;}
+  /* ── CLIENTES TAB (lista completa) ───────────────── */
+  .client-search {
+    width: 100%; background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 12px; padding: 10px 14px; color: var(--text);
+    font-family: 'DM Sans', sans-serif; font-size: .85rem; margin-bottom: 14px;
+    outline: none;
+  }
+  .client-search:focus { border-color: var(--accent2); }
+  .clients-list { display: flex; flex-direction: column; gap: 10px; }
+  .client-card {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 14px; padding: 14px 16px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .client-num {
+    font-family: 'Bebas Neue', sans-serif; font-size: 1.2rem;
+    color: #333; width: 28px; flex-shrink: 0; text-align: right;
+  }
+  .client-avatar {
+    width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: .9rem;
+  }
+  .client-body { flex: 1; min-width: 0; }
+  .client-name  { font-size: .9rem; font-weight: 600; color: #fff; }
+  .client-email { font-size: .72rem; color: var(--muted); }
+  .client-tags  { display: flex; gap: 5px; margin-top: 5px; flex-wrap: wrap; }
+  .client-date  { font-size: .68rem; color: #444; flex-shrink: 0; text-align: right; }
+
+  /* ── SPINNER ─────────────────────────────────────── */
+  .spinner-wrap { display: flex; justify-content: center; padding: 40px; }
+  .spinner {
+    width: 32px; height: 32px; border-radius: 50%;
+    border: 3px solid var(--border); border-top-color: var(--accent1);
+    animation: spin .7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── SKELETON ────────────────────────────────────── */
+  .skel {
+    background: linear-gradient(90deg, #1a1a32 25%, #22223a 50%, #1a1a32 75%);
+    background-size: 200% 100%; animation: shimmer 1.2s infinite;
+    border-radius: 8px;
+  }
+  @keyframes shimmer { to { background-position: -200% 0; } }
+
+  /* ── MONTH TABS ──────────────────────────────────── */
+  .month-tabs { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; margin-bottom: 12px; }
+  .month-tab {
+    padding: 5px 14px; border-radius: 20px; font-size: .75rem; font-weight: 600;
+    background: var(--border); color: var(--muted); cursor: pointer; white-space: nowrap;
+    border: none; transition: all .15s;
+  }
+  .month-tab.active { background: var(--accent2); color: #fff; }
+
+  /* ── ERROR ───────────────────────────────────────── */
+  .err-box {
+    background: #ff444420; border: 1px solid #ff4444;
+    border-radius: 12px; padding: 14px; margin: 10px 0;
+    font-size: .8rem; color: #ff8888;
+  }
 </style>
 </head>
 <body>
 
-<!-- LOGIN -->
-<div id="login-screen">
-  <div class="lcard">
-    <div style="font-size:44px;margin-bottom:10px">🔐</div>
-    <h1>FitAI Admin</h1>
-    <p>Panel privado de administración</p>
-    <div class="lerr" id="lerr">Contraseña incorrecta</div>
-    <input type="password" id="pass" placeholder="Contraseña admin" onkeydown="if(event.key==='Enter')doLogin()"/>
-    <button onclick="doLogin()">Ingresar →</button>
+<!-- ─────────────────────────────────────────────────── -->
+<!--  CONFIG — pon tu anon key aquí                      -->
+<!-- ─────────────────────────────────────────────────── -->
+<script>
+  const SB_URL    = 'https://wnuehkewxbpahfbemliz.supabase.co';
+  const SB_ANON   = 'sb_publishable_rfsNbbcySsAlxgH657MSKQ_niGvstWy';   // ← reemplaza esto
+  const PRECIO    = 9990;   // FIX #2: $9.990 CLP por usuario
+</script>
+
+<!-- NAV -->
+<div class="topnav">
+  <div class="logo">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+      <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+    </svg>
+    FitAI
+  </div>
+  <div class="tabs" style="margin-left:12px;">
+    <div class="tab active" data-tab="dashboard">📊 Dashboard</div>
+    <div class="tab" data-tab="clientes">👥 Clientes</div>
+    <div class="tab" data-tab="cupones">🎟️ Cupones</div>
   </div>
 </div>
 
-<!-- APP -->
-<div id="app-screen">
-  <!-- TOP NAV -->
-  <div class="topnav">
-    <div class="logo">⚡ FitAI</div>
-    <button class="nav-btn active" onclick="goTo('dashboard',this)">📊 Dashboard</button>
-    <button class="nav-btn" onclick="goTo('users',this)">👥 Clientes</button>
-    <button class="nav-btn" onclick="goTo('payments',this)">💰 Pagos</button>
-    <button class="nav-btn" onclick="goTo('emails',this)">📧 Emails</button>
-    <button class="nav-btn" onclick="goTo('push',this)">🔔 Push</button>
-    <span id="data-source" style="font-size:11px;color:var(--m);margin-left:8px;white-space:nowrap">⏳ Cargando...</span>
-    <button class="btn btn-ghost btn-sm" onclick="loadData()" style="margin-right:4px">🔄</button>
-    <button class="logout" onclick="doLogout()">Salir</button>
+<!-- ══ DASHBOARD TAB ══════════════════════════════════ -->
+<div id="tab-dashboard" class="section active">
+
+  <!-- KPI CARDS -->
+  <div class="kpi-grid" style="margin-top:16px;">
+    <div class="kpi-card c1 clickable" id="card-usuarios" title="Toca para ver usuarios">
+      <div class="kpi-value" id="kpi-usuarios"><div class="skel" style="width:50px;height:36px;"></div></div>
+      <div class="kpi-label">👥 Usuarios</div>
+      <div class="kpi-hint">Toca para ver lista</div>
+    </div>
+    <div class="kpi-card c2">
+      <div class="kpi-value" id="kpi-pagados"><div class="skel" style="width:40px;height:36px;"></div></div>
+      <div class="kpi-label">💳 Pagados</div>
+    </div>
+    <div class="kpi-card c3">
+      <div class="kpi-value" id="kpi-ingresos" style="font-size:1.6rem;"><div class="skel" style="width:90px;height:36px;"></div></div>
+      <div class="kpi-label">💰 Ingresos CLP</div>
+    </div>
+    <div class="kpi-card c4">
+      <div class="kpi-value" id="kpi-setup"><div class="skel" style="width:40px;height:36px;"></div></div>
+      <div class="kpi-label">✅ Setup completo</div>
+    </div>
+    <div class="kpi-card c5 span2">
+      <div class="kpi-value" id="kpi-conv"><div class="skel" style="width:60px;height:36px;display:inline-block;"></div></div>
+      <div class="kpi-label">📈 Conversión registrados→pagados</div>
+    </div>
   </div>
 
-  <div class="content">
+  <!-- CHART: Usuarios últimos 7 días -->
+  <div class="chart-card">
+    <div class="chart-title">Usuarios últimos 7 días</div>
+    <div class="chart-sub">Nuevos registros diarios</div>
+    <svg id="chart-7d" class="svg-chart" height="120" viewBox="0 0 320 120"></svg>
+  </div>
 
-    <!-- DASHBOARD -->
-    <div id="sec-dashboard" class="section active">
-      <div id="stats-grid" class="stats"></div>
-      <div id="charts-grid" class="charts"></div>
-    </div>
+  <!-- CHART: Ingresos por mes -->
+  <div class="chart-card">
+    <div class="chart-title">Ingresos CLP por mes</div>
+    <div class="chart-sub">Acumulado mensual</div>
+    <svg id="chart-monthly" class="svg-chart" height="130" viewBox="0 0 320 130"></svg>
+  </div>
 
-    <!-- CLIENTES -->
-    <div id="sec-users" class="section">
-      <div class="card">
-        <div class="card-top">
-          <h2>👥 Lista de clientes</h2>
-          <input type="search" id="search" placeholder="Buscar..." oninput="filterUsers(this.value)"/>
+  <!-- DONUT: Conversión — FIX #4 -->
+  <div class="chart-card">
+    <div class="chart-title">Conversión</div>
+    <div class="chart-sub">Registrados vs Pagados</div>
+    <div class="donut-wrap">
+      <div class="donut-ring-wrap">
+        <canvas id="donut-conv" width="160" height="160"></canvas>
+        <div class="donut-center-label">
+          <div class="dnum" id="dlabel-conv">—</div>
+          <div class="dsub" id="dsub-conv">de — usuarios</div>
         </div>
-        <div style="overflow-x:auto">
-          <table class="tbl" id="users-table">
-            <thead><tr><th>Nombre</th><th>Email</th><th>Pago</th><th>Setup</th><th></th></tr></thead>
-            <tbody id="users-tbody"></tbody>
-          </table>
-        </div>
+      </div>
+      <div class="donut-legend">
+        <div class="donut-legend-item"><span class="dot" style="background:var(--accent1)"></span>Pagados</div>
+        <div class="donut-legend-item"><span class="dot" style="background:#2a2a4a"></span>Sin pagar</div>
       </div>
     </div>
+  </div>
 
-    <!-- PAGOS -->
-    <div id="sec-payments" class="section">
-      <div id="pay-stats" class="stats" style="margin-bottom:16px"></div>
-      <div class="card">
-        <div class="card-top">
-          <h2>🧾 Transacciones</h2>
-          <a href="https://www.mercadopago.cl/activities" target="_blank">
-            <button class="btn btn-p btn-sm">Ver en MP →</button>
-          </a>
+  <!-- DONUT: Setup — FIX #4 -->
+  <div class="chart-card">
+    <div class="chart-title">Setup completado</div>
+    <div class="chart-sub">De clientes pagados</div>
+    <div class="donut-wrap">
+      <div class="donut-ring-wrap">
+        <canvas id="donut-setup" width="160" height="160"></canvas>
+        <div class="donut-center-label">
+          <div class="dnum" id="dlabel-setup">—</div>
+          <div class="dsub" id="dsub-setup">de — pagados</div>
         </div>
-        <div style="overflow-x:auto">
-          <table class="tbl">
-            <thead><tr><th>Cliente</th><th>Email</th><th>Monto</th><th>Estado</th><th>Fecha</th></tr></thead>
-            <tbody id="pay-tbody"></tbody>
-          </table>
-        </div>
+      </div>
+      <div class="donut-legend">
+        <div class="donut-legend-item"><span class="dot" style="background:var(--accent2)"></span>Con setup</div>
+        <div class="donut-legend-item"><span class="dot" style="background:#2a2a4a"></span>Sin setup</div>
       </div>
     </div>
+  </div>
 
-    <!-- EMAILS -->
-    <div id="sec-emails" class="section">
-      <div class="card">
-        <h2 style="margin-bottom:16px">📧 Enviar email masivo</h2>
-        <div class="form-row">
-          <div class="field"><label>Asunto</label><input type="text" id="email-subj" placeholder="Ej: Tu progreso este mes 💪"/></div>
-          <div class="field"><label>Destinatarios</label>
-            <select id="email-to">
-              <option value="all">Todos los clientes pagados</option>
-              <option value="nosetup">Sin setup completado</option>
-            </select>
-          </div>
-        </div>
-        <div class="field" style="margin-bottom:14px"><label>Mensaje (usa {{nombre}} para personalizar)</label>
-          <textarea id="email-body" placeholder="Hola {{nombre}}, te escribimos desde FitAI Pro..."></textarea>
-        </div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <button class="btn btn-p" onclick="sendBulk()">📤 Enviar ahora</button>
-          <button class="btn btn-ghost" onclick="previewEmail()">👁️ Vista previa</button>
-        </div>
-      </div>
+</div>
 
-      <div class="card">
-        <h2 style="margin-bottom:14px">⚙️ Automatizaciones</h2>
-        <div class="auto-item">
-          <div><div class="auto-name">📅 Email cada 30 días</div><div class="auto-desc">Resumen mensual a clientes activos</div></div>
-          <div class="toggle on" id="tog-email30" onclick="toggleAuto(this)"></div>
-        </div>
-        <div class="auto-item">
-          <div><div class="auto-name">👋 Email de bienvenida</div><div class="auto-desc">Al completar el pago y setup</div></div>
-          <div class="toggle on" id="tog-welcome" onclick="toggleAuto(this)"></div>
-        </div>
-        <div class="info-box">
-          <p><strong style="color:var(--t)">Para activar emails automáticos reales:</strong><br>
-          1. Crea cuenta gratis en <strong style="color:var(--t)">resend.com</strong> (3.000 emails/mes gratis)<br>
-          2. Agrega <strong style="color:var(--p)">RESEND_API_KEY</strong> en Netlify → Environment Variables<br>
-          3. Crea <strong style="color:var(--p)">netlify/functions/send-email.js</strong><br>
-          Ya tienes todo lo demás configurado ✅</p>
-        </div>
-      </div>
+<!-- ══ CLIENTES TAB ═══════════════════════════════════ -->
+<div id="tab-clientes" class="section">
+  <input class="client-search" id="client-search" type="search" placeholder="🔍 Buscar por nombre o email…">
+  <div class="clients-list" id="clients-list">
+    <div class="spinner-wrap"><div class="spinner"></div></div>
+  </div>
+</div>
+
+<!-- ══ CUPONES TAB ════════════════════════════════════ -->
+<div id="tab-cupones" class="section">
+  <div class="section-header">
+    <h2>🎟️ Cupones / Influencers</h2>
+    <p>Usos por mes, registros y conversiones</p>
+  </div>
+  <div id="cupones-list">
+    <div class="spinner-wrap"><div class="spinner"></div></div>
+  </div>
+</div>
+
+<!-- ══ MODAL USUARIOS (FIX #1) ════════════════════════ -->
+<div id="modal-overlay">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-head">
+      <h2>👥 Base de usuarios</h2>
+      <button class="modal-close" id="modal-close">✕</button>
     </div>
-
-    <!-- PUSH -->
-    <div id="sec-push" class="section">
-      <div class="card">
-        <h2 style="margin-bottom:14px">🔔 Notificación push manual</h2>
-        <div class="field" style="margin-bottom:10px"><label>Título</label><input type="text" id="push-title" placeholder="Ej: ¡No olvides tu entrenamiento! 💪"/></div>
-        <div class="field" style="margin-bottom:14px"><label>Mensaje</label><input type="text" id="push-msg" placeholder="Ej: Llevas 15 días en FitAI Pro. ¡Sigue así!"/></div>
-        <button class="btn btn-p" onclick="sendPush()">📤 Enviar push</button>
-      </div>
-      <div class="card">
-        <h2 style="margin-bottom:14px">⚙️ Automatización push</h2>
-        <div class="auto-item">
-          <div><div class="auto-name">📱 Push cada 15 días</div><div class="auto-desc">Recordatorio quincenal a todos los clientes</div></div>
-          <div class="toggle on" id="tog-push15" onclick="toggleAuto(this)"></div>
-        </div>
-        <div class="info-box">
-          <p><strong style="color:var(--t)">Para activar push notifications reales:</strong><br>
-          1. Crea cuenta gratis en <strong style="color:var(--t)">onesignal.com</strong><br>
-          2. Crea una app "Web Push"<br>
-          3. Copia el script que te dan y agrégalo al app.html<br>
-          4. Los usuarios aceptan permisos al abrir la app<br>
-          5. Programa envíos automáticos desde el panel de OneSignal<br>
-          Gratis hasta 10.000 suscriptores ✅</p>
-        </div>
-      </div>
+    <div class="modal-pills" id="modal-pills"></div>
+    <div class="modal-body" id="modal-body">
+      <div class="spinner-wrap"><div class="spinner"></div></div>
     </div>
-
-  </div><!-- /content -->
-</div><!-- /app -->
-
-<div id="toast">✅ Listo</div>
+  </div>
+</div>
 
 <script>
-const PASS = 'fitai2024admin';
-const SUPA_URL = 'https://wnuehkewxbpahfbemliz.supabase.co';  // ← reemplaza
-const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndudWVoa2V3eGJwYWhmYmVtbGl6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM5Mjc1NDcsImV4cCI6MjA4OTUwMzU0N30.CQ_pICuiWPwUhMrsCl7csOzMZR3cYZuaLcMelJnnyRI';                 // ← reemplaza
-let supa = null;
-function initSupa() {
-  if (!supa && SUPA_URL !== 'https://TU-PROYECTO.supabase.co') {
-    supa = window.supabase.createClient(SUPA_URL, SUPA_KEY);
-  }
-}
-let charts = {};
-let allUsers = [];
-let allPayments = [];
-let allLogs = [];
-
-// ── AUTH ──────────────────────────────────
-function doLogin() {
-  const v = document.getElementById('pass').value;
-  if (v === PASS) {
-    document.getElementById('login-screen').style.display = 'none';
-    document.getElementById('app-screen').style.display = 'block';
-    loadData();
-  } else {
-    document.getElementById('lerr').style.display = 'block';
-  }
+// ═══════════════════════════════════════════════════════
+//  SUPABASE HELPER
+// ═══════════════════════════════════════════════════════
+async function sb(table, params = {}) {
+  const q = new URLSearchParams(params).toString();
+  const res = await fetch(`${SB_URL}/rest/v1/${table}${q ? '?' + q : ''}`, {
+    headers: {
+      apikey: SB_ANON,
+      Authorization: `Bearer ${SB_ANON}`,
+    }
+  });
+  if (!res.ok) throw new Error(`Supabase error ${res.status}: ${await res.text()}`);
+  return res.json();
 }
 
-function doLogout() {
-  document.getElementById('app-screen').style.display = 'none';
-  document.getElementById('login-screen').style.display = 'flex';
-  document.getElementById('pass').value = '';
-}
+// ═══════════════════════════════════════════════════════
+//  ESTADO GLOBAL
+// ═══════════════════════════════════════════════════════
+let DB = { users: [], payments: [], couponUses: [] };
 
-document.getElementById('pass').addEventListener('keydown', e => {
-  if (e.key === 'Enter') doLogin();
-});
-
-// ── NAV ───────────────────────────────────
-function goTo(id, btn) {
-  // Hide all sections
-  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-  // Deactivate all nav buttons
-  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-  // Show target section
-  document.getElementById('sec-' + id).classList.add('active');
-  // Activate clicked button
-  btn.classList.add('active');
-  // Rebuild charts if dashboard
-  if (id === 'dashboard') setTimeout(buildCharts, 50);
-}
-
-// ── DATA ──────────────────────────────────
+// ═══════════════════════════════════════════════════════
+//  CARGA DE DATOS
+// ═══════════════════════════════════════════════════════
 async function loadData() {
-  initSupa();
-  
-  if (supa) {
-    // Load from Supabase (real data)
-    try {
-      const { data: users } = await supa.from('users').select('*').order('created_at', { ascending: false });
-      const { data: payments } = await supa.from('payments').select('*').order('created_at', { ascending: false });
-      const { data: logs } = await supa.from('daily_logs').select('*').order('created_at', { ascending: false });
-      
-      allUsers = (users || []).map(u => ({
-        name: u.name || 'Sin nombre',
-        email: u.email || '',
-        paid: u.paid || false,
-        setup: u.setup_done || false,
-        goal: u.goal || '',
-        created_at: u.created_at,
-        paid_at: u.paid_at,
-      }));
-      allPayments = payments || [];
-      allLogs = logs || [];
-      
-      document.getElementById('data-source').textContent = '🟢 Supabase (tiempo real)';
-    } catch(e) {
-      console.log('Supabase error:', e);
-      loadFromLocalStorage();
-    }
-  } else {
-    // Fallback: read from localStorage (same device only)
-    loadFromLocalStorage();
-    document.getElementById('data-source').textContent = '🟡 localStorage (solo este dispositivo)';
-  }
-
-  renderStats();
-  renderUsers(allUsers);
-  renderPayments();
-  setTimeout(buildCharts, 100);
-}
-
-function loadFromLocalStorage() {
   try {
-    const raw = localStorage.getItem('fitai_users');
-    if (raw) {
-      const obj = JSON.parse(raw);
-      allUsers = Object.values(obj).map(u => ({
-        name: u.name || 'Sin nombre',
-        email: u.email || '',
-        paid: u.paid || false,
-        setup: u.paid || false,
-      }));
-    }
-  } catch { allUsers = []; }
-  allPayments = [];
-  allLogs = [];
-}
-
-function getStats() {
-  const paid = allUsers.filter(u => u.paid).length;
-  const setup = allUsers.filter(u => u.setup).length;
-  return {
-    total: allUsers.length,
-    paid,
-    setup,
-    revenue: paid * 990,
-    conv: allUsers.length > 0 ? Math.round((paid / allUsers.length) * 100) : 0,
-  };
-}
-
-// ── RENDER STATS ──────────────────────────
-function renderStats() {
-  const s = getStats();
-  document.getElementById('stats-grid').innerHTML = `
-    <div class="stat"><div class="stat-n">${s.total}</div><div class="stat-l">👥 Usuarios</div></div>
-    <div class="stat g"><div class="stat-n">${s.paid}</div><div class="stat-l">💳 Pagados</div></div>
-    <div class="stat l"><div class="stat-n">$${s.revenue.toLocaleString('es-CL')}</div><div class="stat-l">💰 Ingresos CLP</div></div>
-    <div class="stat b"><div class="stat-n">${s.setup}</div><div class="stat-l">✅ Setup completo</div></div>
-    <div class="stat a"><div class="stat-n">${s.conv}%</div><div class="stat-l">📈 Conversión</div></div>
-  `;
-  document.getElementById('pay-stats').innerHTML = `
-    <div class="stat g"><div class="stat-n">$${s.revenue.toLocaleString('es-CL')}</div><div class="stat-l">💰 Total recaudado</div></div>
-    <div class="stat"><div class="stat-n">${s.paid}</div><div class="stat-l">🧾 Transacciones</div></div>
-    <div class="stat b"><div class="stat-n">$990</div><div class="stat-l">💵 Precio por cliente</div></div>
-  `;
-}
-
-// ── RENDER USERS ──────────────────────────
-function renderUsers(users) {
-  const tbody = document.getElementById('users-tbody');
-  if (!users.length) {
-    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--m);padding:24px">Sin usuarios aún</td></tr>';
-    return;
+    const [users, payments, couponUses] = await Promise.all([
+      sb('profiles',    { select: '*', order: 'created_at.asc' }),
+      sb('payments',    { select: '*' }),
+      sb('coupon_uses', { select: '*', order: 'created_at.desc' }).catch(() => []),
+    ]);
+    DB = { users, payments, couponUses };
+    renderDashboard();
+    renderClientes();
+    renderCupones();
+  } catch (e) {
+    document.getElementById('tab-dashboard').insertAdjacentHTML('afterbegin',
+      `<div class="err-box">⚠️ Error conectando con Supabase: ${e.message}</div>`);
   }
-  tbody.innerHTML = users.map(u => `
-    <tr>
-      <td><strong>${u.name}</strong></td>
-      <td style="color:var(--m);font-size:12px">${u.email}</td>
-      <td><span class="badge ${u.paid ? 'bp' : 'bn'}">${u.paid ? '✅ Pagado' : '⏳ Pendiente'}</span></td>
-      <td><span class="badge ${u.setup ? 'bb' : 'bn'}">${u.setup ? '✅' : '❌'}</span></td>
-      <td><button class="btn btn-ghost btn-sm" onclick="quickEmail('${u.email}','${u.name}')">✉️</button></td>
-    </tr>`).join('');
 }
 
-function filterUsers(q) {
-  const filtered = allUsers.filter(u =>
-    u.name.toLowerCase().includes(q.toLowerCase()) ||
-    u.email.toLowerCase().includes(q.toLowerCase())
+// ═══════════════════════════════════════════════════════
+//  HELPERS
+// ═══════════════════════════════════════════════════════
+function fmtClp(n) {
+  return '$' + Number(n).toLocaleString('es-CL');
+}
+function fmtDate(iso) {
+  return new Date(iso).toLocaleDateString('es-CL', { day:'2-digit', month:'short' });
+}
+function initials(name, email) {
+  const s = name || email || '?';
+  return s.slice(0,2).toUpperCase();
+}
+const COLORS = ['#a78bfa','#00e676','#38bdf8','#fb923c','#f43f5e','#facc15'];
+function avatarColor(i) { return COLORS[i % COLORS.length]; }
+
+function paidSet() {
+  return new Set(DB.payments.filter(p => p.status === 'approved').map(p => p.user_id));
+}
+
+// ═══════════════════════════════════════════════════════
+//  DASHBOARD
+// ═══════════════════════════════════════════════════════
+function renderDashboard() {
+  const paid   = paidSet();
+  const total  = DB.users.length;
+  const pagados = paid.size;
+  const ingresos = pagados * PRECIO;  // FIX #2
+  const setupOk = DB.users.filter(u => u.setup_completed).length;
+  const conv = total > 0 ? Math.round(pagados / total * 100) : 0;
+
+  document.getElementById('kpi-usuarios').textContent = total;
+  document.getElementById('kpi-pagados').textContent  = pagados;
+  document.getElementById('kpi-ingresos').textContent = fmtClp(ingresos);
+  document.getElementById('kpi-setup').textContent    = setupOk;
+  document.getElementById('kpi-conv').textContent     = conv + '%';
+
+  drawDonut('donut-conv',
+    pagados, total - pagados,
+    [getComputedStyle(document.documentElement).getPropertyValue('--accent1').trim() || '#00e676', '#2a2a4a'],
+    pagados + '', `de ${total} usuarios`
   );
-  renderUsers(filtered);
+  drawDonut('donut-setup',
+    setupOk, pagados - setupOk,
+    ['#a78bfa', '#2a2a4a'],
+    setupOk + '', `de ${pagados} pagados`
+  );
+
+  draw7dChart();
+  drawMonthlyChart();
 }
 
-// ── RENDER PAYMENTS ───────────────────────
-function renderPayments() {
-  const tbody = document.getElementById('pay-tbody');
-  // Use Supabase payments if available, else fallback to users
-  const source = allPayments.length > 0 ? allPayments : allUsers.filter(u => u.paid).map(u => ({
-    user_email: u.email, amount: 990, currency: 'CLP', status: 'approved',
-    created_at: u.paid_at || u.created_at, name: u.name
-  }));
+// FIX #4 — Donut con totales
+function drawDonut(id, a, b, colors, labelNum, labelSub) {
+  const canvas = document.getElementById(id);
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height, cx = W/2, cy = H/2;
+  const R = Math.min(W,H) * 0.44, ri = R * 0.64;
+  ctx.clearRect(0,0,W,H);
+  const total = a + b || 1;
+  const slices = [
+    { val: a / total, color: colors[0] },
+    { val: b / total, color: colors[1] },
+  ];
+  let ang = -Math.PI / 2;
+  for (const s of slices) {
+    const sweep = s.val * 2 * Math.PI;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.arc(cx, cy, R, ang, ang + sweep);
+    ctx.closePath();
+    ctx.fillStyle = s.color;
+    ctx.fill();
+    ang += sweep;
+  }
+  ctx.beginPath();
+  ctx.arc(cx, cy, ri, 0, 2*Math.PI);
+  ctx.fillStyle = '#0f0f24';
+  ctx.fill();
 
-  if (!source.length) {
-    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--m);padding:24px">Sin pagos aún</td></tr>';
+  // etiqueta num
+  const numEl = canvas.closest('.donut-ring-wrap')?.querySelector('.dnum');
+  const subEl = canvas.closest('.donut-ring-wrap')?.querySelector('.dsub');
+  if (numEl) numEl.textContent = labelNum;
+  if (subEl) subEl.textContent = labelSub;
+}
+
+// Chart 7 días
+function draw7dChart() {
+  const svg = document.getElementById('chart-7d');
+  const days = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(); d.setDate(d.getDate() - i);
+    days.push(d);
+  }
+  const dayLabels = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+  const counts = days.map(d => DB.users.filter(u => {
+    const ud = new Date(u.created_at);
+    return ud.toDateString() === d.toDateString();
+  }).length);
+
+  const W = 320, H = 120, pad = { l:20, r:10, t:10, b:22 };
+  const iW = W - pad.l - pad.r, iH = H - pad.t - pad.b;
+  const max = Math.max(...counts, 1);
+  const xStep = iW / 6;
+
+  const pts = counts.map((v, i) => ({
+    x: pad.l + i * xStep,
+    y: pad.t + iH - (v / max) * iH
+  }));
+  const path = pts.map((p, i) => `${i===0?'M':'L'}${p.x},${p.y}`).join(' ');
+  const area = path + ` L${pts[pts.length-1].x},${pad.t+iH} L${pts[0].x},${pad.t+iH} Z`;
+
+  svg.innerHTML = `
+    <defs>
+      <linearGradient id="g7d" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#a78bfa" stop-opacity=".4"/>
+        <stop offset="100%" stop-color="#a78bfa" stop-opacity="0"/>
+      </linearGradient>
+    </defs>
+    <path d="${area}" fill="url(#g7d)"/>
+    <path d="${path}" fill="none" stroke="#a78bfa" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+    ${pts.map((p,i)=>`
+      <circle cx="${p.x}" cy="${p.y}" r="3" fill="#a78bfa"/>
+      <text x="${p.x}" y="${H-4}" text-anchor="middle" fill="#555" font-size="9" font-family="DM Sans,sans-serif">${dayLabels[days[i].getDay()]}</text>
+      ${counts[i]>0?`<text x="${p.x}" y="${p.y-7}" text-anchor="middle" fill="#a78bfa" font-size="9" font-family="DM Sans,sans-serif">${counts[i]}</text>`:''}
+    `).join('')}
+  `;
+}
+
+// Chart mensual
+function drawMonthlyChart() {
+  const svg = document.getElementById('chart-monthly');
+  const paid = paidSet();
+  const months = {};
+  DB.payments.filter(p => p.status === 'approved').forEach(p => {
+    const d   = new Date(p.created_at || p.updated_at || Date.now());
+    const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    months[key] = (months[key] || 0) + PRECIO;
+  });
+  const keys = Object.keys(months).sort().slice(-6);
+  if (!keys.length) {
+    // si no hay pagos, pon el mes actual con 0
+    const now = new Date();
+    keys.push(`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`);
+    months[keys[0]] = 0;
+  }
+
+  const W = 320, H = 130, pad = { l:30, r:10, t:10, b:22 };
+  const iW = W - pad.l - pad.r, iH = H - pad.t - pad.b;
+  const max = Math.max(...keys.map(k => months[k]||0), PRECIO);
+  const barW = Math.min((iW / keys.length) * 0.6, 36);
+  const step  = iW / keys.length;
+  const monNames = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+
+  const bars = keys.map((k, i) => {
+    const val = months[k] || 0;
+    const bH  = Math.max((val / max) * iH, val > 0 ? 4 : 0);
+    const x   = pad.l + i * step + step/2 - barW/2;
+    const y   = pad.t + iH - bH;
+    const mo  = parseInt(k.split('-')[1]) - 1;
+    return `
+      <rect x="${x}" y="${y}" width="${barW}" height="${bH}"
+        fill="url(#gbar)" rx="4"/>
+      <text x="${x+barW/2}" y="${H-5}" text-anchor="middle" fill="#555"
+        font-size="9" font-family="DM Sans,sans-serif">${monNames[mo]}</text>
+      ${val>0?`<text x="${x+barW/2}" y="${y-5}" text-anchor="middle" fill="#00e676"
+        font-size="8" font-family="DM Sans,sans-serif">${fmtClp(val)}</text>`:''}
+    `;
+  }).join('');
+
+  svg.innerHTML = `
+    <defs>
+      <linearGradient id="gbar" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#00e676"/>
+        <stop offset="100%" stop-color="#00a854"/>
+      </linearGradient>
+    </defs>
+    <line x1="${pad.l}" y1="${pad.t}" x2="${pad.l}" y2="${pad.t+iH}" stroke="#1e1e3a" stroke-width="1"/>
+    <line x1="${pad.l}" y1="${pad.t+iH}" x2="${W-pad.r}" y2="${pad.t+iH}" stroke="#1e1e3a" stroke-width="1"/>
+    ${bars}
+  `;
+}
+
+// ═══════════════════════════════════════════════════════
+//  CLIENTES (lista con correlativo)
+// ═══════════════════════════════════════════════════════
+function renderClientes(filter = '') {
+  const container = document.getElementById('clients-list');
+  const paid = paidSet();
+  let users = DB.users;
+  if (filter) {
+    const f = filter.toLowerCase();
+    users = users.filter(u =>
+      (u.full_name||'').toLowerCase().includes(f) ||
+      (u.email||'').toLowerCase().includes(f)
+    );
+  }
+  if (!users.length) {
+    container.innerHTML = '<p style="text-align:center;color:#444;padding:40px;">Sin resultados</p>';
     return;
   }
-  tbody.innerHTML = source.map(p => {
-    const user = allUsers.find(u => u.email === p.user_email);
-    const name = user?.name || p.name || p.user_email;
-    const date = p.created_at ? new Date(p.created_at).toLocaleDateString('es-CL') : '-';
-    return `<tr>
-      <td><strong>${name}</strong></td>
-      <td style="color:var(--m);font-size:12px">${p.user_email}</td>
-      <td style="color:var(--g);font-weight:700">$${(p.amount||990).toLocaleString('es-CL')} ${p.currency||'CLP'}</td>
-      <td><span class="badge bp">✅ Aprobado</span></td>
-      <td style="color:var(--m);font-size:11px">${date}</td>
-    </tr>`;
+  container.innerHTML = users.map((u, i) => {
+    const isPaid = paid.has(u.id);
+    const hasSetup = u.setup_completed;
+    return `
+      <div class="client-card">
+        <div class="client-num">#${i+1}</div>
+        <div class="client-avatar" style="background:${avatarColor(i)}22;color:${avatarColor(i)}">
+          ${initials(u.full_name, u.email)}
+        </div>
+        <div class="client-body">
+          <div class="client-name">${u.full_name || '(sin nombre)'}</div>
+          <div class="client-email">${u.email || '—'}</div>
+          <div class="client-tags">
+            ${isPaid  ? '<span class="badge paid">💳 Pagado</span>'  : '<span class="badge free">Gratis</span>'}
+            ${hasSetup? '<span class="badge setup">✅ Setup</span>' : ''}
+          </div>
+        </div>
+        <div class="client-date">${fmtDate(u.created_at)}</div>
+      </div>`;
   }).join('');
 }
 
-// ── CHARTS ────────────────────────────────
-function buildCharts() {
-  Object.values(charts).forEach(c => { try { c.destroy(); } catch {} });
-  charts = {};
+// ═══════════════════════════════════════════════════════
+//  CUPONES — FIX #3
+// ═══════════════════════════════════════════════════════
+function renderCupones() {
+  const container = document.getElementById('cupones-list');
+  const paid = paidSet();
+  const usersMap = Object.fromEntries(DB.users.map(u => [u.id, u]));
 
-  const s = getStats();
-  const grid = document.getElementById('charts-grid');
-  grid.innerHTML = `
-    <div class="chart-box"><h3>Usuarios últimos 7 días</h3><p>Nuevos registros diarios</p><canvas id="c1"></canvas></div>
-    <div class="chart-box"><h3>Ingresos CLP por mes</h3><p>Acumulado mensual</p><canvas id="c2"></canvas></div>
-    <div class="chart-box"><h3>Conversión</h3><p>Registrados vs Pagados</p><canvas id="c3"></canvas></div>
-    <div class="chart-box"><h3>Setup completado</h3><p>De clientes pagados</p><canvas id="c4"></canvas></div>
+  if (!DB.couponUses.length) {
+    container.innerHTML = '<p class="no-coupons">Sin cupones registrados aún.<br><small>Asegúrate de insertar en la tabla <code>coupon_uses</code> al registrar un usuario con cupón.</small></p>';
+    return;
+  }
+
+  // Agrupar por código
+  const byCoupon = {};
+  for (const use of DB.couponUses) {
+    if (!byCoupon[use.coupon_code]) {
+      byCoupon[use.coupon_code] = {
+        code: use.coupon_code,
+        influencer: use.influencer_name || use.coupon_code,
+        uses: [],
+      };
+    }
+    byCoupon[use.coupon_code].uses.push(use);
+  }
+
+  // Agrupar usos por mes para cada cupón
+  const now = new Date();
+  const thisMonth = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+
+  container.innerHTML = Object.values(byCoupon).map((c, ci) => {
+    const usesThisMonth = c.uses.filter(u => (u.created_at||'').startsWith(thisMonth));
+    const usesWithPay   = c.uses.filter(u => paid.has(u.user_id));
+    const ingresos      = usesWithPay.length * PRECIO;
+
+    // Agrupar por mes para el detalle
+    const byMonth = {};
+    for (const u of c.uses) {
+      const mo = (u.created_at||'').slice(0,7);
+      if (!byMonth[mo]) byMonth[mo] = [];
+      byMonth[mo].push(u);
+    }
+
+    const months = Object.keys(byMonth).sort().reverse();
+    const monNames = { '01':'Enero','02':'Febrero','03':'Marzo','04':'Abril',
+      '05':'Mayo','06':'Junio','07':'Julio','08':'Agosto',
+      '09':'Septiembre','10':'Octubre','11':'Noviembre','12':'Diciembre' };
+
+    const detailHTML = months.map(mo => {
+      const [yr, mn] = mo.split('-');
+      const rows = byMonth[mo].map(u => {
+        const usr = usersMap[u.user_id] || {};
+        const isPaid = paid.has(u.user_id);
+        return `<div class="coupon-use-row">
+          <span class="cuse-email">${usr.email || u.user_id?.slice(0,8) || '—'}</span>
+          <span class="cuse-date">${fmtDate(u.created_at)}</span>
+          <span class="cuse-badge ${isPaid?'paid':'free'}">${isPaid?'💰 Pagó':'👀 Gratis'}</span>
+        </div>`;
+      }).join('');
+      return `<div class="coupon-month-title">${monNames[mn]||mn} ${yr} — ${byMonth[mo].length} usos</div>${rows}`;
+    }).join('');
+
+    return `
+      <div class="coupon-card" id="coup-${ci}">
+        <div class="coupon-head" onclick="document.getElementById('coup-${ci}').classList.toggle('open')">
+          <div class="coupon-head-left">
+            <span class="coupon-code-badge">${c.code}</span>
+            <span class="coupon-inf">${c.influencer}</span>
+          </div>
+          <span class="coupon-chevron">▾</span>
+        </div>
+        <div class="coupon-stats">
+          <div class="cstat"><strong>${c.uses.length}</strong>Usos totales</div>
+          <div class="cstat"><strong>${usesThisMonth.length}</strong>Este mes</div>
+          <div class="cstat"><strong>${usesWithPay.length}</strong>Pagaron</div>
+          <div class="cstat green"><strong>${fmtClp(ingresos)}</strong>Ingresos</div>
+        </div>
+        <div class="coupon-detail">${detailHTML}</div>
+      </div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════════════
+//  MODAL USUARIOS — FIX #1
+// ═══════════════════════════════════════════════════════
+function openUsersModal() {
+  const overlay = document.getElementById('modal-overlay');
+  overlay.classList.add('open');
+  const paid = paidSet();
+  const total = DB.users.length;
+  const pagados = paid.size;
+  const setupOk = DB.users.filter(u=>u.setup_completed).length;
+
+  document.getElementById('modal-pills').innerHTML = `
+    <div class="pill"><span>${total}</span> registrados</div>
+    <div class="pill"><span>${pagados}</span> pagados</div>
+    <div class="pill"><span>${setupOk}</span> con setup</div>
+    <div class="pill"><span>${fmtClp(pagados*PRECIO)}</span> ingresos</div>
   `;
 
-  const cfg = { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } };
-  const grd = c => ({ color: '#1e2030' });
-  const tck = { color: '#5a607a', font: { size: 10 } };
+  document.getElementById('modal-body').innerHTML = DB.users.map((u, i) => {
+    const isPaid  = paid.has(u.id);
+    const hasSetup = u.setup_completed;
+    return `
+      <div class="user-row">
+        <div class="user-num">#${i+1}</div>
+        <div class="user-avatar" style="background:${avatarColor(i)}22;color:${avatarColor(i)}">
+          ${initials(u.full_name, u.email)}
+        </div>
+        <div class="user-info">
+          <div class="user-name">${u.full_name || '(sin nombre)'}</div>
+          <div class="user-email">${u.email||'—'}</div>
+        </div>
+        <div class="user-meta">
+          <div class="badge ${isPaid?'paid':'free'}">${isPaid?'💳 Pagado':'Gratis'}</div>
+          ${hasSetup?'<div class="badge setup">✅ Setup</div>':''}
+          <div class="user-date">${fmtDate(u.created_at)}</div>
+        </div>
+      </div>`;
+  }).join('');
+}
 
-  const days = ['Lun','Mar','Mié','Jue','Vie','Sáb','Hoy'];
-  const userCounts = [0,0,0,0,0,0,s.total];
-
-  charts.c1 = new Chart(document.getElementById('c1'), {
-    type: 'line',
-    data: { labels: days, datasets: [{ data: userCounts, borderColor: '#a78bfa', backgroundColor: '#a78bfa15', fill: true, tension: 0.4, pointBackgroundColor: '#a78bfa', pointRadius: 3 }] },
-    options: { ...cfg, scales: { x: { grid: grd(), ticks: tck }, y: { grid: grd(), ticks: tck, beginAtZero: true } } }
+// ═══════════════════════════════════════════════════════
+//  TABS
+// ═══════════════════════════════════════════════════════
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+    document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
   });
+});
 
-  charts.c2 = new Chart(document.getElementById('c2'), {
-    type: 'bar',
-    data: { labels: ['Oct','Nov','Dic','Ene','Feb','Mar'], datasets: [{ data: [0,0,0,0,s.revenue>990?990:0,s.revenue], backgroundColor: '#34d39930', borderColor: '#34d399', borderWidth: 2, borderRadius: 6 }] },
-    options: { ...cfg, scales: { x: { grid: grd(), ticks: tck }, y: { grid: grd(), ticks: { ...tck, callback: v => '$'+v }, beginAtZero: true } } }
-  });
+// ═══════════════════════════════════════════════════════
+//  EVENTOS
+// ═══════════════════════════════════════════════════════
+document.getElementById('card-usuarios').addEventListener('click', openUsersModal);
+document.getElementById('modal-close').addEventListener('click', () =>
+  document.getElementById('modal-overlay').classList.remove('open')
+);
+document.getElementById('modal-overlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('modal-overlay'))
+    document.getElementById('modal-overlay').classList.remove('open');
+});
 
-  charts.c3 = new Chart(document.getElementById('c3'), {
-    type: 'doughnut',
-    data: { labels: ['Pagados', 'Sin pagar'], datasets: [{ data: [s.paid, Math.max(0,s.total-s.paid)], backgroundColor: ['#34d39980','#1e2030'], borderColor: ['#34d399','#2a3050'], borderWidth: 2 }] },
-    options: { ...cfg, plugins: { legend: { display: true, position: 'bottom', labels: { color: '#5a607a', font: { size: 10 }, padding: 8 } } }, cutout: '60%' }
-  });
+// Búsqueda en clientes
+document.getElementById('client-search').addEventListener('input', e =>
+  renderClientes(e.target.value)
+);
 
-  charts.c4 = new Chart(document.getElementById('c4'), {
-    type: 'doughnut',
-    data: { labels: ['Setup ✅', 'Sin setup'], datasets: [{ data: [s.setup, Math.max(0,s.paid-s.setup)], backgroundColor: ['#a78bfa80','#1e2030'], borderColor: ['#a78bfa','#2a3050'], borderWidth: 2 }] },
-    options: { ...cfg, plugins: { legend: { display: true, position: 'bottom', labels: { color: '#5a607a', font: { size: 10 }, padding: 8 } } }, cutout: '60%' }
-  });
-}
-
-// ── EMAIL ─────────────────────────────────
-function quickEmail(email, name) {
-  const subject = prompt(`Email a ${name}\nAsunto:`);
-  if (!subject) return;
-  const body = prompt('Mensaje:');
-  if (!body) return;
-  toast(`✅ Email a ${email} (requiere Resend configurado)`);
-}
-
-function sendBulk() {
-  const subj = document.getElementById('email-subj').value;
-  const body = document.getElementById('email-body').value;
-  if (!subj || !body) { toast('⚠️ Completa asunto y mensaje', '#fbbf24'); return; }
-  const paid = allUsers.filter(u => u.paid);
-  toast(`📤 Enviando a ${paid.length} clientes... (requiere Resend)`);
-}
-
-function previewEmail() {
-  const subj = document.getElementById('email-subj').value || '(sin asunto)';
-  const body = document.getElementById('email-body').value || '(sin contenido)';
-  alert(`VISTA PREVIA\n\nAsunto: ${subj}\n\n${body.replace('{{nombre}}','Juan')}`);
-}
-
-// ── PUSH ──────────────────────────────────
-function sendPush() {
-  const t = document.getElementById('push-title').value;
-  const m = document.getElementById('push-msg').value;
-  if (!t || !m) { toast('⚠️ Completa título y mensaje', '#fbbf24'); return; }
-  toast('📤 Push enviado (requiere OneSignal)');
-}
-
-// ── TOGGLES ───────────────────────────────
-function toggleAuto(el) {
-  el.classList.toggle('on');
-  toast(el.classList.contains('on') ? '✅ Automatización activada' : '⏸️ Automatización pausada');
-}
-
-// ── TOAST ─────────────────────────────────
-function toast(msg, color = '#34d399') {
-  const el = document.getElementById('toast');
-  el.textContent = msg;
-  el.style.borderColor = color;
-  el.style.color = color;
-  el.style.display = 'block';
-  setTimeout(() => el.style.display = 'none', 2800);
-}
+// ═══════════════════════════════════════════════════════
+//  INICIO
+// ═══════════════════════════════════════════════════════
+loadData();
 </script>
 </body>
 </html>
