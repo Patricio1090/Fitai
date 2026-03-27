@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>FitAI — Pagos</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0b0b1a;--bg-card:#12122a;--border:#1e1e3a;
+  --accent1:#00e676;--accent2:#a78bfa;--accent3:#38bdf8;
+  --text:#e8e8f0;--muted:#6b6b88;
+}
+html{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif}
+body{padding:16px 16px 80px}
+
+/* KPI */
+.kpi-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}
+.kpi-card{
+  background:var(--bg-card);border:1px solid var(--border);border-radius:16px;
+  padding:16px;position:relative;overflow:hidden
+}
+.kpi-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+.kpi-card.c1::before{background:var(--accent1)}
+.kpi-card.c2::before{background:var(--accent2)}
+.kpi-card.c3::before{background:var(--accent3)}
+.kpi-card.c4::before{background:#f59e0b}
+.kpi-card.span2{grid-column:span 2}
+.kpi-val{font-family:'Bebas Neue',sans-serif;font-size:2.2rem;line-height:1;color:#fff}
+.kpi-val.sm{font-size:1.6rem}
+.kpi-lbl{font-size:.72rem;color:var(--muted);margin-top:5px}
+.kpi-sub{font-size:.65rem;color:#3a5;margin-top:3px}  /* verde si hay dato extra */
+
+/* CARD genérica */
+.card{background:var(--bg-card);border:1px solid var(--border);border-radius:16px;padding:18px;margin-bottom:14px}
+.card-title{font-size:.95rem;font-weight:700;color:#fff;margin-bottom:3px}
+.card-sub{font-size:.72rem;color:var(--muted);margin-bottom:14px}
+
+/* TABLA MENSUAL */
+.month-table{width:100%;border-collapse:collapse}
+.month-table th{
+  text-align:left;font-size:.7rem;color:var(--muted);font-weight:600;
+  padding:6px 8px;border-bottom:1px solid var(--border);text-transform:uppercase;letter-spacing:.4px
+}
+.month-table td{padding:10px 8px;border-bottom:1px solid #0d0d1e;font-size:.82rem;color:var(--text)}
+.month-table tr:last-child td{border-bottom:none}
+.month-table td.num{font-family:'Bebas Neue',sans-serif;font-size:1rem;color:var(--accent1)}
+.month-table td.cnt{color:var(--muted);text-align:center}
+.month-table td.bar-cell{width:40%;padding-right:0}
+.bar-bg{background:#1e1e3a;border-radius:4px;height:6px;overflow:hidden}
+.bar-fill{height:6px;background:linear-gradient(90deg,var(--accent1),#00a854);border-radius:4px;transition:width .6s ease}
+.month-table tr.current td{color:#fff}
+.month-table tr.current td.num{color:var(--accent1)}
+
+/* GRÁFICO SVG */
+.svg-chart{width:100%;overflow:visible}
+
+/* TRANSACCIONES */
+.tx-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+.btn-mp{
+  background:var(--accent2);color:#fff;border:none;border-radius:20px;
+  padding:8px 16px;font-size:.78rem;font-weight:700;cursor:pointer;
+  font-family:'DM Sans',sans-serif;text-decoration:none;display:inline-block
+}
+.tx-cols{display:grid;grid-template-columns:1fr auto auto;gap:8px;
+  font-size:.68rem;color:var(--muted);font-weight:600;text-transform:uppercase;
+  letter-spacing:.4px;padding:0 2px 8px;border-bottom:1px solid var(--border);margin-bottom:4px}
+.tx-row{
+  display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;
+  padding:11px 2px;border-bottom:1px solid #0d0d1e
+}
+.tx-row:last-child{border-bottom:none}
+.tx-email{font-size:.78rem;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tx-date{font-size:.65rem;color:var(--muted)}
+.tx-amount{font-family:'Bebas Neue',sans-serif;font-size:1rem;color:var(--accent1);text-align:right;white-space:nowrap}
+.tx-badge{
+  display:flex;align-items:center;gap:4px;padding:4px 10px;border-radius:20px;
+  font-size:.68rem;font-weight:700;white-space:nowrap
+}
+.tx-badge.aprobado{background:#00e67618;color:var(--accent1);border:1px solid #00e67630}
+.tx-badge.pendiente{background:#f59e0b18;color:#f59e0b;border:1px solid #f59e0b30}
+.tx-badge.rechazado{background:#ef444418;color:#ef4444;border:1px solid #ef444430}
+
+/* ALERTA DE ERROR */
+.err{background:#ff444420;border:1px solid #ff4444;border-radius:12px;
+  padding:14px;font-size:.8rem;color:#ff8888;margin-bottom:12px}
+
+/* SPINNER */
+.spin-wrap{display:flex;justify-content:center;padding:40px}
+.spinner{width:28px;height:28px;border-radius:50%;border:3px solid var(--border);
+  border-top-color:var(--accent1);animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* SKEL */
+.skel{background:linear-gradient(90deg,#1a1a32 25%,#22223a 50%,#1a1a32 75%);
+  background-size:200% 100%;animation:shim 1.2s infinite;border-radius:8px;display:inline-block}
+@keyframes shim{to{background-position:-200% 0}}
+
+/* VACÍO */
+.empty{text-align:center;color:#444;padding:40px 20px;font-size:.85rem}
+
+/* TOOLTIP donut */
+.legend-row{display:flex;flex-wrap:wrap;gap:12px;justify-content:center;margin-top:10px}
+.legend-item{display:flex;align-items:center;gap:6px;font-size:.72rem;color:var(--muted)}
+.dot{width:10px;height:10px;border-radius:3px;display:inline-block}
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════
+     CONFIG — misma config que el resto del app
+════════════════════════════════════════════════ -->
+<script>
+const SB_URL  = 'https://wnuehkewxbpahfbemliz.supabase.co';
+const SB_ANON = 'sb_publishable_rfsNbbcySsAlxgH657MSKQ_niGvstWy';  // ← reemplaza
+const PRECIO  = 9990;  // $9.990 CLP por suscripción
+
+// ── helper fetch ──────────────────────────────
+async function sb(table, params = {}) {
+  const q = new URLSearchParams(params).toString();
+  const r = await fetch(`${SB_URL}/rest/v1/${table}${q?'?'+q:''}`, {
+    headers: { apikey: SB_ANON, Authorization: `Bearer ${SB_ANON}` }
+  });
+  if (!r.ok) throw new Error(`${r.status}: ${await r.text()}`);
+  return r.json();
+}
+
+function fmtClp(n) {
+  return '$' + Number(n).toLocaleString('es-CL');
+}
+function fmtDate(iso) {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleDateString('es-CL',{day:'2-digit',month:'short',year:'2-digit'});
+}
+const MON = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+</script>
+
+<!-- ══ KPI CARDS ══════════════════════════════ -->
+<div class="kpi-grid">
+  <div class="kpi-card c1">
+    <div class="kpi-val sm" id="k-total"><span class="skel" style="width:90px;height:28px"></span></div>
+    <div class="kpi-lbl">💰 Total recaudado</div>
+    <div class="kpi-sub" id="k-total-sub"></div>
+  </div>
+  <div class="kpi-card c2">
+    <div class="kpi-val" id="k-tx"><span class="skel" style="width:40px;height:36px"></span></div>
+    <div class="kpi-lbl">🧾 Transacciones</div>
+  </div>
+  <div class="kpi-card c3">
+    <div class="kpi-val sm" id="k-mes"><span class="skel" style="width:80px;height:28px"></span></div>
+    <div class="kpi-lbl">📅 Este mes</div>
+    <div class="kpi-sub" id="k-mes-sub"></div>
+  </div>
+  <div class="kpi-card c4">
+    <div class="kpi-val sm">${fmtClp(9990)}</div>
+    <div class="kpi-lbl">💵 Precio por cliente</div>
+  </div>
+</div>
+
+<!-- ══ GRÁFICO EVOLUTIVO ══════════════════════ -->
+<div class="card">
+  <div class="card-title">Evolución de ingresos</div>
+  <div class="card-sub">Acumulado mensual CLP</div>
+  <svg id="chart-evo" class="svg-chart" height="140" viewBox="0 0 320 140"></svg>
+  <div class="legend-row">
+    <div class="legend-item"><span class="dot" style="background:var(--accent1)"></span>Ingresos mes</div>
+    <div class="legend-item"><span class="dot" style="background:var(--accent2)"></span>Acumulado</div>
+  </div>
+</div>
+
+<!-- ══ TABLA MENSUAL ══════════════════════════ -->
+<div class="card">
+  <div class="card-title">Total pagado por mes</div>
+  <div class="card-sub">Suma de transacciones aprobadas</div>
+  <div id="month-table-wrap">
+    <div class="spin-wrap"><div class="spinner"></div></div>
+  </div>
+</div>
+
+<!-- ══ TRANSACCIONES ══════════════════════════ -->
+<div class="card" id="tx-card">
+  <div class="tx-header">
+    <div>
+      <div class="card-title">🧾 Transacciones</div>
+      <div class="card-sub" style="margin-bottom:0">Desde MercadoPago</div>
+    </div>
+    <a href="https://www.mercadopago.cl/activities" target="_blank" class="btn-mp">Ver en MP →</a>
+  </div>
+  <div class="tx-cols">
+    <span>Cliente</span><span>Monto</span><span>Estado</span>
+  </div>
+  <div id="tx-list">
+    <div class="spin-wrap"><div class="spinner"></div></div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════
+//  CARGA PRINCIPAL
+// ══════════════════════════════════════════════
+async function loadPagos() {
+  let payments = [], profiles = [];
+  try {
+    [payments, profiles] = await Promise.all([
+      sb('payments', { select: '*', order: 'created_at.desc' }),
+      sb('profiles', { select: 'id,email,full_name' }),
+    ]);
+  } catch(e) {
+    document.body.insertAdjacentHTML('afterbegin',
+      `<div class="err">⚠️ Error Supabase: ${e.message}</div>`);
+    return;
+  }
+
+  // mapa user_id → email
+  const emailMap = Object.fromEntries(profiles.map(p=>[p.id, p.email || p.full_name || p.id?.slice(0,8)]));
+
+  // ── Solo transacciones aprobadas para el total ──
+  // FIX: usamos PRECIO constante, NO el campo amount de la DB
+  // (MercadoPago a veces guarda el valor en centavos o con error)
+  const aprobadas = payments.filter(p =>
+    (p.status || '').toLowerCase() === 'approved' ||
+    (p.status || '').toLowerCase() === 'aprobado'
+  );
+
+  // ── TOTALES ────────────────────────────────────
+  // Usamos amount de MP si es >= 9990, si no usamos PRECIO (fix de datos sucios)
+  const totalReal = aprobadas.reduce((acc, p) => {
+    const amt = Number(p.amount || p.transaction_amount || 0);
+    return acc + (amt >= 1000 ? amt : PRECIO);   // si amount parece mal → usamos PRECIO
+  }, 0);
+
+  const now = new Date();
+  const thisMo = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  const aprobMes = aprobadas.filter(p => (p.created_at||'').startsWith(thisMo));
+  const totalMes = aprobMes.reduce((acc,p)=>{
+    const amt = Number(p.amount||p.transaction_amount||0);
+    return acc + (amt>=1000?amt:PRECIO);
+  },0);
+
+  // KPIs
+  document.getElementById('k-total').textContent   = fmtClp(totalReal);
+  document.getElementById('k-total-sub').textContent = `${aprobadas.length} pagos aprobados`;
+  document.getElementById('k-tx').textContent       = payments.length;
+  document.getElementById('k-mes').textContent      = fmtClp(totalMes);
+  document.getElementById('k-mes-sub').textContent  = `${aprobMes.length} pagos este mes`;
+
+  // ── AGRUPAR POR MES ────────────────────────────
+  const byMonth = {};
+  for (const p of aprobadas) {
+    const d = new Date(p.created_at || Date.now());
+    const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    if (!byMonth[key]) byMonth[key] = { count: 0, total: 0 };
+    const amt = Number(p.amount||p.transaction_amount||0);
+    byMonth[key].total += (amt>=1000?amt:PRECIO);
+    byMonth[key].count++;
+  }
+
+  const monthKeys = Object.keys(byMonth).sort();
+  const maxMonth  = Math.max(...monthKeys.map(k=>byMonth[k].total), PRECIO);
+
+  // ── TABLA MENSUAL ──────────────────────────────
+  let acum = 0;
+  const rows = [...monthKeys].reverse().map(k => {
+    acum += byMonth[k].total;
+    const [yr, mo] = k.split('-');
+    const pct = Math.round(byMonth[k].total / maxMonth * 100);
+    const isThis = k === thisMo;
+    return `
+      <tr class="${isThis?'current':''}">
+        <td>${MON[parseInt(mo)-1]} ${yr}</td>
+        <td class="cnt">${byMonth[k].count}</td>
+        <td class="num">${fmtClp(byMonth[k].total)}</td>
+        <td class="bar-cell">
+          <div class="bar-bg"><div class="bar-fill" style="width:${pct}%"></div></div>
+        </td>
+      </tr>`;
+  }).join('');
+
+  document.getElementById('month-table-wrap').innerHTML = `
+    <table class="month-table">
+      <thead>
+        <tr>
+          <th>Mes</th><th style="text-align:center">Pagos</th>
+          <th>Total</th><th></th>
+        </tr>
+      </thead>
+      <tbody>${rows || '<tr><td colspan="4" class="empty">Sin pagos aprobados</td></tr>'}</tbody>
+    </table>
+  `;
+
+  // ── GRÁFICO EVOLUTIVO ──────────────────────────
+  drawEvoChart(monthKeys, byMonth);
+
+  // ── LISTA DE TRANSACCIONES ─────────────────────
+  if (!payments.length) {
+    document.getElementById('tx-list').innerHTML = '<div class="empty">Sin transacciones</div>';
+    return;
+  }
+
+  document.getElementById('tx-list').innerHTML = payments.map(p => {
+    const amt = Number(p.amount||p.transaction_amount||0);
+    const realAmt = amt>=1000 ? amt : PRECIO;
+    const st  = (p.status||'').toLowerCase();
+    let badgeClass = 'pendiente', badgeText = '⏳ Pendiente';
+    if (st==='approved'||st==='aprobado') { badgeClass='aprobado'; badgeText='✅ Aprobado'; }
+    if (st==='rejected'||st==='rechazado'||st==='cancelled') { badgeClass='rechazado'; badgeText='❌ Rechazado'; }
+
+    const email = emailMap[p.user_id] || p.payer_email || p.email || '—';
+    return `
+      <div class="tx-row">
+        <div>
+          <div class="tx-email">${email}</div>
+          <div class="tx-date">${fmtDate(p.created_at)}</div>
+        </div>
+        <div class="tx-amount">${fmtClp(realAmt)}<br><span style="font-size:.6rem;color:var(--muted);font-family:'DM Sans',sans-serif">CLP</span></div>
+        <div class="tx-badge ${badgeClass}">${badgeText}</div>
+      </div>`;
+  }).join('');
+}
+
+// ══════════════════════════════════════════════
+//  GRÁFICO EVOLUTIVO — barras mes + línea acumulado
+// ══════════════════════════════════════════════
+function drawEvoChart(keys, byMonth) {
+  const svg  = document.getElementById('chart-evo');
+  if (!keys.length) { svg.innerHTML=''; return; }
+
+  const W=320, H=140;
+  const pad={l:36,r:10,t:16,b:24};
+  const iW=W-pad.l-pad.r, iH=H-pad.t-pad.b;
+
+  const vals = keys.map(k=>byMonth[k].total);
+  const maxV = Math.max(...vals, PRECIO);
+
+  // Acumulado
+  let acumArr=[], running=0;
+  for (const v of vals){ running+=v; acumArr.push(running); }
+  const maxAcum = Math.max(...acumArr, PRECIO);
+
+  const n     = keys.length;
+  const step  = iW / Math.max(n,1);
+  const barW  = Math.min(step*0.5, 32);
+
+  // Eje Y labels
+  const yLabels = [0, Math.round(maxV/2), maxV].map(v=>({
+    y: pad.t + iH - (v/maxV)*iH,
+    label: v>=10000 ? '$'+Math.round(v/1000)+'k' : fmtClp(v)
+  }));
+
+  const bars = keys.map((k,i)=>{
+    const v   = byMonth[k].total;
+    const bH  = Math.max((v/maxV)*iH, 2);
+    const x   = pad.l + i*step + step/2 - barW/2;
+    const y   = pad.t + iH - bH;
+    const [yr,mo] = k.split('-');
+    return `
+      <rect x="${x}" y="${y}" width="${barW}" height="${bH}"
+        fill="url(#gb)" rx="4" opacity=".85"/>
+      <text x="${x+barW/2}" y="${H-6}" text-anchor="middle"
+        fill="#555" font-size="8.5" font-family="DM Sans,sans-serif">
+        ${MON[parseInt(mo)-1]}
+      </text>
+      ${v>0?`<text x="${x+barW/2}" y="${y-4}" text-anchor="middle"
+        fill="#00e676" font-size="7.5" font-family="DM Sans,sans-serif">
+        ${v>=10000?'$'+Math.round(v/1000)+'k':fmtClp(v)}
+      </text>`:''}
+    `;
+  }).join('');
+
+  // Línea acumulado
+  const linePts = acumArr.map((v,i)=>{
+    const x = pad.l + i*step + step/2;
+    const y = pad.t + iH - (v/maxAcum)*iH;
+    return {x,y};
+  });
+  const linePath = linePts.map((p,i)=>`${i===0?'M':'L'}${p.x},${p.y}`).join(' ');
+  const lineArea = linePath
+    + ` L${linePts[linePts.length-1].x},${pad.t+iH} L${linePts[0].x},${pad.t+iH} Z`;
+
+  const dots = linePts.map((p,i)=>
+    `<circle cx="${p.x}" cy="${p.y}" r="3" fill="#a78bfa"/>`
+  ).join('');
+
+  const yAxes = yLabels.map(l=>
+    `<text x="${pad.l-4}" y="${l.y+3}" text-anchor="end" fill="#444"
+      font-size="7.5" font-family="DM Sans,sans-serif">${l.label}</text>
+     <line x1="${pad.l}" y1="${l.y}" x2="${W-pad.r}" y2="${l.y}"
+      stroke="#1e1e3a" stroke-width="1" stroke-dasharray="3,3"/>`
+  ).join('');
+
+  svg.innerHTML = `
+    <defs>
+      <linearGradient id="gb" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#00e676"/>
+        <stop offset="100%" stop-color="#00854a"/>
+      </linearGradient>
+      <linearGradient id="gline" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#a78bfa" stop-opacity=".25"/>
+        <stop offset="100%" stop-color="#a78bfa" stop-opacity="0"/>
+      </linearGradient>
+    </defs>
+    ${yAxes}
+    <path d="${lineArea}" fill="url(#gline)"/>
+    <path d="${linePath}" fill="none" stroke="#a78bfa" stroke-width="1.5"
+      stroke-linejoin="round" stroke-linecap="round"/>
+    ${bars}
+    ${dots}
+  `;
+}
+
+// Arranca
+loadPagos();
+</script>
+</body>
+</html>
