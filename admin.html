@@ -455,7 +455,7 @@ let DB = { users: [], payments: [], couponUses: [] };
 async function loadData() {
   try {
     const [users, payments, couponUses] = await Promise.all([
-      sb('profiles',    { select: '*', order: 'created_at.asc' }),
+      sb('users',    { select: '*', order: 'created_at.asc' }),
       sb('payments',    { select: '*' }),
       sb('coupon_uses', { select: '*', order: 'created_at.desc' }).catch(() => []),
     ]);
