@@ -16,13 +16,13 @@
 <style>
 :root {
   --bg: #080810; --surface: #10101c; --surface2: #16162a;
-  --border: #1e1e38; --text: #eeeef8; --muted: #6b7280;
+  --border: #1e1e38; --text: #f0f0ff; --muted: #8b8fa8;
   --purple: #a78bfa; --blue: #60a5fa; --green: #34d399;
   --amber: #fbbf24; --lime: #b8ff57;
 }
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-html, body { height: 100%; background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; overflow-x: hidden; }
-h1,h2,h3 { font-family: 'Syne', sans-serif; }
+html, body { height: 100%; background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; overflow-x: hidden; font-size: 15px; line-height: 1.6; -webkit-font-smoothing: antialiased; }
+h1,h2,h3 { font-family: 'Syne', sans-serif; letter-spacing: -0.3px; }
 input, select, textarea { font-family: 'DM Sans', sans-serif; color-scheme: dark; }
 ::-webkit-scrollbar { width: 3px; } ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
 
@@ -36,13 +36,13 @@ input, select, textarea { font-family: 'DM Sans', sans-serif; color-scheme: dark
 }
 .screen-logo { font-size: 56px; margin-bottom: 12px; }
 .screen-title { font-family: 'Syne', sans-serif; font-size: 28px; font-weight: 800; background: linear-gradient(135deg, var(--lime), var(--blue)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-align: center; }
-.screen-sub { font-size: 13px; color: var(--muted); margin-top: 6px; text-align: center; line-height: 1.6; }
+.screen-sub { font-size: 14px; color: var(--muted); margin-top: 6px; text-align: center; line-height: 1.7; }
 .auth-card { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 28px 24px; width: 100%; max-width: 400px; margin-top: 24px; }
 .auth-tabs { display: flex; background: var(--surface2); border-radius: 12px; padding: 4px; margin-bottom: 24px; }
 .auth-tab { flex: 1; padding: 9px; border: none; border-radius: 9px; background: none; color: var(--muted); font-size: 14px; font-weight: 600; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.2s; }
 .auth-tab.active { background: var(--surface); color: var(--text); box-shadow: 0 1px 6px #00000040; }
 .field { margin-bottom: 14px; }
-.field label { font-size: 12px; color: var(--muted); margin-bottom: 5px; display: block; }
+.field label { font-size: 13px; color: var(--muted); margin-bottom: 5px; display: block; font-weight: 500; }
 input[type=text], input[type=email], input[type=password], input[type=number], select, textarea {
   background: var(--surface2); border: 1px solid var(--border); border-radius: 10px;
   padding: 12px 14px; color: var(--text); font-size: 14px; width: 100%; outline: none;
@@ -80,11 +80,11 @@ textarea { resize: none; height: 72px; }
 .header { background: linear-gradient(160deg, #14083a 0%, #080810 60%); padding: 20px 16px 14px; border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 40; }
 .header-inner { display: flex; justify-content: space-between; align-items: center; max-width: 600px; margin: 0 auto; }
 .logo { font-family: 'Syne', sans-serif; font-size: 20px; font-weight: 800; background: linear-gradient(135deg, var(--purple), var(--blue), var(--green)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-.sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
 .badge { border-radius: 20px; padding: 3px 12px; font-size: 11px; font-weight: 700; display: inline-block; }
 .content { padding: 16px; max-width: 600px; margin: 0 auto; }
 .tabbar { position: fixed; bottom: 0; left: 0; right: 0; background: #0d0d1a; border-top: 1px solid var(--border); display: flex; z-index: 50; padding-bottom: env(safe-area-inset-bottom); }
-.tab-btn { flex: 1; padding: 9px 4px 7px; background: none; border: none; color: var(--muted); font-size: 9.5px; font-weight: 600; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 3px; transition: color 0.2s; font-family: 'DM Sans', sans-serif; }
+.tab-btn { flex: 1; padding: 9px 4px 7px; background: none; border: none; color: var(--muted); font-size: 10px; font-weight: 600; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 3px; transition: color 0.2s; font-family: 'DM Sans', sans-serif; }
 .tab-btn.active { color: var(--purple); }
 /* MENÚ LATERAL */
 .side-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 300; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
@@ -99,36 +99,36 @@ textarea { resize: none; height: 72px; }
 .side-item-icon { font-size: 20px; width: 28px; text-align: center; }
 .side-section-title { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); padding: 12px 20px 4px; font-weight: 700; }
 /* QA */
-.qa-item { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 14px; margin-bottom: 10px; }
-.qa-date { font-size: 10px; color: var(--muted); margin-bottom: 6px; }
-.qa-q { font-size: 13px; font-weight: 600; color: var(--purple); margin-bottom: 6px; }
-.qa-a { font-size: 12px; color: var(--muted); line-height: 1.6; white-space: pre-wrap; word-wrap: break-word; }
+.qa-item { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 16px; margin-bottom: 10px; }
+.qa-date { font-size: 11px; color: var(--muted); margin-bottom: 6px; font-weight: 500; }
+.qa-q { font-size: 14px; font-weight: 600; color: var(--purple); margin-bottom: 8px; }
+.qa-a { font-size: 13px; color: #c0c4d8; line-height: 1.7; white-space: pre-wrap; word-wrap: break-word; }
 .tab-btn .icon { font-size: 20px; line-height: 1; }
 .card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 16px; margin-bottom: 12px; }
 .card-purple { background: linear-gradient(135deg, #a78bfa18, var(--surface)); border: 1px solid #a78bfa28; }
 .card-green  { background: linear-gradient(135deg, #34d39918, var(--surface)); border: 1px solid #34d39928; }
 .card-amber  { background: linear-gradient(135deg, #fbbf2418, var(--surface)); border: 1px solid #fbbf2428; }
 .card-blue   { background: linear-gradient(135deg, #60a5fa18, var(--surface)); border: 1px solid #60a5fa28; }
-.card-h { font-family: 'Syne', sans-serif; font-size: 16px; font-weight: 700; margin-bottom: 12px; }
-.card-sh { font-size: 12px; color: var(--muted); font-weight: 600; margin-bottom: 8px; }
+.card-h { font-family: 'Syne', sans-serif; font-size: 17px; font-weight: 700; margin-bottom: 12px; }
+.card-sh { font-size: 13px; color: var(--muted); font-weight: 600; margin-bottom: 8px; }
 .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
 .stats-grid2 { grid-template-columns: repeat(2, 1fr); }
 .stat-box { border-radius: 14px; padding: 12px; text-align: center; }
 .stat-icon { font-size: 22px; margin-bottom: 4px; }
 .stat-val  { font-family: 'Syne', sans-serif; font-size: 20px; font-weight: 800; }
-.stat-lbl  { font-size: 10px; color: var(--muted); margin-top: 2px; }
+.stat-lbl  { font-size: 11px; color: var(--muted); margin-top: 2px; font-weight: 500; }
 .prog-wrap { height: 8px; background: var(--border); border-radius: 8px; overflow: hidden; margin: 6px 0; }
 .prog-fill { height: 100%; border-radius: 8px; transition: width 1s cubic-bezier(.4,0,.2,1); }
 .energy-row { display: flex; gap: 8px; }
 .energy-btn { flex: 1; padding: 10px 0; border-radius: 10px; border: 2px solid var(--border); background: var(--surface2); color: var(--muted); font-weight: 700; cursor: pointer; font-size: 15px; transition: all 0.15s; }
 .energy-btn.active { border-color: var(--amber); background: #fbbf2415; color: var(--amber); }
-.ai-text { font-size: 13px; color: #d1d5db; line-height: 1.75; white-space: pre-wrap; }
+.ai-text { font-size: 14px; color: #e0e0f0; line-height: 1.8; white-space: pre-wrap; }
 .log-item { padding: 10px 0; border-bottom: 1px solid var(--border); }
 .log-item:last-child { border-bottom: none; }
 .log-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
-.log-date { font-size: 13px; font-weight: 700; }
-.tags { display: flex; flex-wrap: wrap; gap: 4px; }
-.tag { font-size: 10px; background: var(--surface2); border: 1px solid var(--border); color: var(--muted); border-radius: 6px; padding: 2px 8px; }
+.log-date { font-size: 14px; font-weight: 700; }
+.tags { display: flex; flex-wrap: wrap; gap: 5px; }
+.tag { font-size: 11px; background: var(--surface2); border: 1px solid var(--border); color: var(--muted); border-radius: 6px; padding: 3px 10px; font-weight: 500; }
 .mini-chart { display: flex; align-items: flex-end; gap: 3px; height: 52px; padding: 0 2px; }
 .bar-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; }
 .bar { width: 100%; background: linear-gradient(180deg, #60a5fa, #3b82f680); border-radius: 4px 4px 0 0; }
@@ -250,6 +250,17 @@ async function dbSaveDailyLog(email, log) {
     }, { onConflict: 'user_email,date' });
   } catch(e) { console.log('DB log error:', e); }
 }
+
+async function dbSavePlanNutrition(email, plan, nutrition) {
+  initSupabase(); if (!supa) return;
+  try {
+    await supa.from('users').update({
+      current_plan: plan || null,
+      current_nutrition: nutrition || null,
+      plan_generated_at: new Date().toISOString(),
+    }).eq('email', email);
+  } catch(e) { console.log('DB save plan error:', e); }
+}
 // ════════════════════════════════════════════
 
 const STORAGE_KEY = 'fitai_v3';
@@ -289,6 +300,7 @@ let STATE = {
   couponDiscount: 0,
   couponFinalAmount: 9990,
   needsAIPlan: false,
+  planGeneratedAt: null,
 };
 
 // --- PERSISTENCE ---
@@ -302,6 +314,7 @@ function save() {
       nutrition: STATE.nutrition,
       chat: STATE.chat,
       qaHistory: STATE.qaHistory,
+      planGeneratedAt: STATE.planGeneratedAt,
     }));
   } catch{}
 }
@@ -315,6 +328,7 @@ function loadSaved() {
     if (d.nutrition) STATE.nutrition = d.nutrition;
     if (d.chat) STATE.chat = d.chat;
     if (d.qaHistory) STATE.qaHistory = d.qaHistory;
+    if (d.planGeneratedAt) STATE.planGeneratedAt = d.planGeneratedAt;
   } catch{}
 }
 loadSaved();
@@ -395,8 +409,10 @@ if (window.location.hash === '#login') {
       const desc = `${p.name}, ${p.age}años, ${p.gender}, ${p.weight}kg, ${p.height}cm, objetivo: ${p.goal}, meta: ${p.targetWeight}kg en ${p.weeksGoal} semanas, actividad: ${p.activityLevel}`;
       const withTimeout = (pr, ms) => Promise.race([pr, new Promise((_,rej) => setTimeout(() => rej(new Error('timeout')), ms))]);
       try {
-        STATE.plan = await withTimeout(claude([{role:'user',content:`Plan entrenamiento semanal para ${desc}, lugar: ${p.trainingPlace||'gimnasio'}. ${p.trainingPlace?.includes('casa')?'Solo ejercicios sin equipamiento.':'Con equipamiento completo.'} Máx 250 palabras.`}]), 25000);
+        STATE.plan = await withTimeout(claude([{role:'user',content:`Plan entrenamiento semanal para ${desc}, lugar: ${p.trainingPlace||'gimnasio'}. ${getTrainingPrompt(p.trainingPlace)} Máx 250 palabras.`}]), 25000);
         STATE.nutrition = await withTimeout(claude([{role:'user',content:`Plan alimentación diario para ${desc}. 5 comidas. Máx 250 palabras.`}]), 25000);
+        STATE.planGeneratedAt = new Date().toISOString();
+        dbSavePlanNutrition(STATE.user?.email, STATE.plan, STATE.nutrition);
       } catch(e) {
         STATE.plan = '⚠️ Toca "🔄 Nueva semana" para generar tu plan.';
         STATE.nutrition = '⚠️ Toca "🔄 Nuevo menú" para generar tu menú.';
@@ -549,6 +565,10 @@ async function loadProfileFromSupabase(email) {
     if (u && u.paid) {
       STATE.user.paid = true;
     }
+    // Cargar plan y nutrición guardados
+    if (u && u.current_plan) STATE.plan = u.current_plan;
+    if (u && u.current_nutrition) STATE.nutrition = u.current_nutrition;
+    if (u && u.plan_generated_at) STATE.planGeneratedAt = u.plan_generated_at;
     // Cargar registros diarios (siempre prioriza DB)
     const { data: logs } = await supa.from('daily_logs')
       .select('*').eq('user_email', email)
@@ -1025,7 +1045,7 @@ const STEPS = [
   {key:'targetWeight',q:'¿Cuál es tu peso objetivo? (kg)',type:'number',ph:'Ej: 72'},
   {key:'weeksGoal',q:'¿En cuántas semanas quieres lograrlo?',type:'number',ph:'Ej: 12'},
   {key:'activityLevel',q:'¿Cuál es tu nivel de actividad actual?',type:'select',opts:['Sedentario (sin ejercicio)','Ligero (1-2 días/sem)','Moderado (3-4 días/sem)','Activo (5+ días/sem)','Atleta (2x/día)']},
-  {key:'trainingPlace',q:'¿Dónde entrenas habitualmente?',type:'select',opts:['🏋️ En el gimnasio (con equipamiento completo)','🏠 En casa (con equipamiento limitado o sin equipamiento)']},
+  {key:'trainingPlace',q:'¿Dónde entrenas habitualmente?',type:'select',opts:['🏋️ En el gimnasio (con equipamiento completo)','🏠 En casa (con equipamiento limitado o sin equipamiento)','🏋️🏠 Ambos (gimnasio y casa)']},
 ];
 
 function renderSetup() {
@@ -1113,7 +1133,7 @@ function renderSetup() {
 
       try {
         const planR = await withTimeout(
-          claude([{role:'user',content:`Plan entrenamiento semanal para ${desc}, lugar de entrenamiento: ${p.trainingPlace||'gimnasio'}. ${p.trainingPlace?.includes('casa')?'Solo ejercicios sin equipamiento de gimnasio.':'Con equipamiento de gimnasio completo.'} Máx 250 palabras.`}]),
+          claude([{role:'user',content:`Plan entrenamiento semanal para ${desc}, lugar de entrenamiento: ${p.trainingPlace||'gimnasio'}. ${getTrainingPrompt(p.trainingPlace)} Máx 250 palabras.`}]),
           25000
         );
         const nutR = await withTimeout(
@@ -1122,7 +1142,9 @@ function renderSetup() {
         );
         STATE.plan=planR;
         STATE.nutrition=nutR;
+        STATE.planGeneratedAt=new Date().toISOString();
         STATE.screen='app';
+        dbSavePlanNutrition(STATE.user?.email, STATE.plan, STATE.nutrition);
       } catch(e) {
         STATE.plan='⚠️ Hubo un problema generando tu plan. Toca "🔄 Nueva semana" en la sección Entrenamiento para generarlo.';
         STATE.nutrition='⚠️ Hubo un problema generando tu menú. Toca "🔄 Nuevo menú" en la sección Nutrición para generarlo.';
@@ -1204,19 +1226,47 @@ function renderMiniChart(trend) {
 }
 
 // --- WORKOUT ---
+function getTrainingPrompt(tp) {
+  if (tp?.includes('Ambos')) return 'Ejercicios para AMBOS contextos: indica para cada ejercicio la versión de gimnasio Y la alternativa para casa (sin equipamiento). Formato: "Ejercicio (Gym: X / Casa: Y)".';
+  if (tp?.includes('casa')) return 'Ejercicios SIN equipamiento de gimnasio, solo peso corporal, bandas o materiales caseros.';
+  return 'Ejercicios con equipamiento completo de gimnasio (pesas, máquinas, barras).';
+}
+function getWeekNumber() {
+  if (!STATE.planGeneratedAt && STATE.dailyLogs.length === 0) return 1;
+  const first = STATE.planGeneratedAt ? new Date(STATE.planGeneratedAt) : new Date();
+  const now = new Date();
+  const diffDays = Math.floor((now - first) / (1000*60*60*24));
+  return Math.max(1, Math.ceil((diffDays + 1) / 7));
+}
+function getDaysUntilNewPlan() {
+  if (!STATE.planGeneratedAt) return 0;
+  const gen = new Date(STATE.planGeneratedAt);
+  const now = new Date();
+  const diffDays = Math.floor((now - gen) / (1000*60*60*24));
+  return Math.max(0, 7 - diffDays);
+}
+
 function renderWorkout() {
   const div=document.createElement('div');
-  const place = STATE.profile?.trainingPlace?.includes('casa') ? '🏠 En casa' : '🏋️ Gimnasio';
+  const tp = STATE.profile?.trainingPlace;
+  const place = tp?.includes('Ambos') ? '🏋️🏠 Gym + Casa' : tp?.includes('casa') ? '🏠 En casa' : '🏋️ Gimnasio';
+  const weekNum = getWeekNumber();
+  const daysLeft = getDaysUntilNewPlan();
+  const canGenerate = daysLeft === 0;
   
   // Parse plan into sections for better display
   const planText = STATE.plan || '';
   
   div.innerHTML=`
     <div style="background:linear-gradient(135deg,#a78bfa18,#7c3aed08);border:1px solid #a78bfa28;border-radius:16px;padding:14px 16px;margin-bottom:14px;display:flex;align-items:center;gap:12px">
-      <div style="font-size:28px">${place.includes('casa')?'🏠':'🏋️'}</div>
-      <div>
-        <div style="font-family:Syne,sans-serif;font-size:15px;font-weight:700;color:var(--purple)">Plan de Entrenamiento</div>
-        <div style="font-size:11px;color:var(--muted)">${place} · ${STATE.profile?.goal||''} · Semana ${Math.ceil((calcProgress().days||1)/7)}</div>
+      <div style="font-size:28px">${place.includes('Casa')||place.includes('casa')?'🏠':place.includes('Gym')?'🏋️':'🏋️'}</div>
+      <div style="flex:1">
+        <div style="font-family:Syne,sans-serif;font-size:16px;font-weight:700;color:var(--purple)">Semana ${weekNum} de Entrenamiento</div>
+        <div style="font-size:12px;color:var(--muted)">${place} · ${STATE.profile?.goal||''}</div>
+      </div>
+      <div style="background:#a78bfa20;border-radius:10px;padding:6px 12px;text-align:center">
+        <div style="font-family:Syne,sans-serif;font-size:18px;font-weight:800;color:var(--purple)">${weekNum}</div>
+        <div style="font-size:9px;color:var(--muted);font-weight:600">SEMANA</div>
       </div>
     </div>
     
@@ -1246,7 +1296,9 @@ function renderWorkout() {
       </div>
     </div>
 
-    <button class="btn btn-purple" id="btn-newplan">${STATE.aiLoading?'⏳ Generando tu plan…':'🔄 Nueva semana de entrenamiento'}</button>
+    <button class="btn btn-purple" id="btn-newplan" ${!canGenerate&&!STATE.aiLoading?'disabled':''}>
+      ${STATE.aiLoading?'⏳ Generando tu plan…': canGenerate ? '🔄 Nueva semana de entrenamiento' : `🔒 Te faltan ${daysLeft} día${daysLeft>1?'s':''} para activar tu nuevo plan semanal`}
+    </button>
     
     <div class="card" style="margin-top:12px">
       <div class="card-h">💬 Pregunta al coach de entrenamiento</div>
@@ -1254,7 +1306,18 @@ function renderWorkout() {
       <div class="chat-row"><input type="text" id="ci-w" placeholder="¿Cómo reemplazo las sentadillas?"/><button id="cs-w">→</button></div>
     </div>`;
   STATE.chat.slice(-4).forEach(m=>{const el=document.createElement('div');el.className='chat-msg '+(m.role==='user'?'chat-user':'chat-ai');el.innerHTML=`<strong>${m.role==='user'?'Tú:':'🤖 '}</strong> ${m.content}`;div.querySelector('#chat-w').appendChild(el);});
-  div.querySelector('#btn-newplan').onclick=async()=>{STATE.aiLoading=true;render();const r=await claude([{role:'user',content:`Plan entrenamiento semanal adaptado para ${STATE.profile.name}, ${STATE.profile.goal}, nivel: ${STATE.profile.activityLevel}, lugar: ${STATE.profile.trainingPlace||'gimnasio'}, ${calcProgress().days} días en programa. ${STATE.profile.trainingPlace?.includes('casa')?'Ejercicios SIN equipamiento de gimnasio, solo peso corporal, bandas o materiales caseros.':'Ejercicios con equipamiento completo de gimnasio (pesas, máquinas, barras).'} Máx 700 palabras. Formato: día por día con ejercicios, series, repeticiones.`}]);STATE.plan=r;STATE.aiLoading=false;save();render();};
+  div.querySelector('#btn-newplan').onclick=async()=>{
+    if(!canGenerate)return;
+    STATE.aiLoading=true;render();
+    const tp=STATE.profile.trainingPlace;
+    const r=await claude([{role:'user',content:`Plan entrenamiento semanal adaptado para ${STATE.profile.name}, ${STATE.profile.goal}, nivel: ${STATE.profile.activityLevel}, lugar: ${tp||'gimnasio'}, semana ${weekNum} del programa. ${getTrainingPrompt(tp)} Máx 700 palabras. Formato: día por día con ejercicios, series, repeticiones.`}]);
+    STATE.plan=r;
+    STATE.planGeneratedAt=new Date().toISOString();
+    STATE.aiLoading=false;
+    save();
+    dbSavePlanNutrition(STATE.user?.email, STATE.plan, STATE.nutrition);
+    render();
+  };
   const send=async()=>{const inp=div.querySelector('#ci-w');const txt=inp?.value.trim();if(!txt)return;STATE.chat.push({role:'user',content:txt});inp.value='';STATE.aiLoading=true;render();const msgs=STATE.chat.slice(-6).map(m=>({role:m.role,content:m.content}));msgs[0]={...msgs[0],content:`${STATE.profile.name},${STATE.profile.goal}\n${msgs[0].content}`};const r=await claude(msgs);STATE.chat.push({role:'assistant',content:r});STATE.qaHistory.push({date:new Date().toLocaleDateString('es-CL'),q:txt,a:r});STATE.qaHistory=STATE.qaHistory.slice(-100);STATE.aiLoading=false;save();render();};
   div.querySelector('#cs-w').onclick=send;
   div.querySelector('#ci-w').onkeydown=e=>{if(e.key==='Enter')send();};
@@ -1311,7 +1374,7 @@ function renderNutrition() {
       <div class="chat-row"><input type="text" id="ci-n" placeholder="¿Puedo sustituir el pollo?"/><button id="cs-n" style="background:var(--green)">→</button></div>
     </div>`;
   STATE.chat.slice(-2).forEach(m=>{const el=document.createElement('div');el.className='chat-msg '+(m.role==='user'?'chat-user':'chat-ai');el.style.color=m.role==='assistant'?'#6ee7b7':'';el.innerHTML=`<strong>${m.role==='user'?'Tú:':'🤖 '}</strong> ${m.content}`;div.querySelector('#chat-n').appendChild(el);});
-  div.querySelector('#btn-newnut').onclick=async()=>{STATE.aiLoading=true;render();const p=STATE.profile;const r=await claude([{role:'user',content:`Plan alimentación VARIADO para ${p.name}, ${p.goal}, ${calcProgress().lw}kg, ${p.height}cm, ${p.gender}, ${p.age}años. Recetas sencillas. Harvard. Máx 700 palabras.`}]);STATE.nutrition=r;STATE.aiLoading=false;save();render();};
+  div.querySelector('#btn-newnut').onclick=async()=>{STATE.aiLoading=true;render();const p=STATE.profile;const r=await claude([{role:'user',content:`Plan alimentación VARIADO para ${p.name}, ${p.goal}, ${calcProgress().lw}kg, ${p.height}cm, ${p.gender}, ${p.age}años. Recetas sencillas. Harvard. Máx 700 palabras.`}]);STATE.nutrition=r;STATE.aiLoading=false;save();dbSavePlanNutrition(STATE.user?.email, STATE.plan, STATE.nutrition);render();};
   const send=async()=>{const inp=div.querySelector('#ci-n');const txt=inp?.value.trim();if(!txt)return;STATE.chat.push({role:'user',content:txt});inp.value='';STATE.aiLoading=true;render();const msgs=STATE.chat.slice(-4).map(m=>({role:m.role,content:m.content}));msgs[0]={...msgs[0],content:`${STATE.profile.name},${STATE.profile.goal}\n${msgs[0].content}`};const r=await claude(msgs);STATE.chat.push({role:'assistant',content:r});STATE.qaHistory.push({date:new Date().toLocaleDateString('es-CL'),q:txt,a:r});STATE.qaHistory=STATE.qaHistory.slice(-100);STATE.aiLoading=false;save();render();};
   div.querySelector('#cs-n').onclick=send;
   div.querySelector('#ci-n').onkeydown=e=>{if(e.key==='Enter')send();};
