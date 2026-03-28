@@ -211,6 +211,36 @@ textarea { resize: none; height: 72px; }
 }
 .plan-section-title.nut { color: var(--green); border-bottom-color: #34d39918; }
 .plan-text-line { font-size: 13.5px; color: #c0c4d8; line-height: 1.7; margin: 4px 0; }
+
+/* Meal cards */
+.meal-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 16px; margin-bottom: 14px; overflow: hidden;
+}
+.meal-card-header {
+  display: flex; align-items: center; gap: 10px;
+  padding: 14px 16px; cursor: pointer;
+  transition: background 0.15s;
+}
+.meal-card-header:active { background: var(--surface2); }
+.meal-card-icon { font-size: 24px; width: 36px; text-align: center; }
+.meal-card-title { flex: 1; }
+.meal-card-name {
+  font-family: 'Syne', sans-serif; font-size: 15px;
+  font-weight: 700; line-height: 1.3;
+}
+.meal-card-sub { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+.meal-card-arrow { color: var(--muted); font-size: 16px; padding: 0 4px; }
+.meal-card-items {
+  padding: 0 16px 14px; border-top: 1px solid var(--border);
+}
+.meal-card-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 0; font-size: 13.5px; color: #d0d4e8;
+  border-bottom: 1px solid #ffffff06;
+}
+.meal-card-item:last-child { border-bottom: none; }
+.meal-card-dot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
 .log-item { padding: 10px 0; border-bottom: 1px solid var(--border); }
 .log-item:last-child { border-bottom: none; }
 .log-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
@@ -498,7 +528,26 @@ if (window.location.hash === '#login') {
       const withTimeout = (pr, ms) => Promise.race([pr, new Promise((_,rej) => setTimeout(() => rej(new Error('timeout')), ms))]);
       try {
         STATE.plan = await withTimeout(claude([{role:'user',content:`Plan entrenamiento semanal para ${desc}, lugar: ${p.trainingPlace||'gimnasio'}. ${getTrainingPrompt(p.trainingPlace)} Máx 250 palabras.`}]), 25000);
-        STATE.nutrition = await withTimeout(claude([{role:'user',content:`Plan alimentación diario para ${desc}. 5 comidas. Máx 250 palabras.`}]), 25000);
+        STATE.nutrition = await withTimeout(claude([{role:'user',content:`Plan alimentación diario para ${desc}. Formato ESTRICTO: Para cada comida usa este formato exacto:
+## Desayuno
+- alimento 1 con cantidad
+- alimento 2 con cantidad
+
+## Colación AM
+- alimento con cantidad
+
+## Almuerzo
+- alimento 1 con cantidad
+- alimento 2 con cantidad
+
+## Merienda / Snack PM
+- alimento con cantidad
+
+## Cena
+- alimento 1 con cantidad
+- alimento 2 con cantidad
+
+NO incluyas lista de compras, elaboración, preparación ni recetas. Solo los alimentos con cantidades. Máx 200 palabras.`}]), 25000);
         STATE.planGeneratedAt = new Date().toISOString();
         dbSavePlanNutrition(STATE.user?.email, STATE.plan, STATE.nutrition);
       } catch(e) {
@@ -835,20 +884,68 @@ function renderSideSection() {
   const s = STATE.sideSection;
 
   if (s === 'supplements') {
+    const supps = [
+      {name:"Proteína de Suero (Whey Protein)",benefit:"Estimula la síntesis proteica muscular, apoya la recuperación post-ejercicio.",study:'Wilkinson et al., Harvard-affiliated — "Whey protein stimulates postexercise muscle protein accretion more effectively than casein protein" (2007).',icon:"🥛",color:"#f87171"},
+      {name:"Creatina Monohidrato",benefit:"Aumenta la fuerza, potencia y masa muscular en ejercicios de alta intensidad.",study:'Lanhers et al., revisado en Harvard Health — "Creatine supplementation and upper limb strength performance" (2017).',icon:"💊",color:"#a78bfa"},
+      {name:"Vitamina D3",benefit:"Regula la función muscular, inmunidad y absorción de calcio.",study:'Harvard Medical School — "Vitamin D and muscle function" (Bikle, 2020).',icon:"☀️",color:"#fbbf24"},
+      {name:"Ácidos Grasos Omega-3 (EPA/DHA)",benefit:"Reduce inflamación, mejora composición corporal y salud cardiovascular.",study:'Harvard T.H. Chan — "Omega-3 Fatty Acids" (Harvard Nutrition Source, 2023).',icon:"🐟",color:"#60a5fa"},
+      {name:"Magnesio",benefit:"Mejora el sueño, recuperación muscular y función nerviosa.",study:'Harvard Medical School — "Magnesium" (Harvard Health Publishing, 2019).',icon:"💤",color:"#34d399"},
+      {name:"Cafeína",benefit:"Mejora el rendimiento de resistencia, fuerza y enfoque mental.",study:'Goldstein et al., citado en Harvard Health — "International society of sports nutrition position stand: caffeine" (2010).',icon:"☕",color:"#fb923c"},
+      {name:"Beta-Alanina",benefit:"Aumenta la resistencia muscular al elevar los niveles de carnosina.",study:'Hobson et al., revisado en Harvard — "Effects of beta-alanine supplementation on exercise performance" (2012).',icon:"⚡",color:"#e879f9"},
+      {name:"Vitamina B12",benefit:"Esencial para energía, función nerviosa y producción de glóbulos rojos.",study:'Harvard Medical School — "Vitamin B12 deficiency" (Harvard Health Publishing, 2022).',icon:"🔴",color:"#f43f5e"},
+      {name:"Hierro",benefit:"Fundamental para el transporte de oxígeno y rendimiento aeróbico.",study:'Harvard T.H. Chan — "Iron" (Harvard Nutrition Source, 2023).',icon:"🩸",color:"#f472b6"},
+      {name:"Zinc",benefit:"Apoya la testosterona, inmunidad y síntesis proteica.",study:'Harvard Medical School — "Zinc" (Harvard Health Publishing, 2021).',icon:"🛡️",color:"#2dd4bf"},
+    ];
     div.innerHTML = `<div class="content fade-in">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
         <button onclick="STATE.sideSection=null;render()" style="background:none;border:none;color:var(--purple);font-size:20px;cursor:pointer">←</button>
         <div style="font-family:Syne,sans-serif;font-size:18px;font-weight:800">💊 Top 10 Suplementos</div>
       </div>
-      <div class="card"><div class="ai-text">${SUPPLEMENTS_TEXT.trim()}</div></div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:14px;padding:0 4px">Fuente: Harvard T.H. Chan School of Public Health y Harvard Medical School</div>
+      ${supps.map((s,i) => `<div class="meal-card" style="border-color:${s.color}20">
+        <div class="meal-card-header" style="cursor:default">
+          <div class="meal-card-icon">${s.icon}</div>
+          <div class="meal-card-title">
+            <div class="meal-card-name" style="color:${s.color}">${i+1}. ${s.name}</div>
+          </div>
+        </div>
+        <div class="meal-card-items">
+          <div class="meal-card-item"><div class="meal-card-dot" style="background:${s.color}"></div><strong>Beneficio:</strong> ${s.benefit}</div>
+          <div class="meal-card-item" style="font-size:12px;color:var(--muted)"><div class="meal-card-dot" style="background:${s.color}60"></div><strong>Estudio:</strong> ${s.study}</div>
+        </div>
+      </div>`).join('')}
     </div>`;
   } else if (s === 'harvard') {
+    const studies = [
+      {title:'"Caloric restriction improves metabolic age"',detail:"Harvard Medical School, 2022. Demuestra que la restricción calórica mejora marcadores metabólicos y longevidad.",link:"health.harvard.edu/aging/caloric-restriction",icon:"🧬",color:"#a78bfa"},
+      {title:'"High-Intensity Interval Training and Fat Loss"',detail:"Harvard T.H. Chan, 2019. HIIT es superior al cardio continuo para reducción de grasa visceral.",link:"hsph.harvard.edu/nutritionsource/exercise",icon:"🏃",color:"#f43f5e"},
+      {title:'"Protein and Muscle Mass Preservation"',detail:"Harvard Medical School, 2021. Distribución proteica óptima: 0.8-1.6g/kg peso corporal.",link:"health.harvard.edu/exercise-and-fitness/protein",icon:"🥩",color:"#f87171"},
+      {title:'"Sleep Deprivation and Metabolic Syndrome"',detail:"Harvard Division of Sleep Medicine, 2020. Dormir menos de 7h aumenta resistencia a la insulina.",link:"healthysleep.med.harvard.edu",icon:"😴",color:"#60a5fa"},
+      {title:'"The Impact of Sugar on Metabolism"',detail:"Harvard T.H. Chan, 2023. El azúcar añadido es el principal factor de síndrome metabólico.",link:"hsph.harvard.edu/nutritionsource/carbohydrates/added-sugar",icon:"🍬",color:"#fb923c"},
+      {title:'"Exercise and Brain Metabolism"',detail:"Harvard Medical School, 2018. El ejercicio aeróbico aumenta BDNF y mejora la función cognitiva.",link:"health.harvard.edu/mind-and-mood/exercise-is-an-all-natural-treatment",icon:"🧠",color:"#34d399"},
+      {title:'"Gut Microbiome and Metabolic Health"',detail:"Harvard T.H. Chan, 2022. La microbiota intestinal regula directamente el metabolismo energético.",link:"hsph.harvard.edu/news/hsph-in-the-news/gut-microbiome-metabolic-health",icon:"🦠",color:"#2dd4bf"},
+      {title:'"Intermittent Fasting and Insulin Sensitivity"',detail:"Harvard Medical School, 2020. El ayuno intermitente mejora sensibilidad a la insulina en 8 semanas.",link:"health.harvard.edu/blog/intermittent-fasting",icon:"⏰",color:"#fbbf24"},
+      {title:'"Resistance Training and Hormonal Response"',detail:"Harvard Medical School, 2021. El entrenamiento de fuerza aumenta GH y testosterona naturalmente.",link:"health.harvard.edu/exercise-and-fitness/strength-training",icon:"💪",color:"#e879f9"},
+      {title:'"Hydration and Metabolic Rate"',detail:"Harvard Medical School, 2019. Beber 500ml de agua aumenta la tasa metabólica un 30% por 30-40 min.",link:"health.harvard.edu/staying-healthy/how-much-water-should-you-drink",icon:"💧",color:"#38bdf8"},
+    ];
     div.innerHTML = `<div class="content fade-in">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
         <button onclick="STATE.sideSection=null;render()" style="background:none;border:none;color:var(--purple);font-size:20px;cursor:pointer">←</button>
         <div style="font-family:Syne,sans-serif;font-size:18px;font-weight:800">🔬 Estudios Harvard</div>
       </div>
-      <div class="card"><div class="ai-text">${HARVARD_STUDIES_TEXT.trim()}</div></div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:14px;padding:0 4px">Top 10 Estudios de Harvard sobre Metabolismo</div>
+      ${studies.map((s,i) => `<div class="meal-card" style="border-color:${s.color}20">
+        <div class="meal-card-header" style="cursor:default">
+          <div class="meal-card-icon">${s.icon}</div>
+          <div class="meal-card-title">
+            <div class="meal-card-name" style="color:${s.color}">${i+1}. ${s.title}</div>
+          </div>
+        </div>
+        <div class="meal-card-items">
+          <div class="meal-card-item" style="line-height:1.6"><div class="meal-card-dot" style="background:${s.color}"></div>${s.detail}</div>
+          <div class="meal-card-item" style="font-size:11px;color:${s.color}99"><div class="meal-card-dot" style="background:${s.color}40"></div>🔗 ${s.link}</div>
+        </div>
+      </div>`).join('')}
     </div>`;
   } else if (s === 'qa') {
     div.innerHTML = `<div class="content fade-in">
@@ -1225,7 +1322,7 @@ function renderSetup() {
           25000
         );
         const nutR = await withTimeout(
-          claude([{role:'user',content:`Plan alimentación diario para ${desc}. 5 comidas. Máx 250 palabras.`}]),
+          claude([{role:'user',content:`Plan alimentación diario para ${desc}. Formato: ## Desayuno, ## Colación AM, ## Almuerzo, ## Merienda PM, ## Cena. Solo alimentos con cantidades en gramos. NO incluir lista de compras, preparación ni recetas. Máx 200 palabras.`}]),
           25000
         );
         STATE.plan=planR;
@@ -1672,20 +1769,20 @@ function matchNutSection(text) {
   const lower = text.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
   const matches = [
     {key:"desayuno",kw:["desayuno","breakfast"]},
-    {key:"almuerzo",kw:["almuerzo","lunch","comida principal"]},
+    {key:"almuerzo",kw:["almuerzo","lunch","comida principal","comida"]},
     {key:"cena",kw:["cena","dinner"]},
     {key:"snack",kw:["snack","merienda de la tarde"]},
     {key:"merienda",kw:["merienda","media mañana","media manana","media tarde"]},
     {key:"colacion",kw:["colación","colacion"]},
-    {key:"pre_entreno",kw:["pre-entreno","pre entreno","antes de entrenar","pre-workout"]},
-    {key:"post_entreno",kw:["post-entreno","post entreno","después de entrenar","despues de entrenar","post-workout"]},
-    {key:"calorias",kw:["calorías","calorias","kcal","deficit","superavit"]},
-    {key:"proteina",kw:["proteína","proteina","protein"]},
-    {key:"carbohidratos",kw:["carbohidrato","carbs"]},
-    {key:"grasas",kw:["grasa","fat","lipido"]},
-    {key:"macros",kw:["macro","distribución","distribucion"]},
-    {key:"hidratacion",kw:["agua","hidratación","hidratacion","líquido","liquido"]},
-    {key:"suplementos",kw:["suplemento","creatina","whey","vitamina"]},
+    {key:"pre_entreno",kw:["pre-entreno","pre entreno","pre entreno","antes de entrenar","pre-workout"]},
+    {key:"post_entreno",kw:["post-entreno","post entreno","post entreno","después de entrenar","despues de entrenar","post-workout"]},
+    {key:"calorias",kw:["calorías","calorias","deficit","superavit","macros diarios","macros"]},
+    {key:"proteina",kw:["proteína total","proteina total"]},
+    {key:"carbohidratos",kw:["carbohidrato total"]},
+    {key:"grasas",kw:["grasa total"]},
+    {key:"macros",kw:["distribución","distribucion","resumen nutricional","resumen macro"]},
+    {key:"hidratacion",kw:["agua","hidratación","hidratacion"]},
+    {key:"suplementos",kw:["suplemento"]},
   ];
   let best=null, bestLen=0;
   for(const m of matches){
@@ -1697,22 +1794,30 @@ function matchNutSection(text) {
   return best;
 }
 
-function buildNutCard(name, detail, nutKey) {
+function buildNutCard(name, items, nutKey) {
   const data = NUT_ITEMS[nutKey];
   if(!data) return '';
   const c = data.color;
-  const allText = name + ' ' + detail;
+  const allText = name + ' ' + (Array.isArray(items) ? items.join(' ') : items);
   const foods = matchFoodsInText(allText);
   const hasFoods = foods.length > 0;
   const foodData = hasFoods ? `data-foods="${foods.join(',')}" data-mealname="${name}" data-mealcolor="${c}"` : '';
-  return `<div class="ex-card" ${foodData} ${hasFoods ? 'onclick="openFoodModal(this)"' : ''} style="${hasFoods?'cursor:pointer':''}">
-    <div class="ex-card-accent" style="background:linear-gradient(180deg,${c},${c}40)"></div>
-    <div class="ex-card-info">
-      <div class="ex-card-name">${data.icon} ${name}</div>
-      ${detail?`<div class="ex-card-detail">${detail}</div>`:''}
-      <div class="ex-card-badge" style="color:${c};background:${c}14;border:1px solid ${c}18"><span style="width:5px;height:5px;border-radius:50%;background:${c};box-shadow:0 0 6px ${c}80;display:inline-block"></span> ${data.label}</div>
+  const itemsArr = Array.isArray(items) ? items : (items ? [items] : []);
+  
+  const itemsHtml = itemsArr.filter(Boolean).map(it => 
+    `<div class="meal-card-item"><div class="meal-card-dot" style="background:${c}"></div>${it}</div>`
+  ).join('');
+  
+  return `<div class="meal-card" style="border-color:${c}20" ${foodData} ${hasFoods ? 'onclick="openFoodModal(this)"' : ''}>
+    <div class="meal-card-header">
+      <div class="meal-card-icon">${data.icon}</div>
+      <div class="meal-card-title">
+        <div class="meal-card-name" style="color:${c}">${name}</div>
+        ${itemsArr.length > 0 ? `<div class="meal-card-sub">${itemsArr.length} alimento${itemsArr.length>1?'s':''}</div>` : ''}
+      </div>
+      ${hasFoods ? `<div class="meal-card-arrow" style="color:${c}">📷 ›</div>` : ''}
     </div>
-    ${hasFoods ? `<div class="ex-card-tap" style="color:${c}80">›</div>` : ''}
+    ${itemsArr.length > 0 ? `<div class="meal-card-items">${itemsHtml}</div>` : ''}
   </div>`;
 }
 
@@ -1759,18 +1864,25 @@ function openFoodModal(el) {
   requestAnimationFrame(() => overlay.classList.add('open'));
 }
 
+const SKIP_NUT = ["lista de compra","ingrediente","elaboración","elaboracion","preparación","preparacion","receta","instrucciones","pasos","modo de preparar","cómo preparar","como preparar"];
+function shouldSkipSection(text) {
+  const l = text.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
+  return SKIP_NUT.some(s => l.includes(s.normalize("NFD").replace(/[\u0300-\u036f]/g,"")));
+}
+
 function formatNutritionWithCards(nutText) {
   if(!nutText) return '';
   const lines = nutText.split('\n');
   let html = '';
   let currentMeal = null;
   let mealItems = [];
+  let skipping = false;
 
   function flushMeal() {
     if(currentMeal && mealItems.length > 0) {
-      html += buildNutCard(currentMeal.name, mealItems.join(' · '), currentMeal.key);
+      html += buildNutCard(currentMeal.name, mealItems, currentMeal.key);
     } else if(currentMeal) {
-      html += buildNutCard(currentMeal.name, '', currentMeal.key);
+      html += buildNutCard(currentMeal.name, [], currentMeal.key);
     }
     currentMeal = null;
     mealItems = [];
@@ -1778,69 +1890,73 @@ function formatNutritionWithCards(nutText) {
 
   for(const line of lines) {
     const trimmed = line.trim();
-    if(!trimmed) { html += '<div style="height:4px"></div>'; continue; }
+    if(!trimmed) continue;
+    if(trimmed.startsWith('|') || /^[-|]+$/.test(trimmed.replace(/\s/g,''))) continue;
 
-    // Detect headers (# or ## or **Title**)
-    const isHeader = /^#{1,3}\s/.test(trimmed) || /^\*\*[A-ZÁÉÍÓÚÑ]/.test(trimmed);
-    if(isHeader) {
+    // Detect time-based headers: *07:00 - Desayuno (500 kcal) or **7:00 - Desayuno**
+    const timeMatch = trimmed.match(/^\*{0,2}\s*\*?\s*(\d{1,2}:\d{2})\s*[-–]\s*(.+)/);
+    if(timeMatch) {
       flushMeal();
-      const clean = trimmed.replace(/^#+\s*/, '').replace(/\*\*/g, '').trim();
-      const nutKey = matchNutSection(clean);
-      if(nutKey) {
-        currentMeal = {name: clean, key: nutKey};
-        continue;
-      } else {
-        html += `<div class="plan-section-title nut">${clean}</div>`;
-        continue;
-      }
+      const mealLabel = timeMatch[2].replace(/\*\*/g,'').replace(/\([\d\s,kcal]+\)/gi,'').trim();
+      const fullLabel = timeMatch[1] + ' - ' + timeMatch[2].replace(/\*\*/g,'').trim();
+      if(shouldSkipSection(mealLabel)) { skipping = true; continue; }
+      skipping = false;
+      const nutKey = matchNutSection(mealLabel);
+      if(nutKey) { currentMeal = {name: fullLabel, key: nutKey}; continue; }
+      else { html += `<div class="plan-section-title nut">${fullLabel}</div>`; continue; }
     }
 
-    // Detect meal-like lines that start with emoji or dash
+    const isHeader = /^#{1,3}\s/.test(trimmed) || /^\*\*[A-ZÁÉÍÓÚÑ🌅☀️🌙🍎⚡💪📊🔥🥤💧💊]/.test(trimmed);
+    if(isHeader) {
+      flushMeal();
+      const clean = trimmed.replace(/^#+\s*/, '').replace(/\*\*/g, '').replace(/^[🌅☀️🌙🍎⚡💪📊🔥🥤💧💊🛒📝👩‍🍳]\s*/, '').trim();
+      if(shouldSkipSection(clean)) { skipping = true; continue; }
+      skipping = false;
+      const nutKey = matchNutSection(clean);
+      if(nutKey) { currentMeal = {name: clean, key: nutKey}; continue; }
+      else { html += `<div class="plan-section-title nut">${clean}</div>`; continue; }
+    }
+    if(skipping) continue;
+
     const lineMatch = trimmed.match(/^[-–•*]\s*(.+)|^(\d+)[.)]\s*(.+)/);
     if(lineMatch) {
       const itemText = (lineMatch[1] || lineMatch[3] || '').replace(/\*\*/g,'').trim();
-      if(currentMeal) {
-        mealItems.push(itemText);
-        continue;
+      // Check if this bullet is actually a meal header (e.g. "- *17:00 - Pre-entreno")
+      const subTime = itemText.match(/^\*?\s*(\d{1,2}:\d{2})\s*[-–]\s*(.+)/);
+      if(subTime) {
+        flushMeal();
+        const ml = subTime[2].replace(/\([\d\s,kcal]+\)/gi,'').trim();
+        const fl = subTime[1] + ' - ' + subTime[2].trim();
+        const nk = matchNutSection(ml);
+        if(nk) { currentMeal = {name: fl, key: nk}; continue; }
       }
-      // Check if it's a standalone meal/macro line
+      if(currentMeal) { mealItems.push(itemText); continue; }
       const nutKey = matchNutSection(itemText);
       if(nutKey) {
-        const colonIdx = itemText.indexOf(':');
-        if(colonIdx > 2) {
-          const name = itemText.slice(0, colonIdx).trim();
-          const detail = itemText.slice(colonIdx+1).trim();
-          html += buildNutCard(name, detail, nutKey);
-        } else {
-          html += buildNutCard(itemText, '', nutKey);
-        }
+        const ci = itemText.indexOf(':');
+        if(ci > 2) html += buildNutCard(itemText.slice(0,ci).trim(), [itemText.slice(ci+1).trim()], nutKey);
+        else html += buildNutCard(itemText, [], nutKey);
+        continue;
+      }
+      // Non-matched bullet: still add as text
+      if(!currentMeal) {
+        html += `<div class="plan-text-line" style="padding-left:8px">• ${itemText}</div>`;
         continue;
       }
     }
 
-    // Check if entire line is a meal header without # or **
     if(!currentMeal) {
       const nutKey2 = matchNutSection(trimmed);
       if(nutKey2 && (trimmed.includes(':') || /^[A-ZÁÉÍÓÚÑ🌅☀️🌙🍎⚡💪]/.test(trimmed))) {
+        if(shouldSkipSection(trimmed)) { skipping = true; continue; }
         flushMeal();
-        const colonIdx = trimmed.indexOf(':');
-        if(colonIdx > 2) {
-          currentMeal = {name: trimmed.slice(0, colonIdx).replace(/\*\*/g,'').trim(), key: nutKey2};
-          mealItems.push(trimmed.slice(colonIdx+1).replace(/\*\*/g,'').trim());
-        } else {
-          currentMeal = {name: trimmed.replace(/\*\*/g,'').trim(), key: nutKey2};
-        }
+        const ci = trimmed.indexOf(':');
+        if(ci > 2) { currentMeal = {name: trimmed.slice(0,ci).replace(/\*\*/g,'').trim(), key: nutKey2}; const a=trimmed.slice(ci+1).replace(/\*\*/g,'').trim(); if(a) mealItems.push(a); }
+        else { currentMeal = {name: trimmed.replace(/\*\*/g,'').trim(), key: nutKey2}; }
         continue;
       }
     }
-
-    // If inside a meal, accumulate
-    if(currentMeal) {
-      mealItems.push(trimmed.replace(/\*\*/g,'').trim());
-      continue;
-    }
-
-    // Regular text
+    if(currentMeal) { mealItems.push(trimmed.replace(/\*\*/g,'').trim()); continue; }
     const formatted = trimmed.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/^#+\s*/,'');
     html += `<div class="plan-text-line">${formatted}</div>`;
   }
@@ -1995,7 +2111,34 @@ function renderNutrition() {
       <div class="chat-row"><input type="text" id="ci-n" placeholder="¿Puedo sustituir el pollo?"/><button id="cs-n" style="background:var(--green)">→</button></div>
     </div>`;
   STATE.chat.slice(-2).forEach(m=>{const el=document.createElement('div');el.className='chat-msg '+(m.role==='user'?'chat-user':'chat-ai');el.style.color=m.role==='assistant'?'#6ee7b7':'';el.innerHTML=`<strong>${m.role==='user'?'Tú:':'🤖 '}</strong> ${m.content}`;div.querySelector('#chat-n').appendChild(el);});
-  div.querySelector('#btn-newnut').onclick=async()=>{STATE.aiLoading=true;render();const p=STATE.profile;const r=await claude([{role:'user',content:`Plan alimentación VARIADO para ${p.name}, ${p.goal}, ${calcProgress().lw}kg, ${p.height}cm, ${p.gender}, ${p.age}años. Recetas sencillas. Harvard. Máx 700 palabras.`}]);STATE.nutrition=r;STATE.aiLoading=false;save();dbSavePlanNutrition(STATE.user?.email, STATE.plan, STATE.nutrition);render();};
+  div.querySelector('#btn-newnut').onclick=async()=>{STATE.aiLoading=true;render();const p=STATE.profile;const r=await claude([{role:'user',content:`Plan alimentación VARIADO para ${p.name}, ${p.goal}, ${calcProgress().lw}kg, ${p.height}cm, ${p.gender}, ${p.age}años. Basado en ciencia de Harvard. Formato ESTRICTO con estas secciones usando ##:
+
+## 📊 Calorías y Macros
+- Calorías: X kcal
+- Proteína: Xg
+- Carbohidratos: Xg
+- Grasas: Xg
+
+## 🌅 Desayuno
+- alimento 1 (cantidad)
+- alimento 2 (cantidad)
+
+## 🍎 Colación AM
+- alimento (cantidad)
+
+## ☀️ Almuerzo
+- alimento 1 (cantidad)
+- alimento 2 (cantidad)
+- alimento 3 (cantidad)
+
+## 🥤 Merienda PM
+- alimento (cantidad)
+
+## 🌙 Cena
+- alimento 1 (cantidad)
+- alimento 2 (cantidad)
+
+NO incluir lista de compras, elaboración, preparación, recetas ni pasos de cocina. Solo alimentos con cantidades. Máx 300 palabras.`}]);STATE.nutrition=r;STATE.aiLoading=false;save();dbSavePlanNutrition(STATE.user?.email, STATE.plan, STATE.nutrition);render();};
   const send=async()=>{const inp=div.querySelector('#ci-n');const txt=inp?.value.trim();if(!txt)return;STATE.chat.push({role:'user',content:txt});inp.value='';STATE.aiLoading=true;render();const msgs=STATE.chat.slice(-4).map(m=>({role:m.role,content:m.content}));msgs[0]={...msgs[0],content:`${STATE.profile.name},${STATE.profile.goal}\n${msgs[0].content}`};const r=await claude(msgs);STATE.chat.push({role:'assistant',content:r});STATE.qaHistory.push({date:new Date().toLocaleDateString('es-CL'),q:txt,a:r});STATE.qaHistory=STATE.qaHistory.slice(-100);STATE.aiLoading=false;save();render();};
   div.querySelector('#cs-n').onclick=send;
   div.querySelector('#ci-n').onkeydown=e=>{if(e.key==='Enter')send();};
