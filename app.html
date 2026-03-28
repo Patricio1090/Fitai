@@ -1524,7 +1524,132 @@ function formatPlanWithImages(planText) {
   return html;
 }
 
-// Nutrition card builder
+// Nutrition card builder + Food images
+const FOOD_IMAGES = {
+  // Proteins
+  pollo:{label:"Pollo",img:"photo-1604503468506-a8da13d82571"},
+  pechuga:{label:"Pechuga de pollo",img:"photo-1604503468506-a8da13d82571"},
+  carne:{label:"Carne",img:"photo-1588168333986-5078d3ae3976"},
+  res:{label:"Carne de res",img:"photo-1588168333986-5078d3ae3976"},
+  salmon:{label:"Salmón",img:"photo-1519708227418-c8fd9a32b7a2"},
+  pescado:{label:"Pescado",img:"photo-1510130113840-198f8b27e60c"},
+  atun:{label:"Atún",img:"photo-1528207776546-365bb710ee93"},
+  huevo:{label:"Huevos",img:"photo-1482049016688-2d3e1b311543"},
+  pavo:{label:"Pavo",img:"photo-1574672280600-4accfa5b6f98"},
+  cerdo:{label:"Cerdo",img:"photo-1432139509613-5c4255a1d993"},
+  // Grains & carbs
+  arroz:{label:"Arroz",img:"photo-1516684732162-798a0062be99"},
+  avena:{label:"Avena",img:"photo-1517673400267-0251440c45dc"},
+  pan:{label:"Pan integral",img:"photo-1509440159596-0249088772ff"},
+  pasta:{label:"Pasta",img:"photo-1551462147-ff29053bfc14"},
+  quinoa:{label:"Quinoa",img:"photo-1586201375761-83865001e31c"},
+  papa:{label:"Papa / Batata",img:"photo-1518977676601-b53f82ber9eb"},
+  batata:{label:"Batata",img:"photo-1596097635121-14b63a7fal24"},
+  tortilla:{label:"Tortilla",img:"photo-1565299585323-38d6b0865b47"},
+  // Fruits & veggies
+  ensalada:{label:"Ensalada",img:"photo-1512621776951-a57141f2eefd"},
+  verdura:{label:"Verduras",img:"photo-1540420773420-3366772f4999"},
+  brocoli:{label:"Brócoli",img:"photo-1459411552884-841db9b3cc2a"},
+  espinaca:{label:"Espinaca",img:"photo-1576045057995-568f588f82fb"},
+  tomate:{label:"Tomate",img:"photo-1546470427-f5fd1a04e976"},
+  fruta:{label:"Frutas",img:"photo-1619566636858-adf3ef46400b"},
+  platano:{label:"Plátano",img:"photo-1571771894821-ce9b6c11b08e"},
+  manzana:{label:"Manzana",img:"photo-1560806887-1e4cd0b6cbd6"},
+  naranja:{label:"Naranja",img:"photo-1547514701-42782101795e"},
+  berries:{label:"Berries",img:"photo-1563746098251-d35aef196e83"},
+  palta:{label:"Palta / Aguacate",img:"photo-1523049673857-eb18f1d7b578"},
+  aguacate:{label:"Aguacate",img:"photo-1523049673857-eb18f1d7b578"},
+  zanahoria:{label:"Zanahoria",img:"photo-1447175008436-054170c2e979"},
+  pepino:{label:"Pepino",img:"photo-1449300079323-02e209d9d3a6"},
+  // Dairy & fats
+  yogurt:{label:"Yogurt",img:"photo-1488477181946-6428a0291777"},
+  leche:{label:"Leche",img:"photo-1563636619-e9143da7973b"},
+  queso:{label:"Queso",img:"photo-1486297678162-eb2a19b0a32d"},
+  almendra:{label:"Frutos secos",img:"photo-1508061253366-f7da158b6d46"},
+  nuez:{label:"Nueces",img:"photo-1508061253366-f7da158b6d46"},
+  aceite_oliva:{label:"Aceite de oliva",img:"photo-1474979266404-7eaacbcd87c5"},
+  mantequilla:{label:"Mantequilla",img:"photo-1589985270958-bf087f4bca60"},
+  mani:{label:"Maní / Cacahuate",img:"photo-1567892737950-30c4db37cd89"},
+  // Meals
+  smoothie:{label:"Smoothie",img:"photo-1505252585461-04db1eb84625"},
+  batido:{label:"Batido proteico",img:"photo-1505252585461-04db1eb84625"},
+  sopa:{label:"Sopa",img:"photo-1547592166-23ac45744acd"},
+  sandwich:{label:"Sándwich",img:"photo-1528735602780-2552fd46c7af"},
+  wrap:{label:"Wrap",img:"photo-1626700051175-6818013e1d4f"},
+  tostada:{label:"Tostadas",img:"photo-1525351484163-7529414344d8"},
+  granola:{label:"Granola",img:"photo-1517093602195-b40af9688929"},
+  // Supplements
+  proteina_polvo:{label:"Proteína en polvo",img:"photo-1593095948071-474c5cc2c4d8"},
+  creatina:{label:"Creatina",img:"photo-1593095948071-474c5cc2c4d8"},
+};
+
+const FOOD_MATCH = [
+  {key:"pollo",kw:["pollo","chicken"]},
+  {key:"pechuga",kw:["pechuga"]},
+  {key:"carne",kw:["carne","bistec","filete de res","bife"]},
+  {key:"res",kw:["res"]},
+  {key:"salmon",kw:["salmón","salmon"]},
+  {key:"pescado",kw:["pescado","merluza","tilapia","corvina","reineta"]},
+  {key:"atun",kw:["atún","atun","tuna"]},
+  {key:"huevo",kw:["huevo","claras","tortilla de huevo","omelette","omelet"]},
+  {key:"pavo",kw:["pavo","turkey"]},
+  {key:"cerdo",kw:["cerdo","lomo","chuleta"]},
+  {key:"arroz",kw:["arroz","rice"]},
+  {key:"avena",kw:["avena","oatmeal","porridge"]},
+  {key:"pan",kw:["pan integral","pan ezequiel","pan centeno","tostada integral"]},
+  {key:"pasta",kw:["pasta","espagueti","fideos","tallarines","macarron"]},
+  {key:"quinoa",kw:["quinoa","quinua"]},
+  {key:"papa",kw:["papa","patata","puré"]},
+  {key:"batata",kw:["batata","camote","boniato"]},
+  {key:"tortilla",kw:["tortilla de maíz","tortilla de trigo","wrap"]},
+  {key:"ensalada",kw:["ensalada","mix de hojas","lechuga","rúcula","rugula"]},
+  {key:"verdura",kw:["verdura","vegetal","vegetales","al vapor","salteado"]},
+  {key:"brocoli",kw:["brócoli","brocoli","broccoli"]},
+  {key:"espinaca",kw:["espinaca","kale","acelga"]},
+  {key:"tomate",kw:["tomate","cherry"]},
+  {key:"fruta",kw:["fruta","frutas","mix de frutas"]},
+  {key:"platano",kw:["plátano","platano","banana","banano","guineo"]},
+  {key:"manzana",kw:["manzana","apple"]},
+  {key:"naranja",kw:["naranja","mandarina","cítrico"]},
+  {key:"berries",kw:["berries","arándano","arandano","frambuesa","fresa","frutilla","mora","blueberry"]},
+  {key:"palta",kw:["palta"]},
+  {key:"aguacate",kw:["aguacate","avocado"]},
+  {key:"zanahoria",kw:["zanahoria"]},
+  {key:"pepino",kw:["pepino"]},
+  {key:"yogurt",kw:["yogurt","yogur","skyr","kéfir","kefir"]},
+  {key:"leche",kw:["leche","milk"]},
+  {key:"queso",kw:["queso","cottage","ricotta","requesón"]},
+  {key:"almendra",kw:["almendra","frutos secos","mix de nueces","semilla"]},
+  {key:"nuez",kw:["nuez","nueces","walnut"]},
+  {key:"aceite_oliva",kw:["aceite de oliva","aceite oliva","olive oil"]},
+  {key:"mani",kw:["maní","mani","cacahuate","mantequilla de maní","peanut"]},
+  {key:"smoothie",kw:["smoothie","licuado"]},
+  {key:"batido",kw:["batido","shake","whey"]},
+  {key:"sopa",kw:["sopa","caldo","crema de"]},
+  {key:"sandwich",kw:["sándwich","sandwich"]},
+  {key:"wrap",kw:["wrap","burrito"]},
+  {key:"tostada",kw:["tostada","toast"]},
+  {key:"granola",kw:["granola"]},
+  {key:"proteina_polvo",kw:["proteína en polvo","whey protein","suplemento","creatina"]},
+];
+
+function matchFoodsInText(text) {
+  const lower = text.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
+  const found = [];
+  const seen = new Set();
+  for(const f of FOOD_MATCH) {
+    for(const kw of f.kw) {
+      const n = kw.normalize("NFD").replace(/[\u0300-\u036f]/g,"");
+      if(lower.includes(n) && !seen.has(f.key)) {
+        seen.add(f.key);
+        found.push(f.key);
+        break;
+      }
+    }
+  }
+  return found;
+}
+
 const NUT_ITEMS = {
   desayuno:{icon:"🌅",label:"Desayuno",color:"#fbbf24"},
   almuerzo:{icon:"☀️",label:"Almuerzo",color:"#fb923c"},
@@ -1576,14 +1701,62 @@ function buildNutCard(name, detail, nutKey) {
   const data = NUT_ITEMS[nutKey];
   if(!data) return '';
   const c = data.color;
-  return `<div class="ex-card">
+  const allText = name + ' ' + detail;
+  const foods = matchFoodsInText(allText);
+  const hasFoods = foods.length > 0;
+  const foodData = hasFoods ? `data-foods="${foods.join(',')}" data-mealname="${name}" data-mealcolor="${c}"` : '';
+  return `<div class="ex-card" ${foodData} ${hasFoods ? 'onclick="openFoodModal(this)"' : ''} style="${hasFoods?'cursor:pointer':''}">
     <div class="ex-card-accent" style="background:linear-gradient(180deg,${c},${c}40)"></div>
     <div class="ex-card-info">
       <div class="ex-card-name">${data.icon} ${name}</div>
       ${detail?`<div class="ex-card-detail">${detail}</div>`:''}
       <div class="ex-card-badge" style="color:${c};background:${c}14;border:1px solid ${c}18"><span style="width:5px;height:5px;border-radius:50%;background:${c};box-shadow:0 0 6px ${c}80;display:inline-block"></span> ${data.label}</div>
     </div>
+    ${hasFoods ? `<div class="ex-card-tap" style="color:${c}80">›</div>` : ''}
   </div>`;
+}
+
+function openFoodModal(el) {
+  const foods = el.dataset.foods.split(',');
+  const mealName = el.dataset.mealname;
+  const color = el.dataset.mealcolor;
+
+  const existing = document.querySelector('.ex-modal-overlay');
+  if(existing) existing.remove();
+
+  const overlay = document.createElement('div');
+  overlay.className = 'ex-modal-overlay';
+  
+  const foodCards = foods.map(fk => {
+    const fd = FOOD_IMAGES[fk];
+    if(!fd) return '';
+    return `<div style="text-align:center">
+      <img src="https://images.unsplash.com/${fd.img}?w=400&h=300&fit=crop&auto=format&q=80"
+           alt="${fd.label}" loading="lazy"
+           onerror="this.parentElement.style.display='none'"
+           style="width:100%;border-radius:14px;aspect-ratio:4/3;object-fit:cover;background:#1a1735;border:1px solid ${color}20"/>
+      <div style="font-size:12px;color:#e2e8f0;font-weight:600;margin-top:6px">${fd.label}</div>
+    </div>`;
+  }).filter(Boolean).join('');
+
+  overlay.innerHTML = `
+    <div class="ex-modal">
+      <div class="ex-modal-close"><button onclick="closeExerciseModal()">✕</button></div>
+      <div class="ex-modal-header">
+        <div class="ex-modal-title" style="color:${color}">${mealName}</div>
+        <div class="ex-modal-muscle" style="color:${color}cc">${foods.length} alimento${foods.length>1?'s':''}</div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(${foods.length > 1 ? 2 : 1},1fr);gap:10px;padding:0 16px 20px">
+        ${foodCards}
+      </div>
+      <div style="padding:0 20px 20px;text-align:center">
+        <button class="btn btn-ghost btn-sm" onclick="closeExerciseModal()" style="width:100%">Cerrar</button>
+      </div>
+    </div>`;
+
+  overlay.onclick = (e) => { if(e.target === overlay) closeExerciseModal(); };
+  document.body.appendChild(overlay);
+  requestAnimationFrame(() => overlay.classList.add('open'));
 }
 
 function formatNutritionWithCards(nutText) {
