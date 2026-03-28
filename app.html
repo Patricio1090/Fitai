@@ -943,7 +943,7 @@ function renderSideSection() {
         </div>
         <div class="meal-card-items">
           <div class="meal-card-item" style="line-height:1.6"><div class="meal-card-dot" style="background:${s.color}"></div>${s.detail}</div>
-          <div class="meal-card-item" style="font-size:11px;color:${s.color}99"><div class="meal-card-dot" style="background:${s.color}40"></div>🔗 ${s.link}</div>
+          <div class="meal-card-item" style="font-size:11px"><div class="meal-card-dot" style="background:${s.color}40"></div><a href="https://${s.link}" target="_blank" rel="noopener" style="color:${s.color};text-decoration:none;border-bottom:1px solid ${s.color}40">🔗 ${s.link}</a></div>
         </div>
       </div>`).join('')}
     </div>`;
@@ -1374,7 +1374,7 @@ function renderTabBar() {
   icons.forEach((ic,i)=>{
     const b=document.createElement('button'); b.className='tab-btn'+(STATE.tab===i?' active':'');
     b.innerHTML=`<span class="icon">${ic}</span><span>${labels[i]}</span>`;
-    b.onclick=()=>{STATE.tab=i;STATE.aiMsg='';STATE.showUserMenu=false;render();};
+    b.onclick=()=>{STATE.tab=i;STATE.aiMsg='';STATE.showUserMenu=false;STATE.sideSection=null;render();};
     tb.appendChild(b);
   });
   return tb;
@@ -1401,8 +1401,8 @@ function renderDashboard() {
       <button class="btn btn-blue" id="to-log">📝 Registrar hoy</button>
       <button class="btn" style="background:linear-gradient(135deg,var(--green),#059669);color:#fff" id="to-nut">🥗 Nutrición</button>
     </div>`;
-  div.querySelector('#to-log').onclick=()=>{STATE.tab=3;render();};
-  div.querySelector('#to-nut').onclick=()=>{STATE.tab=2;render();};
+  div.querySelector('#to-log').onclick=()=>{STATE.tab=3;STATE.sideSection=null;render();};
+  div.querySelector('#to-nut').onclick=()=>{STATE.tab=2;STATE.sideSection=null;render();};
   return div;
 }
 function renderMiniChart(trend) {
