@@ -304,6 +304,7 @@ function paidSet(){ return new Set(DB.payments.filter(p=>(p.status||'').toLowerC
       </select>
       <button onclick="filtrarTx()" class="filter-btn" style="background:var(--p);color:#fff">Filtrar</button>
       <button onclick="limpiarFiltro()" class="filter-btn" style="background:var(--border);color:var(--muted)">✕</button>
+      <button onclick="exportarPagosMesFiltro()" class="filter-btn" style="background:#00e67618;border:1px solid #00e67630;color:var(--g)">📥 Excel</button>
     </div>
     <div id="tx-resumen" style="background:#00e67615;border:1px solid #00e67630;border-radius:10px;padding:10px 14px;margin-bottom:12px;display:none">
       <div style="display:flex;justify-content:space-between;align-items:center">
@@ -545,7 +546,7 @@ function exportarMes(couponCode, mesKey, influencerName, commission) {
     const isPaid=paid.has(u.user_id)||paid.has(u.user_email);
     return [
       usr.email||u.user_email||'—',
-      usr.name||usr.full_name||'—',
+      usr.name||usr.full_name||(usr.email||u.user_email||'').split('@')[0]||'—',
       fmtDate(u.created_at),
       isPaid?'Sí':'No',
       u.discount_amount||0,
@@ -558,12 +559,67 @@ function exportarMes(couponCode, mesKey, influencerName, commission) {
   const totalDesc=rows.reduce((a,r)=>a+r[4],0);
   rows.push(['','','','TOTALES',totalDesc,'',totalComision]);
 
-  const csv=[hdrs,...rows].map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\n');
+  // Header con info del cupón
+  const coupon=DB.coupons.find(c=>c.code===couponCode)||{};
+  const descLabel=coupon.discount_type==='percent'?coupon.discount_pct+'%':'$'+Number(coupon.discount_pct||0).toLocaleString('es-CL')+' CLP';
+  const totalFinal=rows.reduce((a,r)=>a+(Number(r[5])||0),0);
+  const pagaron=rows.filter(r=>r[3]==='Sí').length;
+
+  const infoRows=[
+    ['FitAI Pro - Reporte Cupón: '+couponCode+' - '+mesNom],
+    ['Influencer: '+(influencerName||'')+'   |   Descuento: '+descLabel+'   |   Comisión por pago: $'+commission+' CLP'],
+    ['Pagos aprobados: '+pagaron+'   |   Total descontado: $'+totalDesc.toLocaleString('es-CL')+' CLP   |   Total comisiones: $'+totalComision.toLocaleString('es-CL')+' CLP'],
+    []
+  ];
+
+  const allRows=[...infoRows, hdrs, ...rows];
+  const csv=allRows.map(r=>Array.isArray(r)?r.map(v=>String(v).replace(/;/g,',')).join(';'):String(r)).join('\n');
   const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');
   a.href=url;
-  a.download=`FitAI_${couponCode}_${influencerName}_${mesNom.replace(' ','_')}.csv`;
+  a.download='FitAI_Cupon_'+couponCode+'_'+influencerName+'_'+mesNom.replace(' ','_')+'.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ── Exportar pagos del mes
+function exportarPagosMes(mesKey) {
+  const [yr,mn]=mesKey.split('-');
+  const mesNom=(MON_FULL[mn]||mn)+'_'+yr;
+  const SEP=';';
+  const usersMap=Object.fromEntries(DB.users.map(u=>[u.id,u]));
+
+  const pagos=mesKey
+    ? DB.payments.filter(p=>(p.created_at||'').startsWith(mesKey))
+    : DB.payments;
+
+  if(!pagos.length){alert('Sin pagos en este período');return;}
+
+  const aprobados=pagos.filter(p=>(p.status||'').toLowerCase()==='approved');
+  const total=aprobados.reduce((acc,p)=>acc+Number(p.amount||0),0);
+
+  const hdrs=['Email','Nombre','Fecha','Estado','Monto CLP'];
+  const rows=pagos.map(p=>{
+    const usr=usersMap[p.user_id]||{};
+    const email=usr.email||p.user_email||'—';
+    const nombre=usr.name||usr.full_name||email.split('@')[0]||'—';
+    return [email,nombre,fmtDate(p.created_at),(p.status||'').toLowerCase()==='approved'?'Aprobado':'Pendiente',Number(p.amount||0)];
+  });
+  rows.push(['','',aprobados.length+' pagos aprobados','TOTAL',total]);
+
+  const infoRows=[
+    ['FitAI Pro - Reporte de Pagos - '+(MON_FULL[mn]||mn)+' '+yr],
+    ['Total recaudado: $'+total.toLocaleString('es-CL')+' CLP   |   Pagos aprobados: '+aprobados.length],
+    []
+  ];
+
+  const csv=[...infoRows,hdrs,...rows].map(r=>Array.isArray(r)?r.map(v=>String(v).replace(/;/g,',')).join(SEP):String(r)).join('\n');
+  const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  a.download='FitAI_Pagos_'+mesNom+'.csv';
   a.click();
   URL.revokeObjectURL(url);
 }
@@ -658,6 +714,12 @@ function drawEvoChart(keys,byMonth){
 
 // ── Filtro transacciones
 function filtrarTx(){renderTxFiltradas(document.getElementById('filter-mes').value,document.getElementById('filter-anio').value);}
+function exportarPagosMesFiltro(){
+  const mes=document.getElementById('filter-mes').value;
+  const anio=document.getElementById('filter-anio').value;
+  const mesKey=anio&&mes?anio+'-'+mes:anio?anio:'';
+  exportarPagosMes(mesKey);
+}
 function limpiarFiltro(){document.getElementById('filter-mes').value='';document.getElementById('filter-anio').value='';renderTxFiltradas('','');}
 
 function renderTxFiltradas(mes,anio){
