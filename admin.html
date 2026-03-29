@@ -279,8 +279,11 @@ function paidSet(){ return new Set(DB.payments.filter(p=>(p.status||'').toLowerC
 
   <!-- Buscador + tabla resumen -->
   <div style="margin-bottom:12px">
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
     <input type="search" id="cp-search" placeholder="🔍 Buscar por código o influencer…" oninput="filterCuponesTable()"
-      style="width:100%;background:#0d0d1e;border:1px solid var(--border);border-radius:9px;padding:9px 12px;color:var(--text);font-family:DM Sans,sans-serif;font-size:.83rem;outline:none;margin-bottom:10px">
+      style="flex:1;background:#0d0d1e;border:1px solid var(--border);border-radius:9px;padding:9px 12px;color:var(--text);font-family:DM Sans,sans-serif;font-size:.83rem;outline:none">
+    <button onclick="exportarResumenCupones()" style="background:#00e67618;border:1px solid #00e67630;color:var(--g);border-radius:9px;padding:9px 14px;font-size:.8rem;font-weight:700;cursor:pointer;font-family:DM Sans,sans-serif;white-space:nowrap">📥 Excel resumen</button>
+  </div>
 
     <!-- Tabla resumen seleccionable -->
     <div id="cp-summary-table" style="background:#0d0d1e;border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:12px;overflow-x:auto">
@@ -773,6 +776,89 @@ function exportarPagosMes(mesKey) {
   const a=document.createElement('a');
   a.href=url;
   a.download='FitAI_Pagos_'+mesNom+'.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ── Exportar resumen general de cupones a Excel
+function exportarResumenCupones() {
+  const paid = paidSet();
+  const SEP = ';';
+  const searchVal = (document.getElementById('cp-search')?.value||'').toLowerCase();
+  const filterMes  = document.getElementById('cp-filter-mes')?.value  || '';
+  const filterAnio = document.getElementById('cp-filter-anio')?.value || '';
+  const filterKey  = filterAnio && filterMes ? `${filterAnio}-${filterMes}` : filterAnio||'';
+
+  const monNames = {'01':'Enero','02':'Febrero','03':'Marzo','04':'Abril','05':'Mayo','06':'Junio','07':'Julio','08':'Agosto','09':'Septiembre','10':'Octubre','11':'Noviembre','12':'Diciembre'};
+  const periodoLabel = filterKey
+    ? (filterMes?monNames[filterMes]+' ':'') + filterAnio
+    : 'Histórico completo';
+
+  let coupons = DB.coupons;
+  if (searchVal) {
+    coupons = coupons.filter(c =>
+      c.code.toLowerCase().includes(searchVal) ||
+      (c.influencer_name||'').toLowerCase().includes(searchVal)
+    );
+  }
+
+  if (!coupons.length) { alert('Sin cupones para exportar'); return; }
+
+  const hdrs = ['Código Cupón','Influencer','Email Influencer','Tipo Descuento','Desc. por uso CLP','Comisión por pago CLP','Usos totales período','Pagaron','Total descontado CLP','Recaudado en MP CLP','Ganancia Influencer CLP','Estado'];
+
+  const rows = coupons.map(c => {
+    const isPct = (c.discount_type||'percent') === 'percent';
+    const discPerUse = calcCouponDiscount(c, PRECIO);
+    const commission = Number(c.commission_amount||0);
+    const allUses = DB.couponUses.filter(u => u.coupon_code === c.code);
+    const uses = filterKey ? allUses.filter(u=>(u.created_at||'').startsWith(filterKey)) : allUses;
+    const pagaronArr = uses.filter(u => paid.has(u.user_id)||paid.has(u.user_email));
+    const totalDesc = uses.length * discPerUse;
+    const recaudado = pagaronArr.reduce((acc,u) => acc+Number(u.final_price||0), 0);
+    const ganancia  = pagaronArr.length * commission;
+
+    return [
+      c.code,
+      c.influencer_name||'—',
+      c.influencer_email||'—',
+      isPct ? 'Porcentaje' : 'Monto fijo CLP',
+      discPerUse,
+      commission,
+      uses.length,
+      pagaronArr.length,
+      totalDesc,
+      recaudado,
+      ganancia,
+      c.active ? 'Activo' : 'Inactivo'
+    ];
+  });
+
+  // Totales
+  const totUsos    = rows.reduce((a,r)=>a+Number(r[6]),0);
+  const totPagaron = rows.reduce((a,r)=>a+Number(r[7]),0);
+  const totDesc    = rows.reduce((a,r)=>a+Number(r[8]),0);
+  const totRecauda = rows.reduce((a,r)=>a+Number(r[9]),0);
+  const totGananci = rows.reduce((a,r)=>a+Number(r[10]),0);
+  rows.push(['','','','','','TOTALES',totUsos,totPagaron,totDesc,totRecauda,totGananci,'']);
+
+  const now = new Date();
+  const fechaExport = now.toLocaleDateString('es-CL');
+
+  const infoRows = [
+    [`FitAI Pro - Resumen General de Cupones - ${periodoLabel}`],
+    [`Exportado el ${fechaExport}   |   ${coupons.length} cupones   |   ${totUsos} usos totales`],
+    []
+  ];
+
+  const csv = [...infoRows, hdrs, ...rows]
+    .map(r => Array.isArray(r) ? r.map(v=>String(v).replace(/;/g,',')).join(SEP) : String(r))
+    .join('\n');
+
+  const blob = new Blob(['\uFEFF'+csv], {type:'text/csv;charset=utf-8;'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = `FitAI_Resumen_Cupones_${periodoLabel.replace(/ /g,'_')}_${fechaExport.replace(/\//g,'-')}.csv`;
   a.click();
   URL.revokeObjectURL(url);
 }
