@@ -612,6 +612,7 @@ function renderCupones() {
     const conPago=uses.filter(u=>paid.has(u.user_id)||paid.has(u.user_email));
     const totalDescontado=uses.length*discountPerUse;
     const totalComision=conPago.length*commission;
+    const recaudadoReal=conPago.reduce((acc,u)=>acc+Number(u.final_price||0),0);
     // "Este mes" en el card = período seleccionado si hay filtro, sino mes actual
     const usesMes=filterKey
       ? uses  // ya están filtrados por período
@@ -674,11 +675,11 @@ function renderCupones() {
           ${c.active?'✅ Activo':'❌ Inactivo'}
         </button>
       </div>
-      <div class="cpstats">
+      <div class="cpstats" style="grid-template-columns:repeat(5,1fr)">
         <div class="cst"><strong>${uses.length}</strong>${filterKey?'Usos período':'Usos totales'}</div>
-        <div class="cst"><strong>${usesMes.length}</strong>${labelMes}</div>
         <div class="cst orange"><strong>${conPago.length}</strong>Pagaron</div>
-        <div class="cst green"><strong>${fmtClp(totalDescontado)}</strong>Total desc.</div>
+        <div class="cst green"><strong>${fmtClp(totalDescontado)}</strong>💸 Total descontado</div>
+        <div class="cst" style="color:var(--b)"><strong style="color:#60a5fa;font-family:'Bebas Neue',sans-serif;font-size:1.15rem">${fmtClp(recaudadoReal)}</strong>💳 Recaudado MP</div>
         <div class="cst" style="border-right:none"><strong style="color:#fbbf24;font-family:'Bebas Neue',sans-serif;font-size:1.15rem">${commission>0?fmtClp(totalComision):'$0'}</strong>💰 Comisión</div>
       </div>
       ${monthsHtml}
