@@ -1,122 +1,138 @@
 // netlify/functions/create-preference.js
-// Actualizado con sistema de cupones
+// Crea preferencia de pago en MercadoPago con soporte de cupones
 
-const { createClient } = require('@supabase/supabase-js');
+const mercadopago = require("mercadopago");
 
-const SUPA_URL = process.env.SUPABASE_URL || 'https://wnuehkewxbpahfbemliz.supabase.co';
-const SUPA_KEY = process.env.SUPABASE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndudWVoa2V3eGJwYWhmYmVtbGl6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM5Mjc1NDcsImV4cCI6MjA4OTUwMzU0N30.CQ_pICuiWPwUhMrsCl7csOzMZR3cYZuaLcMelJnnyRI';
+const SUPABASE_URL  = "https://wnuehkewxbpahfbemliz.supabase.co";
+const SERVICE_KEY   = process.env.SUPABASE_SERVICE_KEY;
+const SUPABASE_ANON = "sb_publishable_rfsNbbcySsAlxgH657MSKQ_niGvstWy";
+
+const headers = {
+  "Content-Type": "application/json",
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "Content-Type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
 
 exports.handler = async (event) => {
-  const headers = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Content-Type',
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  };
-
-  if (event.httpMethod === 'OPTIONS') {
-    return { statusCode: 200, headers, body: '' };
+  if (event.httpMethod === "OPTIONS") {
+    return { statusCode: 200, headers, body: "" };
   }
 
   try {
-    const { email, amount, currency, coupon_code, user_name } = JSON.parse(event.body);
-    
-    const supa = createClient(SUPA_URL, SUPA_KEY);
-    let finalAmount = amount || 9990;
-    let couponData = null;
+    // ── MercadoPago: usar MP_ACCESS_TOKEN directo ─────────────────
+    const accessToken = process.env.MP_ACCESS_TOKEN;
+    if (!accessToken) throw new Error("MP_ACCESS_TOKEN no configurado");
+    mercadopago.configure({ access_token: accessToken });
 
-    // Validar cupón si se proporcionó
-    if (coupon_code && coupon_code.trim()) {
-      const { data: coupon, error } = await supa
-        .from('coupons')
-        .select('*')
-        .eq('code', coupon_code.trim().toUpperCase())
-        .eq('active', true)
-        .single();
+    const body = JSON.parse(event.body || "{}");
+    const { user_id, user_email, coupon_code } = body;
 
-      if (error || !coupon) {
-        return {
-          statusCode: 400,
-          headers,
-          body: JSON.stringify({ error: 'Cupón inválido o expirado.' })
-        };
-      }
-
-      couponData = coupon;
-      finalAmount = Math.max(100, amount - coupon.discount_amount); // Mínimo $100 CLP
-
-      // Registrar uso del cupón (payment_confirmed = false hasta que pague)
-      await supa.from('coupon_uses').insert({
-        coupon_id: coupon.id,
-        coupon_code: coupon.code,
-        user_email: email,
-        user_name: user_name || '',
-        payment_confirmed: false,
-        month_key: new Date().toISOString().slice(0, 7),
-      });
+    if (!user_id || !user_email) {
+      return {
+        statusCode: 400,
+        headers,
+        body: JSON.stringify({ error: "Faltan user_id o user_email" }),
+      };
     }
 
-    // Crear preferencia en MercadoPago
-    const MP_ACCESS_TOKEN = process.env.MP_ACCESS_TOKEN;
-    const BASE_URL = process.env.BASE_URL || 'https://mysuperfitness.netlify.app';
+    let finalPrice     = 9990;
+    let discountAmount = 0;
+    let couponData     = null;
+
+    // ── Validar cupón si fue ingresado ─────────────────────────────
+    if (coupon_code && coupon_code.trim() !== "") {
+      const upperCode = coupon_code.trim().toUpperCase();
+
+      const couponRes = await fetch(
+        `${SUPABASE_URL}/rest/v1/coupons?code=eq.${encodeURIComponent(upperCode)}&active=eq.true&select=*`,
+        {
+          headers: {
+            apikey: SUPABASE_ANON,
+            Authorization: `Bearer ${SUPABASE_ANON}`,
+          },
+        }
+      );
+
+      const coupons = await couponRes.json();
+
+      if (coupons && coupons.length > 0) {
+        couponData = coupons[0];
+
+        if (couponData.discount_type === "percent") {
+          discountAmount = Math.round(finalPrice * (couponData.discount_pct / 100));
+        } else {
+          discountAmount = Math.min(couponData.discount_pct, finalPrice);
+        }
+
+        finalPrice = Math.max(1, finalPrice - discountAmount);
+      }
+    }
+
+    // ── Construir preferencia ──────────────────────────────────────
+    const appUrl    = process.env.APP_URL || "https://mysuperfitness.netlify.app";
+    const itemTitle = discountAmount > 0
+      ? `FitAI Pro – Acceso de por vida (cupón ${coupon_code.toUpperCase()})`
+      : "FitAI Pro – Acceso de por vida";
 
     const preference = {
-      items: [{
-        title: 'FitAI Pro - Acceso de por vida',
-        quantity: 1,
-        unit_price: finalAmount,
-        currency_id: currency || 'CLP',
-      }],
-      payer: { email },
-      back_urls: {
-        success: `${BASE_URL}/app.html?payment=success&coupon=${coupon_code || ''}`,
-        failure: `${BASE_URL}/app.html?payment=failure`,
-        pending: `${BASE_URL}/app.html?payment=pending`,
-      },
-      auto_return: 'approved',
-      external_reference: email,
+      items: [{ title: itemTitle, unit_price: finalPrice, quantity: 1, currency_id: "CLP" }],
+      payer: { email: user_email },
       metadata: {
-        user_email: email,
-        coupon_code: coupon_code || null,
-        original_amount: amount,
-        final_amount: finalAmount,
+        user_id,
+        coupon_code: coupon_code ? coupon_code.toUpperCase() : null,
+        original_price: 9990,
+        discount_amount: discountAmount,
+        final_price: finalPrice,
       },
+      back_urls: {
+        success: `${appUrl}/app.html?payment=success`,
+        failure: `${appUrl}/app.html?payment=failure`,
+        pending: `${appUrl}/app.html?payment=pending`,
+      },
+      auto_return: "approved",
+      notification_url: `${appUrl}/.netlify/functions/payment-webhook`,
     };
 
-    const mpRes = await fetch('https://api.mercadopago.com/checkout/preferences', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${MP_ACCESS_TOKEN}`,
-      },
-      body: JSON.stringify(preference),
-    });
+    const response = await mercadopago.preferences.create(preference);
 
-    const mpData = await mpRes.json();
-
-    if (!mpData.init_point) {
-      return {
-        statusCode: 500,
-        headers,
-        body: JSON.stringify({ error: 'Error al crear preferencia de pago.' })
-      };
+    // ── Registrar uso del cupón ────────────────────────────────────
+    if (couponData) {
+      const key = SERVICE_KEY || SUPABASE_ANON;
+      await fetch(`${SUPABASE_URL}/rest/v1/coupon_uses`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          apikey: key,
+          Authorization: `Bearer ${key}`,
+          Prefer: "return=minimal",
+        },
+        body: JSON.stringify({
+          coupon_code: couponData.code,
+          influencer_name: couponData.influencer_name,
+          user_id,
+        }),
+      });
     }
 
     return {
       statusCode: 200,
       headers,
       body: JSON.stringify({
-        initPoint: mpData.init_point,
-        sandboxInitPoint: mpData.sandbox_init_point,
-        finalAmount,
-        discount: couponData ? couponData.discount_amount : 0,
-      })
+        init_point: response.body.init_point,
+        preference_id: response.body.id,
+        final_price: finalPrice,
+        discount_amount: discountAmount,
+        coupon_applied: !!couponData,
+      }),
     };
 
-  } catch (e) {
+  } catch (err) {
+    console.error("create-preference error:", err);
     return {
       statusCode: 500,
       headers,
-      body: JSON.stringify({ error: e.message })
+      body: JSON.stringify({ error: err.message }),
     };
   }
 };
