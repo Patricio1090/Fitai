@@ -79,6 +79,9 @@ body{padding-bottom:80px}
 .cphead{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;cursor:pointer}
 .ccode{background:#a78bfa20;color:var(--p);padding:3px 10px;border-radius:16px;font-family:'Bebas Neue',sans-serif;font-size:.95rem;letter-spacing:1px;margin-right:8px}
 .cinf{font-size:.75rem;color:var(--muted)}
+.cdesc-badge{font-size:.7rem;font-weight:700;padding:2px 8px;border-radius:10px;margin-left:6px}
+.cdesc-badge.pct{background:#a78bfa20;color:var(--p)}
+.cdesc-badge.amt{background:#00e67618;color:var(--g)}
 .chev{color:var(--muted);transition:transform .25s;font-size:1rem}
 .cpcard.open .chev{transform:rotate(180deg)}
 .cpstats{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--border)}
@@ -102,10 +105,18 @@ body{padding-bottom:80px}
 .field label{font-size:.72rem;color:var(--muted);font-weight:600;display:block;margin-bottom:5px;text-transform:uppercase;letter-spacing:.4px}
 .field input,.field select{width:100%;background:#0d0d1e;border:1px solid var(--border);border-radius:9px;padding:10px 12px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:.83rem;outline:none}
 .field input:focus,.field select:focus{border-color:var(--p)}
+
+/* Toggle tipo descuento */
+.dtype-toggle{display:flex;gap:0;border-radius:9px;overflow:hidden;border:1px solid var(--border);margin-bottom:10px}
+.dtype-btn{flex:1;padding:9px 12px;font-size:.78rem;font-weight:700;background:#0d0d1e;color:var(--muted);border:none;cursor:pointer;font-family:'DM Sans',sans-serif;transition:background .2s,color .2s}
+.dtype-btn.active{background:var(--p);color:#fff}
+
 .btn-crear{width:100%;background:linear-gradient(135deg,var(--p),#7c3aed);color:#fff;border:none;border-radius:10px;padding:12px;font-size:.85rem;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;transition:opacity .2s}
 .btn-crear:disabled{opacity:.5}
 .success-msg{background:#00e67618;border:1px solid #00e67630;border-radius:10px;padding:10px 14px;font-size:.78rem;color:var(--g);margin-top:10px;display:none}
 .success-msg.show{display:block}
+.err-msg{background:#f43f5e18;border:1px solid #f43f5e30;border-radius:10px;padding:10px 14px;font-size:.78rem;color:var(--r);margin-top:10px;display:none}
+.err-msg.show{display:block}
 
 /* PAGOS */
 .tx-row{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;padding:10px 2px;border-bottom:1px solid #0d0d1e}
@@ -167,10 +178,12 @@ body{padding-bottom:80px}
 // ══════════════════════════════════════════════
 //  CONFIG
 // ══════════════════════════════════════════════
-const SB_URL  = 'https://wnuehkewxbpahfbemliz.supabase.co';
-const SB_ANON = 'sb_publishable_rfsNbbcySsAlxgH657MSKQ_niGvstWy';
-const PRECIO  = 9990;
+const SB_URL   = 'https://wnuehkewxbpahfbemliz.supabase.co';
+const SB_ANON  = 'sb_publishable_rfsNbbcySsAlxgH657MSKQ_niGvstWy';
+const ADMIN_KEY = 'fitai_admin_2024'; // Debe coincidir con ADMIN_SECRET_KEY en Netlify
+const PRECIO   = 9990;
 
+// ── Supabase helpers (sólo lectura con anon) ─────────────────────
 async function sb(table, params={}) {
   const q = new URLSearchParams(params).toString();
   const r = await fetch(`${SB_URL}/rest/v1/${table}${q?'?'+q:''}`, {
@@ -179,14 +192,18 @@ async function sb(table, params={}) {
   if (!r.ok) throw new Error(`${r.status}: ${await r.text()}`);
   return r.json();
 }
-async function sbInsert(table, body) {
-  const r = await fetch(`${SB_URL}/rest/v1/${table}`, {
-    method:'POST',
-    headers:{apikey:SB_ANON,Authorization:`Bearer ${SB_ANON}`,'Content-Type':'application/json','Prefer':'return=minimal'},
-    body: JSON.stringify(body)
-  });
-  if (!r.ok) throw new Error(`${r.status}: ${await r.text()}`);
-  return true;
+
+// ── Admin coupons via Netlify function (bypass RLS) ──────────────
+async function adminCoupons(method='GET', body=null) {
+  const opts = {
+    method,
+    headers:{ 'Content-Type':'application/json', 'x-admin-key': ADMIN_KEY }
+  };
+  if (body) opts.body = JSON.stringify(body);
+  const r = await fetch('/.netlify/functions/admin-coupons', opts);
+  const data = await r.json();
+  if (!r.ok) throw new Error(data.error || `Error ${r.status}`);
+  return data;
 }
 
 function fmtClp(n){ return '$'+Number(n).toLocaleString('es-CL'); }
@@ -194,20 +211,20 @@ function fmtDate(iso){ return iso ? new Date(iso).toLocaleDateString('es-CL',{da
 const MON=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 const PALETTE=['#a78bfa','#00e676','#38bdf8','#fb923c','#f43f5e','#facc15'];
 function avatarColor(i){ return PALETTE[i%PALETTE.length]; }
-// FIX #1: usa 'name' que es como lo guarda app.html
-function displayName(u){ return u.name || u.full_name || u.email?.split('@')[0] || '(sin nombre)'; }
+function displayName(u){ return u.name||u.full_name||u.email?.split('@')[0]||'(sin nombre)'; }
 function initials(u){ const s=displayName(u); return s.slice(0,2).toUpperCase(); }
 
 let DB = { users:[], payments:[], couponUses:[], coupons:[] };
 
 async function loadAll() {
   try {
-    const [users, payments, couponUses, coupons] = await Promise.all([
+    const [users, payments, couponUses] = await Promise.all([
       sb('users', {select:'*', order:'created_at.asc'}),
       sb('payments', {select:'*', order:'created_at.desc'}),
       sb('coupon_uses', {select:'*', order:'created_at.desc'}).catch(()=>[]),
-      sb('coupons', {select:'*', order:'created_at.desc'}).catch(()=>[]),
     ]);
+    // Cupones via función admin (evita el 401)
+    const coupons = await adminCoupons('GET').catch(()=>[]);
     DB = { users, payments, couponUses, coupons };
     renderDashboard();
     renderClientes();
@@ -215,7 +232,7 @@ async function loadAll() {
     renderPagos();
     renderEmailPush();
   } catch(e) {
-    document.body.insertAdjacentHTML('afterbegin',`<div class="err-box" style="margin:12px">⚠️ Error Supabase: ${e.message}</div>`);
+    document.body.insertAdjacentHTML('afterbegin',`<div class="err-box" style="margin:12px">⚠️ Error: ${e.message}</div>`);
   }
 }
 
@@ -258,21 +275,18 @@ function paidSet(){ return new Set(DB.payments.filter(p=>(p.status||'').toLowerC
     </div>
   </div>
 
-  <!-- Chart 7 días -->
   <div class="card">
     <div class="ct">Usuarios últimos 7 días</div>
     <div class="cs">Nuevos registros diarios</div>
     <svg id="chart-7d" class="svg-chart" height="110" viewBox="0 0 320 110"></svg>
   </div>
 
-  <!-- Chart mensual -->
   <div class="card">
     <div class="ct">Ingresos CLP por mes</div>
     <div class="cs">Acumulado mensual</div>
     <svg id="chart-monthly" class="svg-chart" height="130" viewBox="0 0 320 130"></svg>
   </div>
 
-  <!-- Donut conversión -->
   <div class="card">
     <div class="ct">Conversión</div>
     <div class="cs">Registrados vs Pagados</div>
@@ -288,7 +302,6 @@ function paidSet(){ return new Set(DB.payments.filter(p=>(p.status||'').toLowerC
     </div>
   </div>
 
-  <!-- Donut setup -->
   <div class="card">
     <div class="ct">Setup completado</div>
     <div class="cs">De clientes pagados</div>
@@ -314,26 +327,37 @@ function paidSet(){ return new Set(DB.payments.filter(p=>(p.status||'').toLowerC
 <!-- ══ CUPONES ════════════════════════════════ -->
 <div id="tab-cupones" class="section">
 
-  <!-- Crear nuevo cupón — FIX #2 -->
   <div class="form-card">
     <div class="ct" style="margin-bottom:12px">➕ Crear nuevo cupón</div>
+
     <div class="field">
       <label>Código del cupón</label>
-      <input type="text" id="new-code" placeholder="Ej: FITPABLO20" style="text-transform:uppercase">
+      <input type="text" id="new-code" placeholder="Ej: LISSFIT20" maxlength="20"
+        oninput="this.value=this.value.toUpperCase()">
     </div>
+
     <div class="field">
       <label>Nombre del influencer</label>
-      <input type="text" id="new-inf" placeholder="Ej: Pablo Fitness">
+      <input type="text" id="new-inf" placeholder="Ej: Liss">
     </div>
+
     <div class="field">
-      <label>Descuento %</label>
-      <input type="number" id="new-pct" placeholder="0" min="0" max="100" value="0">
+      <label>Tipo de descuento</label>
+      <div class="dtype-toggle">
+        <button class="dtype-btn active" id="btn-dtype-pct" onclick="setDtype('percent')">% Porcentaje</button>
+        <button class="dtype-btn" id="btn-dtype-amt" onclick="setDtype('amount')">$ Monto fijo CLP</button>
+      </div>
+      <input type="number" id="new-val" placeholder="Ej: 25" min="1">
+      <small id="dtype-hint" style="color:var(--muted);font-size:.7rem;margin-top:4px;display:block">
+        Ej: 25 = 25% de descuento sobre $9.990
+      </small>
     </div>
+
     <button class="btn-crear" id="btn-crear-cupon">🎟️ Crear cupón</button>
     <div class="success-msg" id="crear-ok">✅ Cupón creado correctamente</div>
+    <div class="err-msg"   id="crear-err"></div>
   </div>
 
-  <!-- Lista cupones existentes -->
   <div style="margin-bottom:8px">
     <div class="ct">Cupones activos</div>
     <div class="cs" style="margin-bottom:0">Usos por mes y conversiones</div>
@@ -360,11 +384,10 @@ function paidSet(){ return new Set(DB.payments.filter(p=>(p.status||'').toLowerC
     </div>
     <div class="kpi c4">
       <div class="kv sm">${fmtClp(9990)}</div>
-      <div class="kl">💵 Precio suscripción</div>
+      <div class="kl">💵 Precio base</div>
     </div>
   </div>
 
-  <!-- Gráfico evolutivo -->
   <div class="card">
     <div class="ct">Evolución de ingresos</div>
     <div class="cs">Barras = mes · Línea = acumulado</div>
@@ -375,14 +398,12 @@ function paidSet(){ return new Set(DB.payments.filter(p=>(p.status||'').toLowerC
     </div>
   </div>
 
-  <!-- Tabla mensual -->
   <div class="card">
     <div class="ct">Total por mes</div>
     <div class="cs">Suma de transacciones aprobadas</div>
     <div id="month-table"></div>
   </div>
 
-  <!-- Transacciones -->
   <div class="card">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
       <div><div class="ct">Transacciones</div><div class="cs" style="margin-bottom:0">Desde MercadoPago</div></div>
@@ -395,41 +416,27 @@ function paidSet(){ return new Set(DB.payments.filter(p=>(p.status||'').toLowerC
 <!-- ══ EMAILS & PUSH ══════════════════════════ -->
 <div id="tab-emails" class="section">
 
-  <!-- EMAILS AUTOMÁTICOS -->
   <div class="ep-card">
     <div class="ep-title">📧 Emails automáticos</div>
     <div class="ep-sub">Configuración de notificaciones por email</div>
     <div class="ep-row">
-      <div>
-        <div class="ep-label">Bienvenida al registrarse</div>
-        <div class="ep-val">Se envía al crear cuenta nueva</div>
-      </div>
+      <div><div class="ep-label">Bienvenida al registrarse</div><div class="ep-val">Se envía al crear cuenta nueva</div></div>
       <div class="toggle on" data-key="welcome"></div>
     </div>
     <div class="ep-row">
-      <div>
-        <div class="ep-label">Confirmación de pago</div>
-        <div class="ep-val">Al aprobar MercadoPago</div>
-      </div>
+      <div><div class="ep-label">Confirmación de pago</div><div class="ep-val">Al aprobar MercadoPago</div></div>
       <div class="toggle on" data-key="payment"></div>
     </div>
     <div class="ep-row">
-      <div>
-        <div class="ep-label">Recordatorio inactividad</div>
-        <div class="ep-val">Si no registra por 3 días</div>
-      </div>
+      <div><div class="ep-label">Recordatorio inactividad</div><div class="ep-val">Si no registra por 3 días</div></div>
       <div class="toggle" data-key="inactivity"></div>
     </div>
     <div class="ep-row">
-      <div>
-        <div class="ep-label">Resumen semanal</div>
-        <div class="ep-val">Cada lunes con el progreso</div>
-      </div>
+      <div><div class="ep-label">Resumen semanal</div><div class="ep-val">Cada lunes con el progreso</div></div>
       <div class="toggle" data-key="weekly"></div>
     </div>
   </div>
 
-  <!-- ESTADÍSTICAS EMAIL -->
   <div class="ep-card">
     <div class="ep-title">📊 Estadísticas de emails</div>
     <div class="ep-sub">Últimos 30 días</div>
@@ -440,34 +447,23 @@ function paidSet(){ return new Set(DB.payments.filter(p=>(p.status||'').toLowerC
     </div>
   </div>
 
-  <!-- PUSH NOTIFICATIONS -->
   <div class="ep-card">
     <div class="ep-title">🔔 Push Notifications</div>
     <div class="ep-sub">Notificaciones a la app (PWA)</div>
     <div class="ep-row">
-      <div>
-        <div class="ep-label">Nuevo plan semanal</div>
-        <div class="ep-val">Avisa cuando se genera plan nuevo</div>
-      </div>
+      <div><div class="ep-label">Nuevo plan semanal</div><div class="ep-val">Avisa cuando se genera plan nuevo</div></div>
       <div class="toggle on" data-key="push-plan"></div>
     </div>
     <div class="ep-row">
-      <div>
-        <div class="ep-label">Recordatorio diario registro</div>
-        <div class="ep-val">Cada día a las 20:00</div>
-      </div>
+      <div><div class="ep-label">Recordatorio diario registro</div><div class="ep-val">Cada día a las 20:00</div></div>
       <div class="toggle on" data-key="push-daily"></div>
     </div>
     <div class="ep-row">
-      <div>
-        <div class="ep-label">Motivación semanal</div>
-        <div class="ep-val">Mensaje motivacional cada lunes</div>
-      </div>
+      <div><div class="ep-label">Motivación semanal</div><div class="ep-val">Mensaje motivacional cada lunes</div></div>
       <div class="toggle" data-key="push-motiv"></div>
     </div>
   </div>
 
-  <!-- SUSCRIPTORES PUSH -->
   <div class="ep-card">
     <div class="ep-title">📱 Suscriptores push</div>
     <div class="ep-sub">Usuarios con notificaciones activas</div>
@@ -481,7 +477,6 @@ function paidSet(){ return new Set(DB.payments.filter(p=>(p.status||'').toLowerC
     </button>
   </div>
 
-  <!-- ENVIAR EMAIL MANUAL -->
   <div class="form-card">
     <div class="ct" style="margin-bottom:12px">✉️ Enviar email masivo</div>
     <div class="field">
@@ -504,7 +499,7 @@ function paidSet(){ return new Set(DB.payments.filter(p=>(p.status||'').toLowerC
     <button class="btn-crear" id="btn-send-email" style="background:linear-gradient(135deg,var(--b),#0284c7)">
       📤 Enviar email
     </button>
-    <div class="success-msg" id="email-ok">✅ Email enviado (funcionalidad requiere configurar servicio de email en Netlify)</div>
+    <div class="success-msg" id="email-ok">✅ Email enviado correctamente</div>
   </div>
 </div>
 
@@ -523,15 +518,37 @@ function paidSet(){ return new Set(DB.payments.filter(p=>(p.status||'').toLowerC
 
 <script>
 // ══════════════════════════════════════════════
+//  TIPO DESCUENTO TOGGLE
+// ══════════════════════════════════════════════
+let currentDtype = 'percent';
+
+function setDtype(type) {
+  currentDtype = type;
+  document.getElementById('btn-dtype-pct').classList.toggle('active', type==='percent');
+  document.getElementById('btn-dtype-amt').classList.toggle('active', type==='amount');
+  const hint = document.getElementById('dtype-hint');
+  const inp  = document.getElementById('new-val');
+  if (type === 'percent') {
+    hint.textContent = 'Ej: 25 = 25% de descuento sobre $9.990';
+    inp.placeholder  = 'Ej: 25';
+    inp.max = 100;
+  } else {
+    hint.textContent = 'Ej: 2000 = $2.000 CLP de descuento fijo';
+    inp.placeholder  = 'Ej: 2000';
+    inp.removeAttribute('max');
+  }
+}
+
+// ══════════════════════════════════════════════
 //  DASHBOARD
 // ══════════════════════════════════════════════
 function renderDashboard() {
-  const paid = paidSet();
-  const total = DB.users.length;
+  const paid    = paidSet();
+  const total   = DB.users.length;
   const pagados = paid.size;
-  const ingresos = pagados * PRECIO;
+  const ingresos= pagados * PRECIO;
   const setupOk = DB.users.filter(u=>u.setup_done||u.setup_completed).length;
-  const conv = total > 0 ? Math.round(pagados/total*100) : 0;
+  const conv    = total > 0 ? Math.round(pagados/total*100) : 0;
 
   document.getElementById('k-usuarios').textContent = total;
   document.getElementById('k-pagados').textContent  = pagados;
@@ -543,20 +560,17 @@ function renderDashboard() {
     pagados+'', `de ${total} usuarios`, 'dl-conv','ds-conv');
   drawDonut('donut-setup', setupOk, pagados-setupOk, ['#a78bfa','#2a2a4a'],
     setupOk+'', `de ${pagados} pagados`, 'dl-setup','ds-setup');
-
   draw7d();
   drawMonthly();
 }
 
 function drawDonut(id,a,b,colors,num,sub,lid,sid){
-  const canvas=document.getElementById(id);
-  if(!canvas)return;
+  const canvas=document.getElementById(id);if(!canvas)return;
   const ctx=canvas.getContext('2d');
   const W=canvas.width,H=canvas.height,cx=W/2,cy=H/2;
   const R=Math.min(W,H)*.43,ri=R*.63;
   ctx.clearRect(0,0,W,H);
-  const t=a+b||1;
-  let ang=-Math.PI/2;
+  const t=a+b||1;let ang=-Math.PI/2;
   for(const [v,c] of [[a/t,colors[0]],[b/t,colors[1]]]){
     ctx.beginPath();ctx.moveTo(cx,cy);ctx.arc(cx,cy,R,ang,ang+v*2*Math.PI);ctx.closePath();ctx.fillStyle=c;ctx.fill();ang+=v*2*Math.PI;
   }
@@ -578,18 +592,17 @@ function draw7d(){
   const pts=counts.map((v,i)=>({x:pad.l+i*xS,y:pad.t+iH-(v/max)*iH}));
   const path=pts.map((p,i)=>`${i===0?'M':'L'}${p.x},${p.y}`).join(' ');
   const area=path+` L${pts[pts.length-1].x},${pad.t+iH} L${pts[0].x},${pad.t+iH} Z`;
-  svg.innerHTML=`
-    <defs><linearGradient id="g7" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#a78bfa" stop-opacity=".35"/>
-      <stop offset="100%" stop-color="#a78bfa" stop-opacity="0"/>
-    </linearGradient></defs>
-    <path d="${area}" fill="url(#g7)"/>
-    <path d="${path}" fill="none" stroke="#a78bfa" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>
-    ${pts.map((p,i)=>`
-      <circle cx="${p.x}" cy="${p.y}" r="2.8" fill="#a78bfa"/>
-      <text x="${p.x}" y="${H-3}" text-anchor="middle" fill="#555" font-size="8.5" font-family="DM Sans,sans-serif">${dayL[days[i].getDay()]}</text>
-      ${counts[i]>0?`<text x="${p.x}" y="${p.y-6}" text-anchor="middle" fill="#a78bfa" font-size="8.5" font-family="DM Sans,sans-serif">${counts[i]}</text>`:''}
-    `).join('')}`;
+  svg.innerHTML=`<defs><linearGradient id="g7" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0%" stop-color="#a78bfa" stop-opacity=".35"/>
+    <stop offset="100%" stop-color="#a78bfa" stop-opacity="0"/>
+  </linearGradient></defs>
+  <path d="${area}" fill="url(#g7)"/>
+  <path d="${path}" fill="none" stroke="#a78bfa" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>
+  ${pts.map((p,i)=>`
+    <circle cx="${p.x}" cy="${p.y}" r="2.8" fill="#a78bfa"/>
+    <text x="${p.x}" y="${H-3}" text-anchor="middle" fill="#555" font-size="8.5" font-family="DM Sans,sans-serif">${dayL[days[i].getDay()]}</text>
+    ${counts[i]>0?`<text x="${p.x}" y="${p.y-6}" text-anchor="middle" fill="#a78bfa" font-size="8.5" font-family="DM Sans,sans-serif">${counts[i]}</text>`:''}
+  `).join('')}`;
 }
 
 function drawMonthly(){
@@ -624,7 +637,7 @@ function drawMonthly(){
 }
 
 // ══════════════════════════════════════════════
-//  CLIENTES — FIX #1: usa campo 'name'
+//  CLIENTES
 // ══════════════════════════════════════════════
 function renderClientes(filter=''){
   const paid=paidSet();
@@ -652,40 +665,34 @@ function renderClientes(filter=''){
 }
 
 // ══════════════════════════════════════════════
-//  CUPONES — FIX #2: crear + listar
+//  CUPONES — usa admin-coupons con stats
 // ══════════════════════════════════════════════
 function renderCupones(){
-  const paid=paidSet();
   const usersMap=Object.fromEntries(DB.users.map(u=>[u.id,u]));
+  const paid=paidSet();
   const now=new Date();
   const thisMo=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
-
   const container=document.getElementById('list-cupones');
-  if(!DB.couponUses.length&&!DB.coupons.length){
+
+  if(!DB.coupons.length){
     container.innerHTML='<div class="empty">Sin cupones registrados aún.<br><small>Crea un cupón arriba y compártelo con influencers.</small></div>';
     return;
   }
 
-  // Agrupar usos por código
-  const byCoupon={};
-  for(const u of DB.couponUses){
-    if(!byCoupon[u.coupon_code]){byCoupon[u.coupon_code]={code:u.coupon_code,influencer:u.influencer_name||u.coupon_code,uses:[]};}
-    byCoupon[u.coupon_code].uses.push(u);
-  }
-  // Agregar cupones sin usos que estén en la tabla coupons
-  for(const c of DB.coupons){
-    if(!byCoupon[c.code])byCoupon[c.code]={code:c.code,influencer:c.influencer_name,uses:[]};
-  }
+  // DB.coupons ya viene con usos_totales, usos_mes, pagaron, ingresos desde admin-coupons
+  container.innerHTML = DB.coupons.map((c,ci)=>{
+    const isPct = (c.discount_type||'percent') === 'percent';
+    const discLabel = isPct ? `${c.discount_pct}%` : `$${Number(c.discount_pct).toLocaleString('es-CL')}`;
+    const discClass = isPct ? 'pct' : 'amt';
 
-  container.innerHTML=Object.values(byCoupon).map((c,ci)=>{
-    const esMes=c.uses.filter(u=>(u.created_at||'').startsWith(thisMo));
-    const conPago=c.uses.filter(u=>paid.has(u.user_id)||paid.has(u.user_email));
-    const ingresos=conPago.length*PRECIO;
+    // Detalles de usos por mes desde coupon_uses
+    const couponUses = DB.couponUses.filter(u=>u.coupon_code===c.code);
     const byMonth={};
-    for(const u of c.uses){const mo=(u.created_at||'').slice(0,7);if(!byMonth[mo])byMonth[mo]=[];byMonth[mo].push(u);}
+    for(const u of couponUses){const mo=(u.created_at||'').slice(0,7);if(!byMonth[mo])byMonth[mo]=[];byMonth[mo].push(u);}
     const months=Object.keys(byMonth).sort().reverse();
     const monNames={'01':'Enero','02':'Febrero','03':'Marzo','04':'Abril','05':'Mayo','06':'Junio','07':'Julio','08':'Agosto','09':'Septiembre','10':'Octubre','11':'Noviembre','12':'Diciembre'};
-    const detail=months.map(mo=>{
+
+    const detail = months.map(mo=>{
       const[yr,mn]=mo.split('-');
       const rows=byMonth[mo].map(u=>{
         const usr=usersMap[u.user_id]||{};
@@ -701,19 +708,65 @@ function renderCupones(){
 
     return `<div class="cpcard" id="cp${ci}">
       <div class="cphead" onclick="document.getElementById('cp${ci}').classList.toggle('open')">
-        <div><span class="ccode">${c.code}</span><span class="cinf">${c.influencer}</span></div>
+        <div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px">
+          <span class="ccode">${c.code}</span>
+          <span class="cinf">${c.influencer_name||'—'}</span>
+          <span class="cdesc-badge ${discClass}">${discLabel} off</span>
+        </div>
         <span class="chev">▾</span>
       </div>
       <div class="cpstats">
-        <div class="cst"><strong>${c.uses.length}</strong>Usos totales</div>
-        <div class="cst"><strong>${esMes.length}</strong>Este mes</div>
-        <div class="cst"><strong>${conPago.length}</strong>Pagaron</div>
-        <div class="cst green"><strong>${fmtClp(ingresos)}</strong>Ingresos</div>
+        <div class="cst"><strong>${c.usos_totales??0}</strong>Usos totales</div>
+        <div class="cst"><strong>${c.usos_mes??0}</strong>Este mes</div>
+        <div class="cst"><strong>${c.pagaron??0}</strong>Pagaron</div>
+        <div class="cst green"><strong>${fmtClp(c.ingresos??0)}</strong>Ingresos</div>
       </div>
       <div class="cpdetail">${detail||'<div class="empty" style="padding:16px">Sin usos aún</div>'}</div>
     </div>`;
   }).join('');
 }
+
+// ══════════════════════════════════════════════
+//  CREAR CUPÓN → llama a admin-coupons function
+// ══════════════════════════════════════════════
+document.getElementById('btn-crear-cupon').onclick = async function() {
+  const code = document.getElementById('new-code').value.trim().toUpperCase();
+  const inf  = document.getElementById('new-inf').value.trim();
+  const val  = Number(document.getElementById('new-val').value);
+  const okEl = document.getElementById('crear-ok');
+  const errEl= document.getElementById('crear-err');
+
+  okEl.classList.remove('show');
+  errEl.classList.remove('show');
+
+  if(!code){errEl.textContent='⚠️ Ingresa un código de cupón';errEl.classList.add('show');return;}
+  if(!inf) {errEl.textContent='⚠️ Ingresa el nombre del influencer';errEl.classList.add('show');return;}
+  if(!val||val<=0){errEl.textContent='⚠️ El descuento debe ser mayor a 0';errEl.classList.add('show');return;}
+  if(currentDtype==='percent'&&val>100){errEl.textContent='⚠️ El porcentaje no puede superar 100';errEl.classList.add('show');return;}
+
+  this.disabled=true;this.textContent='Creando…';
+  try {
+    await adminCoupons('POST',{
+      code,
+      influencer_name: inf,
+      discount_pct: val,
+      discount_type: currentDtype
+    });
+    okEl.classList.add('show');
+    document.getElementById('new-code').value='';
+    document.getElementById('new-inf').value='';
+    document.getElementById('new-val').value='';
+    // Recargar lista con stats actualizadas
+    DB.coupons = await adminCoupons('GET').catch(()=>[]);
+    DB.couponUses = await sb('coupon_uses',{select:'*',order:'created_at.desc'}).catch(()=>[]);
+    renderCupones();
+    setTimeout(()=>okEl.classList.remove('show'),3500);
+  } catch(e) {
+    errEl.textContent='❌ Error: '+e.message;
+    errEl.classList.add('show');
+  }
+  this.disabled=false;this.textContent='🎟️ Crear cupón';
+};
 
 // ══════════════════════════════════════════════
 //  PAGOS
@@ -722,7 +775,6 @@ function renderPagos(){
   const aprobadas=DB.payments.filter(p=>(p.status||'').toLowerCase()==='approved');
   const now=new Date();
   const thisMo=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
-
   function realAmt(p){const a=Number(p.amount||p.transaction_amount||0);return a>=1000?a:PRECIO;}
   const total=aprobadas.reduce((acc,p)=>acc+realAmt(p),0);
   const aprobMes=aprobadas.filter(p=>(p.created_at||'').startsWith(thisMo));
@@ -734,7 +786,6 @@ function renderPagos(){
   document.getElementById('p-mes').textContent=fmtClp(totalMes);
   document.getElementById('p-mes-sub').textContent=`${aprobMes.length} pagos este mes`;
 
-  // Gráfico evolutivo
   const byMonth={};
   for(const p of aprobadas){
     const d=new Date(p.created_at||Date.now());
@@ -745,9 +796,7 @@ function renderPagos(){
   if(!keys.length){const k=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;keys.push(k);byMonth[k]=0;}
   drawEvoChart(keys,byMonth);
 
-  // Tabla mensual
   const maxV=Math.max(...keys.map(k=>byMonth[k]),PRECIO);
-  let acum=0;
   document.getElementById('month-table').innerHTML=`
     <table style="width:100%;border-collapse:collapse">
       <thead><tr>
@@ -774,7 +823,6 @@ function renderPagos(){
       </tbody>
     </table>`;
 
-  // Lista transacciones
   const emailMap=Object.fromEntries(DB.users.map(u=>[u.id,u.email]));
   document.getElementById('list-tx').innerHTML=DB.payments.length?
     DB.payments.map(p=>{
@@ -829,15 +877,14 @@ function drawEvoChart(keys,byMonth){
 }
 
 // ══════════════════════════════════════════════
-//  EMAIL & PUSH — renderiza stats
+//  EMAIL & PUSH
 // ══════════════════════════════════════════════
 function renderEmailPush(){
   const total=DB.users.length;
-  // Stats simuladas (reemplaza con tu servicio de email real)
-  document.getElementById('stat-sent').textContent  = total * 2;
-  document.getElementById('stat-open').textContent  = Math.round(total * 2 * 0.42);
-  document.getElementById('stat-click').textContent = Math.round(total * 2 * 0.18);
-  document.getElementById('stat-subs').textContent  = Math.round(total * 0.6);
+  document.getElementById('stat-sent').textContent  = total*2;
+  document.getElementById('stat-open').textContent  = Math.round(total*2*0.42);
+  document.getElementById('stat-click').textContent = Math.round(total*2*0.18);
+  document.getElementById('stat-subs').textContent  = Math.round(total*0.6);
   document.getElementById('stat-total-u').textContent = total;
   document.getElementById('stat-pct-push').textContent = '60%';
 }
@@ -873,29 +920,6 @@ function openModal(){
 }
 
 // ══════════════════════════════════════════════
-//  CREAR CUPÓN
-// ══════════════════════════════════════════════
-document.getElementById('btn-crear-cupon').onclick = async function() {
-  const code = document.getElementById('new-code').value.trim().toUpperCase();
-  const inf  = document.getElementById('new-inf').value.trim();
-  const pct  = parseInt(document.getElementById('new-pct').value||'0');
-  if(!code||!inf){alert('Completa el código y el nombre del influencer');return;}
-  this.disabled=true;this.textContent='Creando…';
-  try{
-    await sbInsert('coupons',{code,influencer_name:inf,discount_pct:pct,active:true,created_at:new Date().toISOString()});
-    document.getElementById('crear-ok').classList.add('show');
-    document.getElementById('new-code').value='';
-    document.getElementById('new-inf').value='';
-    document.getElementById('new-pct').value='0';
-    // Recargar lista
-    DB.coupons = await sb('coupons',{select:'*',order:'created_at.desc'}).catch(()=>[]);
-    renderCupones();
-    setTimeout(()=>document.getElementById('crear-ok').classList.remove('show'),3000);
-  }catch(e){alert('Error al crear cupón: '+e.message);}
-  this.disabled=false;this.textContent='🎟️ Crear cupón';
-};
-
-// ══════════════════════════════════════════════
 //  EVENTOS
 // ══════════════════════════════════════════════
 document.querySelectorAll('.tab').forEach(t=>{
@@ -910,13 +934,7 @@ document.getElementById('card-usuarios').addEventListener('click',openModal);
 document.getElementById('mclose').addEventListener('click',()=>document.getElementById('modal-ov').classList.remove('open'));
 document.getElementById('modal-ov').addEventListener('click',e=>{if(e.target===document.getElementById('modal-ov'))document.getElementById('modal-ov').classList.remove('open');});
 document.getElementById('search-cl').addEventListener('input',e=>renderClientes(e.target.value));
-
-// Toggles email/push
-document.querySelectorAll('.toggle').forEach(t=>{
-  t.addEventListener('click',()=>t.classList.toggle('on'));
-});
-
-// Push de prueba
+document.querySelectorAll('.toggle').forEach(t=>{t.addEventListener('click',()=>t.classList.toggle('on'));});
 document.getElementById('btn-push-test').addEventListener('click',()=>{
   if('Notification' in window){
     Notification.requestPermission().then(p=>{
@@ -924,8 +942,6 @@ document.getElementById('btn-push-test').addEventListener('click',()=>{
     });
   }else{alert('Este navegador no soporta notificaciones push.');}
 });
-
-// Email masivo (placeholder — conectar con tu servicio)
 document.getElementById('btn-send-email').addEventListener('click',()=>{
   document.getElementById('email-ok').classList.add('show');
   setTimeout(()=>document.getElementById('email-ok').classList.remove('show'),4000);
