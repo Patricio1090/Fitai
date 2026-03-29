@@ -782,11 +782,13 @@ function calcProgress() {
   const sw = parseFloat(STATE.profile?.weight)||0;
   const tw = parseFloat(STATE.profile?.targetWeight)||sw;
   const lw = logs.length ? (parseFloat(logs[0]?.weight)||sw) : sw;
-  const lost = sw - lw;
+  const lost = sw - lw; // negativo si subió de peso
   const total = sw - tw;
-  const pct = total > 0 ? Math.min(100, Math.max(0, (lost/total)*100)) : 0;
+  // Permite negativos: retroceso si subió de peso respecto al inicio
+  const pct = total !== 0 ? Math.min(100, (lost/total)*100) : 0;
+  const retroceso = logs.length > 0 && lost < 0; // subió de peso vs peso inicial
   const trend = logs.slice(0,14).reverse().map(l=>({date:l.date,w:parseFloat(l.weight)||null})).filter(l=>l.w);
-  return { lost:lost.toFixed(1), pct:pct.toFixed(0), days:logs.length, trend, lw:lw||sw };
+  return { lost:lost.toFixed(1), pct:pct.toFixed(0), days:logs.length, trend, lw:lw||sw, retroceso, pesoInicial:sw };
 }
 
 // ===== MENÚ LATERAL =====
@@ -1384,19 +1386,40 @@ function renderTabBar() {
 function renderDashboard() {
   const prog=calcProgress();
   const div=document.createElement('div');
+
+  const pctColor = prog.retroceso ? '#f87171' : parseInt(prog.pct)>=50 ? 'var(--green)' : 'var(--purple)';
+  const kgColor  = prog.retroceso ? '#f87171' : 'var(--green)';
+  const kgVal    = prog.retroceso ? `+${Math.abs(prog.lost)}kg` : `${Math.max(0,prog.lost)}kg`;
+  const progBarW = Math.max(0, Math.min(100, Math.abs(parseInt(prog.pct))));
+
   div.innerHTML=`
+    ${prog.retroceso ? `
+    <div style="background:linear-gradient(135deg,#f8717115,#ef444408);border:1px solid #f8717140;border-radius:16px;padding:14px 16px;margin-bottom:14px;display:flex;align-items:center;gap:12px">
+      <div style="font-size:28px">⚠️</div>
+      <div>
+        <div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:800;color:#f87171">Retroceso detectado</div>
+        <div style="font-size:12px;color:var(--muted)">Subiste ${Math.abs(prog.lost)}kg desde que empezaste. ¡Revisa tu plan con la IA!</div>
+      </div>
+    </div>` : ''}
     <div class="stats-grid">
       <div class="stat-box" style="background:#60a5fa12;border:1px solid #60a5fa25"><div class="stat-icon">🗓️</div><div class="stat-val" style="color:var(--blue)">${prog.days}</div><div class="stat-lbl">Días activo</div></div>
-      <div class="stat-box" style="background:#34d39912;border:1px solid #34d39925"><div class="stat-icon">⚖️</div><div class="stat-val" style="color:var(--green)">${Math.max(0,prog.lost)}kg</div><div class="stat-lbl">Kg perdidos</div></div>
-      <div class="stat-box" style="background:#a78bfa12;border:1px solid #a78bfa25"><div class="stat-icon">🎯</div><div class="stat-val" style="color:var(--purple)">${prog.pct}%</div><div class="stat-lbl">Progreso</div></div>
+      <div class="stat-box" style="background:${kgColor}18;border:1px solid ${kgColor}30"><div class="stat-icon">${prog.retroceso?'📈':'⚖️'}</div><div class="stat-val" style="color:${kgColor}">${kgVal}</div><div class="stat-lbl">${prog.retroceso?'Kg ganados':'Kg perdidos'}</div></div>
+      <div class="stat-box" style="background:${pctColor}18;border:1px solid ${pctColor}30"><div class="stat-icon">${prog.retroceso?'📉':'🎯'}</div><div class="stat-val" style="color:${pctColor}">${prog.pct}%</div><div class="stat-lbl">${prog.retroceso?'Retroceso':'Progreso'}</div></div>
     </div>
-    <div class="card card-purple">
-      <div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:14px;font-weight:700">🎯 Meta: ${STATE.profile.targetWeight}kg</span><span style="color:var(--purple);font-weight:800">${prog.pct}%</span></div>
-      <div class="prog-wrap"><div class="prog-fill" style="width:${prog.pct}%;background:linear-gradient(90deg,var(--purple),#7c3aed80)"></div></div>
-      <div style="font-size:11px;color:var(--muted);margin-top:6px">Actual: ${prog.lw}kg → Meta: ${STATE.profile.targetWeight}kg · ${STATE.profile.weeksGoal} semanas</div>
+    <div class="card" style="background:linear-gradient(135deg,${pctColor}10,var(--surface));border:1px solid ${pctColor}28;">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:14px;font-weight:700">${prog.retroceso?'⚠️':'🎯'} Meta: ${STATE.profile.targetWeight}kg</span>
+        <span style="color:${pctColor};font-weight:800">${prog.pct}%</span>
+      </div>
+      <div class="prog-wrap"><div class="prog-fill" style="width:${progBarW}%;background:linear-gradient(90deg,${pctColor},${pctColor}80)"></div></div>
+      <div style="font-size:11px;color:var(--muted);margin-top:6px">
+        ${prog.retroceso
+          ? `⚠️ Actual: ${prog.lw}kg · Inicio: ${prog.pesoInicial}kg · Subiste ${Math.abs(prog.lost)}kg`
+          : `Actual: ${prog.lw}kg → Meta: ${STATE.profile.targetWeight}kg · ${STATE.profile.weeksGoal} semanas`}
+      </div>
     </div>
     ${prog.trend.length>1?renderMiniChart(prog.trend):''}
-    ${STATE.aiMsg?`<div class="card card-green"><div class="card-sh">🧠 Análisis de hoy</div><div class="ai-text">${STATE.aiMsg}</div></div>`:''}
+    ${STATE.aiMsg?`<div class="card" style="background:linear-gradient(135deg,${prog.retroceso?'#f8717112':'#34d39912'},var(--surface));border:1px solid ${prog.retroceso?'#f8717128':'#34d39928'}"><div class="card-sh">${prog.retroceso?'⚠️ Alerta de la IA':'🧠 Análisis de hoy'}</div><div class="ai-text">${STATE.aiMsg}</div></div>`:''}
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
       <button class="btn btn-blue" id="to-log">📝 Registrar hoy</button>
       <button class="btn" style="background:linear-gradient(135deg,var(--green),#059669);color:#fff" id="to-nut">🥗 Nutrición</button>
@@ -2168,7 +2191,10 @@ function renderLog() {
     save();
     dbSaveDailyLog(STATE.user?.email, newLog); STATE.aiLoading=true; render();
     const prog=calcProgress();const p=STATE.profile;
-    const r=await claude([{role:'user',content:`Análisis de hoy de ${p.name} (máx 200 palabras):\nDatos: ${JSON.stringify(newLog)}\nProgreso: ${prog.lost}kg perdidos, ${prog.days} días\nObjetivo: ${p.goal}, meta ${p.targetWeight}kg`}]);
+    const contextoRetroceso = prog.retroceso
+      ? `⚠️ ALERTA: El usuario ha SUBIDO de peso. Peso inicial: ${prog.pesoInicial}kg, peso actual: ${prog.lw}kg (subió ${Math.abs(prog.lost)}kg). Esto es un RETROCESO. Identifica posibles causas (exceso calórico, falta de adherencia al entrenamiento, malos hábitos), sé directo y constructivo, y propón 2-3 acciones concretas para retomar el camino.`
+      : `El usuario va progresando. Peso inicial: ${prog.pesoInicial}kg, actual: ${prog.lw}kg.`;
+    const r=await claude([{role:'user',content:`Análisis de hoy de ${p.name} (máx 200 palabras):\n${contextoRetroceso}\nDatos de hoy: ${JSON.stringify(newLog)}\nProgreso: ${prog.lost}kg ${prog.retroceso?'ganados (retroceso)':'perdidos'}, ${prog.days} días activo.\nObjetivo: ${p.goal}, meta ${p.targetWeight}kg.`}]);
     STATE.aiMsg=r; STATE.aiLoading=false; render();
   };
   return div;
@@ -2206,12 +2232,21 @@ function renderProgress() {
   const weightLogs = STATE.dailyLogs.filter(l => l.weight);
   div.innerHTML=`
     <div class="stats-grid stats-grid2">
-      ${[{l:'Días registrados',v:prog.days,i:'🗓️',c:'var(--blue)'},{l:'Kg perdidos',v:Math.max(0,prog.lost)+'kg',i:'🔥',c:'var(--amber)'},{l:'Progreso meta',v:prog.pct+'%',i:'🎯',c:'var(--purple)'},{l:'Peso actual',v:prog.lw+'kg',i:'⚖️',c:'var(--green)'}].map(s=>`<div class="stat-box" style="background:${s.c}12;border:1px solid ${s.c}25"><div class="stat-icon">${s.i}</div><div class="stat-val" style="color:${s.c}">${s.v}</div><div class="stat-lbl">${s.l}</div></div>`).join('')}
+      ${[
+        {l:'Días registrados', v:prog.days, i:'🗓️', c:'var(--blue)'},
+        {l:prog.retroceso?'Kg ganados':'Kg perdidos', v:prog.retroceso?`+${Math.abs(prog.lost)}kg`:Math.max(0,prog.lost)+'kg', i:prog.retroceso?'📈':'🔥', c:prog.retroceso?'#f87171':'var(--amber)'},
+        {l:prog.retroceso?'Retroceso':'Progreso meta', v:prog.pct+'%', i:prog.retroceso?'📉':'🎯', c:prog.retroceso?'#f87171':'var(--purple)'},
+        {l:'Peso actual', v:prog.lw+'kg', i:'⚖️', c:'var(--green)'}
+      ].map(s=>`<div class="stat-box" style="background:${s.c}12;border:1px solid ${s.c}25"><div class="stat-icon">${s.i}</div><div class="stat-val" style="color:${s.c}">${s.v}</div><div class="stat-lbl">${s.l}</div></div>`).join('')}
     </div>
-    <div class="card card-purple">
-      <div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="font-weight:700">Progreso hacia la meta</span><span style="color:var(--purple);font-weight:800">${prog.pct}%</span></div>
-      <div class="prog-wrap"><div class="prog-fill" style="width:${prog.pct}%;background:linear-gradient(90deg,var(--purple),#7c3aed80)"></div></div>
-      <div style="display:flex;justify-content:space-between;margin-top:6px"><span style="font-size:11px;color:var(--muted)">Inicio: ${STATE.profile.weight}kg</span><span style="font-size:11px;color:var(--muted)">Meta: ${STATE.profile.targetWeight}kg</span></div>
+    <div class="card" style="background:linear-gradient(135deg,${prog.retroceso?'#f8717112':'#a78bfa12'},var(--surface));border:1px solid ${prog.retroceso?'#f8717128':'#a78bfa28'};">
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="font-weight:700">${prog.retroceso?'⚠️ Retroceso':'Progreso hacia la meta'}</span><span style="color:${prog.retroceso?'#f87171':'var(--purple)'};font-weight:800">${prog.pct}%</span></div>
+      <div class="prog-wrap"><div class="prog-fill" style="width:${Math.max(0,Math.min(100,Math.abs(parseInt(prog.pct))))}%;background:linear-gradient(90deg,${prog.retroceso?'#f87171':'var(--purple)'},${prog.retroceso?'#f8717180':'#7c3aed80'})"></div></div>
+      <div style="display:flex;justify-content:space-between;margin-top:6px">
+        <span style="font-size:11px;color:var(--muted)">Inicio: ${STATE.profile.weight}kg</span>
+        <span style="font-size:11px;color:var(--muted)">Meta: ${STATE.profile.targetWeight}kg</span>
+      </div>
+      ${prog.retroceso?`<div style="font-size:11px;color:#f87171;margin-top:6px;font-weight:600">⚠️ Subiste ${Math.abs(prog.lost)}kg desde que empezaste</div>`:''}
     </div>
     <div class="card">
       <div class="card-h">📉 Evolución de Peso</div>
@@ -2222,7 +2257,11 @@ function renderProgress() {
     </div>
     <button class="btn btn-blue" id="btn-weekly">${STATE.aiLoading?'⏳ Analizando…':'🧠 Análisis semanal con IA'}</button>
     ${STATE.aiMsg?`<div class="card card-blue" style="margin-top:12px"><div class="card-sh">📊 Informe de progreso</div><div class="ai-text">${STATE.aiMsg}</div></div>`:''}`;
-  div.querySelector('#btn-weekly').onclick=async()=>{STATE.aiLoading=true;render();const p=STATE.profile;const prog2=calcProgress();const r=await claude([{role:'user',content:`Análisis de progreso de ${p.name} (300 palabras):\nPerfil: ${JSON.stringify(p)}\nRegistros: ${JSON.stringify(STATE.dailyLogs.slice(0,7))}\nProgreso: ${prog2.lost}kg en ${prog2.days} días\nIncluye tasa de progreso, adherencia, recomendaciones.`}]);STATE.aiMsg=r;STATE.aiLoading=false;render();};
+  div.querySelector('#btn-weekly').onclick=async()=>{STATE.aiLoading=true;render();const p=STATE.profile;const prog2=calcProgress();
+    const alertaRetroceso = prog2.retroceso
+      ? `⚠️ ALERTA CRÍTICA: El usuario ha subido ${Math.abs(prog2.lost)}kg desde que empezó (inicio: ${prog2.pesoInicial}kg, actual: ${prog2.lw}kg). Es un retroceso real. Sé directo: identifica qué está fallando (dieta, entrenamiento, hábitos), propón un plan de corrección concreto con pasos claros y termina con un mensaje motivador.`
+      : '';
+    const r=await claude([{role:'user',content:`Análisis de progreso de ${p.name} (300 palabras):\n${alertaRetroceso}\nPerfil: ${JSON.stringify(p)}\nRegistros últimos 7 días: ${JSON.stringify(STATE.dailyLogs.slice(0,7))}\nProgreso: ${prog2.lost}kg en ${prog2.days} días.\nIncluye tasa de progreso, adherencia, causas del ${prog2.retroceso?'retroceso':'avance'} y recomendaciones.`}]);STATE.aiMsg=r;STATE.aiLoading=false;render();};
   return div;
 }
 
