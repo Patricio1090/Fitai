@@ -128,13 +128,12 @@ exports.handler = async (event) => {
 
     // Guardar pago con monto REAL
     await supaPost("payments", {
-      user_id:            userId,
       user_email:         userEmail,
       mp_payment_id:      String(payment.id),
       status:             status,
       amount:             realAmount,
-      transaction_amount: realAmount,
-      currency_id:        payment.currency_id || "CLP",
+      
+      currency:           payment.currency_id || "CLP",
       created_at:         new Date().toISOString(),
     });
 
