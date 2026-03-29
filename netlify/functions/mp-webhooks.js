@@ -1,4 +1,4 @@
-// netlify/functions/mp-webhooks.js
+     // netlify/functions/mp-webhooks.js
 // Webhook de MercadoPago — registra pago, uso de cupón y notifica al influencer
 
 const SUPABASE_URL  = "https://wnuehkewxbpahfbemliz.supabase.co";
