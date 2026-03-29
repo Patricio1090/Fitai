@@ -1,15 +1,18 @@
 [build]
+  command = "npm install"
   functions = "netlify/functions"
-
+ 
 [functions]
   node_bundler = "esbuild"
-
+  external_node_modules = ["mercadopago", "@supabase/supabase-js"]
+ 
 [[headers]]
   for = "/*"
   [headers.values]
     Access-Control-Allow-Origin = "*"
     Access-Control-Allow-Headers = "Content-Type"
     Access-Control-Allow-Methods = "POST, OPTIONS"
-
+ 
 [build.environment]
   SECRETS_SCAN_ENABLED = "false"
+ 
