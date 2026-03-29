@@ -59,7 +59,7 @@ body{padding-bottom:80px}
 .err-msg{background:#f43f5e18;border:1px solid #f43f5e30;border-radius:10px;padding:10px 14px;font-size:.78rem;color:var(--r);margin-top:10px;display:none}
 .err-msg.show{display:block}
 /* Cupón card */
-.cp-summary-row{display:grid;grid-template-columns:1.5fr 1fr auto auto auto auto;gap:6px;padding:10px 12px;font-size:.78rem;border-bottom:1px solid #0d0d1e;cursor:pointer;transition:background .15s;align-items:center}
+.cp-summary-row{display:grid;grid-template-columns:1.6fr 0.9fr 0.7fr 0.7fr 1fr 1fr 1fr 0.7fr;gap:4px;padding:10px 12px;font-size:.75rem;border-bottom:1px solid #0d0d1e;cursor:pointer;transition:background .15s;align-items:center;min-width:700px}
 .cp-summary-row:last-child{border-bottom:none}
 .cp-summary-row:hover{background:#a78bfa10}
 .cp-summary-row.selected{background:#a78bfa18;border-left:3px solid var(--p)}
@@ -76,7 +76,7 @@ body{padding-bottom:80px}
 .cp-toggle{padding:6px 14px;border-radius:20px;border:none;font-size:.72rem;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .2s;white-space:nowrap;flex-shrink:0}
 .cp-toggle.on{background:#00e67618;color:var(--g);border:1px solid #00e67630}
 .cp-toggle.off{background:#f43f5e18;color:var(--r);border:1px solid #f43f5e30}
-.cpstats{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--border)}
+.cpstats{display:grid;grid-template-columns:repeat(5,1fr);border-top:1px solid var(--border)}
 .cst{padding:10px 6px;text-align:center;border-right:1px solid var(--border);font-size:.62rem;color:var(--muted)}
 .cst:last-child{border-right:none}
 .cst strong{display:block;font-family:'Bebas Neue',sans-serif;font-size:1.15rem;color:#fff;margin-bottom:1px}
@@ -283,11 +283,18 @@ function paidSet(){ return new Set(DB.payments.filter(p=>(p.status||'').toLowerC
       style="width:100%;background:#0d0d1e;border:1px solid var(--border);border-radius:9px;padding:9px 12px;color:var(--text);font-family:DM Sans,sans-serif;font-size:.83rem;outline:none;margin-bottom:10px">
 
     <!-- Tabla resumen seleccionable -->
-    <div id="cp-summary-table" style="background:#0d0d1e;border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:12px">
-      <div style="display:grid;grid-template-columns:1.5fr 1fr auto auto auto auto;gap:6px;padding:8px 12px;font-size:.65rem;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid var(--border)">
-        <span>Cupón / Influencer</span><span>Descuento</span><span style="text-align:center">Usos</span><span style="text-align:center">Pagaron</span><span style="text-align:right">Descontado</span><span style="text-align:right">Estado</span>
+    <div id="cp-summary-table" style="background:#0d0d1e;border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:12px;overflow-x:auto">
+      <div style="display:grid;grid-template-columns:1.6fr 0.9fr 0.7fr 0.7fr 1fr 1fr 1fr 0.7fr;gap:4px;padding:8px 12px;font-size:.62rem;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid var(--border);min-width:700px">
+        <span class="cp-sort-col" onclick="sortCupones('name')" style="cursor:pointer;user-select:none">Cupón / Influencer <span id="sort-ico-name"></span></span>
+        <span class="cp-sort-col" onclick="sortCupones('discount')" style="cursor:pointer;user-select:none;text-align:right">Desc. por uso <span id="sort-ico-discount"></span></span>
+        <span class="cp-sort-col" onclick="sortCupones('usos')" style="cursor:pointer;user-select:none;text-align:center">Usos <span id="sort-ico-usos"></span></span>
+        <span class="cp-sort-col" onclick="sortCupones('pagaron')" style="cursor:pointer;user-select:none;text-align:center">Pagaron <span id="sort-ico-pagaron"></span></span>
+        <span class="cp-sort-col" onclick="sortCupones('descontado')" style="cursor:pointer;user-select:none;text-align:right">Total descontado <span id="sort-ico-descontado"></span></span>
+        <span class="cp-sort-col" onclick="sortCupones('real')" style="cursor:pointer;user-select:none;text-align:right">Recaudado en MP <span id="sort-ico-real"></span></span>
+        <span class="cp-sort-col" onclick="sortCupones('comision')" style="cursor:pointer;user-select:none;text-align:right">Ganancia influencer <span id="sort-ico-comision"></span></span>
+        <span style="text-align:right">Estado</span>
       </div>
-      <div id="cp-summary-rows"></div>
+      <div id="cp-summary-rows" style="min-width:700px"></div>
     </div>
   </div>
 
@@ -512,31 +519,62 @@ function renderCupones() {
 
   const summaryRows = document.getElementById('cp-summary-rows');
   if (summaryRows) {
-    summaryRows.innerHTML = DB.coupons
+    // Build data rows with all metrics
+    let cpData = DB.coupons
       .filter(c => {
         if (!searchVal) return true;
-        return c.code.toLowerCase().includes(searchVal) || (c.influencer_name||'').toLowerCase().includes(searchVal);
+        return c.code.toLowerCase().includes(searchVal)||(c.influencer_name||'').toLowerCase().includes(searchVal);
       })
       .map(c => {
         const isPct=(c.discount_type||'percent')==='percent';
-        const discLabel=isPct?`${c.discount_pct}%`:`$${Number(c.discount_pct).toLocaleString('es-CL')}`;
         const discPerUse=calcCouponDiscount(c,PRECIO);
+        const commission=Number(c.commission_amount||0);
         const uses=DB.couponUses.filter(u=>u.coupon_code===c.code);
-        const pagaron=uses.filter(u=>paid.has(u.user_id)||paid.has(u.user_email)).length;
+        const pagaronArr=uses.filter(u=>paid.has(u.user_id)||paid.has(u.user_email));
         const totalDesc=uses.length*discPerUse;
-        const isSelected=c.code===selectedCode;
-        return `<div class="cp-summary-row${isSelected?' selected':''}" onclick="selectCoupon('${c.code}')">
-          <div>
-            <div style="font-weight:700;color:${isSelected?'var(--p)':'#fff'}">${c.code}</div>
-            <div style="font-size:.68rem;color:var(--muted)">${c.influencer_name||'—'}</div>
-          </div>
-          <span style="color:${isPct?'var(--p)':'var(--g)'};font-weight:600">${discLabel} off</span>
-          <span style="text-align:center;color:var(--muted)">${uses.length}</span>
-          <span style="text-align:center;color:var(--b)">${pagaron}</span>
-          <span style="text-align:right;color:var(--g);font-family:Bebas Neue,sans-serif">${fmtClp(totalDesc)}</span>
-          <span style="text-align:right"><span style="padding:2px 8px;border-radius:8px;font-size:.65rem;font-weight:700;background:${c.active?'#00e67618':'#ffffff10'};color:${c.active?'var(--g)':'#555'}">${c.active?'✅ Activo':'❌ Inactivo'}</span></span>
-        </div>`;
-      }).join('') || '<div style="padding:16px;text-align:center;color:var(--muted);font-size:.78rem">Sin resultados</div>';
+        // Recaudado real en MP: suma de final_price de los usos pagados (o discount_amount)
+        const recaudadoReal=pagaronArr.reduce((acc,u)=>acc+Number(u.final_price||0),0);
+        const gananciaInfluencer=pagaronArr.length*commission;
+        return {c, isPct, discPerUse, commission, uses, pagaron:pagaronArr.length, totalDesc, recaudadoReal, gananciaInfluencer};
+      });
+
+    // Sort
+    const sortKey=window._cpSortKey||'usos';
+    const sortDir=window._cpSortDir||'desc';
+    const sortFns={
+      name:(a,b)=>a.c.code.localeCompare(b.c.code),
+      discount:(a,b)=>a.discPerUse-b.discPerUse,
+      usos:(a,b)=>a.uses.length-b.uses.length,
+      pagaron:(a,b)=>a.pagaron-b.pagaron,
+      descontado:(a,b)=>a.totalDesc-b.totalDesc,
+      real:(a,b)=>a.recaudadoReal-b.recaudadoReal,
+      comision:(a,b)=>a.gananciaInfluencer-b.gananciaInfluencer,
+    };
+    cpData.sort((a,b)=>sortDir==='asc'?sortFns[sortKey](a,b):-sortFns[sortKey](a,b));
+
+    // Update sort icons
+    ['name','discount','usos','pagaron','descontado','real','comision'].forEach(k=>{
+      const el=document.getElementById('sort-ico-'+k);
+      if(el) el.textContent=k===sortKey?(sortDir==='asc'?' ↑':' ↓'):'';
+    });
+
+    summaryRows.innerHTML = cpData.map(({c,isPct,discPerUse,commission,uses,pagaron,totalDesc,recaudadoReal,gananciaInfluencer}) => {
+      const discLabel=isPct?`${c.discount_pct}%`:`$${Number(c.discount_pct).toLocaleString('es-CL')}`;
+      const isSelected=c.code===selectedCode;
+      return `<div class="cp-summary-row${isSelected?' selected':''}" onclick="selectCoupon('${c.code}')">
+        <div>
+          <div style="font-weight:700;color:${isSelected?'var(--p)':'#fff'}">${c.code}</div>
+          <div style="font-size:.65rem;color:var(--muted)">${c.influencer_name||'—'}</div>
+        </div>
+        <span style="text-align:right;color:${isPct?'var(--p)':'var(--g)'};font-weight:600">${discLabel} off<br><span style="font-size:.65rem;color:var(--muted)">$${discPerUse.toLocaleString('es-CL')} CLP</span></span>
+        <span style="text-align:center;font-family:Bebas Neue,sans-serif;font-size:1.1rem;color:#fff">${uses.length}</span>
+        <span style="text-align:center;font-family:Bebas Neue,sans-serif;font-size:1.1rem;color:var(--b)">${pagaron}</span>
+        <span style="text-align:right;font-family:Bebas Neue,sans-serif;color:var(--g)">${fmtClp(totalDesc)}</span>
+        <span style="text-align:right;font-family:Bebas Neue,sans-serif;color:#60a5fa">${recaudadoReal>0?fmtClp(recaudadoReal):'<span style="color:#444;font-size:.7rem">sin datos</span>'}</span>
+        <span style="text-align:right;font-family:Bebas Neue,sans-serif;color:#fbbf24">${commission>0?fmtClp(gananciaInfluencer):'<span style="color:#444;font-size:.7rem">sin comisión</span>'}</span>
+        <span style="text-align:right"><span style="padding:2px 7px;border-radius:8px;font-size:.62rem;font-weight:700;background:${c.active?'#00e67618':'#ffffff10'};color:${c.active?'var(--g)':'#555'}">${c.active?'✅':'❌'}</span></span>
+      </div>`;
+    }).join('') || '<div style="padding:16px;text-align:center;color:var(--muted);font-size:.78rem">Sin resultados</div>';
   }
 
   const container=document.getElementById('list-cupones');
@@ -567,10 +605,17 @@ function renderCupones() {
       ? allUses.filter(u=>(u.created_at||'').startsWith(filterKey))
       : allUses;
 
-    const usesMes=allUses.filter(u=>(u.created_at||'').startsWith(thisMo));
+    // Stats según el filtro activo
     const conPago=uses.filter(u=>paid.has(u.user_id)||paid.has(u.user_email));
     const totalDescontado=uses.length*discountPerUse;
     const totalComision=conPago.length*commission;
+    // "Este mes" en el card = período seleccionado si hay filtro, sino mes actual
+    const usesMes=filterKey
+      ? uses  // ya están filtrados por período
+      : allUses.filter(u=>(u.created_at||'').startsWith(thisMo));
+    const labelMes=filterKey
+      ? (filterMes?MON_FULL[filterMes]+' ':'') + filterAnio
+      : 'Este mes';
 
     // Agrupar por mes (de los usos filtrados)
     const byMonth={};
@@ -627,12 +672,12 @@ function renderCupones() {
         </button>
       </div>
       <div class="cpstats">
-        <div class="cst"><strong>${uses.length}</strong>Usos totales</div>
-        <div class="cst"><strong>${usesMes.length}</strong>Este mes</div>
+        <div class="cst"><strong>${uses.length}</strong>${filterKey?'Usos período':'Usos totales'}</div>
+        <div class="cst"><strong>${usesMes.length}</strong>${labelMes}</div>
         <div class="cst orange"><strong>${conPago.length}</strong>Pagaron</div>
         <div class="cst green"><strong>${fmtClp(totalDescontado)}</strong>Total desc.</div>
+        <div class="cst" style="border-right:none"><strong style="color:#fbbf24;font-family:'Bebas Neue',sans-serif;font-size:1.15rem">${commission>0?fmtClp(totalComision):'$0'}</strong>💰 Comisión</div>
       </div>
-      ${months.length>0?`<div style="padding:8px 14px 4px;border-top:1px solid var(--border)"><span style="font-size:.65rem;color:#fbbf24;font-weight:700">💰 Total comisión acumulada: ${fmtClp(totalComision)}</span></div>`:''}
       ${monthsHtml}
     </div>`;
   }).join('');
@@ -730,6 +775,17 @@ function exportarPagosMes(mesKey) {
   a.download='FitAI_Pagos_'+mesNom+'.csv';
   a.click();
   URL.revokeObjectURL(url);
+}
+
+// ── Ordenar tabla resumen de cupones
+function sortCupones(key) {
+  if (window._cpSortKey === key) {
+    window._cpSortDir = window._cpSortDir === 'asc' ? 'desc' : 'asc';
+  } else {
+    window._cpSortKey = key;
+    window._cpSortDir = 'desc';
+  }
+  renderCupones();
 }
 
 // ── Seleccionar cupón desde tabla resumen
