@@ -1,6 +1,0 @@
-{
-  "dependencies": {
-    "mercadopago": "^2.0.0",
-    "@supabase/supabase-js": "^2.0.0"
-  }
-}
