@@ -1,7 +1,5 @@
 // netlify/functions/create-preference.js
-// Crea preferencia en MercadoPago — el registro del cupón ocurre en el webhook al confirmar pago
-
-const mercadopago = require("mercadopago");
+const { MercadoPagoConfig, Preference } = require("mercadopago");
 
 const SUPABASE_URL  = "https://wnuehkewxbpahfbemliz.supabase.co";
 const SUPABASE_ANON = "sb_publishable_rfsNbbcySsAlxgH657MSKQ_niGvstWy";
@@ -21,7 +19,10 @@ exports.handler = async (event) => {
   try {
     const accessToken = process.env.MP_ACCESS_TOKEN;
     if (!accessToken) throw new Error("MP_ACCESS_TOKEN no configurado");
-    mercadopago.configure({ access_token: accessToken });
+
+    // Nueva API de MercadoPago SDK v2+
+    const client = new MercadoPagoConfig({ accessToken });
+    const preferenceClient = new Preference(client);
 
     const body = JSON.parse(event.body || "{}");
     const { user_id, user_email, coupon_code } = body;
@@ -32,7 +33,7 @@ exports.handler = async (event) => {
 
     let finalPrice = 9990, discountAmount = 0, couponData = null;
 
-    // Validar cupón si fue ingresado
+    // Validar cupón
     if (coupon_code && coupon_code.trim() !== "") {
       const upperCode = coupon_code.trim().toUpperCase();
       const couponRes = await fetch(
@@ -56,36 +57,35 @@ exports.handler = async (event) => {
       ? `FitAI Pro – Acceso de por vida (cupón ${coupon_code.toUpperCase()})`
       : "FitAI Pro – Acceso de por vida";
 
-    const preference = {
-      items: [{ title: itemTitle, unit_price: finalPrice, quantity: 1, currency_id: "CLP" }],
-      payer: { email: user_email },
-      // Cupón en metadata → el webhook lo procesa solo si el pago se aprueba
-      metadata: {
-        user_id,
-        user_email,
-        coupon_code:      couponData ? couponData.code             : null,
-        influencer_name:  couponData ? couponData.influencer_name  : null,
-        influencer_email: couponData ? couponData.influencer_email : null,
-        discount_amount:  discountAmount,
-        final_price:      finalPrice,
-      },
-      back_urls: {
-        success: `${appUrl}/app.html?payment=success`,
-        failure: `${appUrl}/app.html?payment=failure`,
-        pending: `${appUrl}/app.html?payment=pending`,
-      },
-      auto_return: "approved",
-      notification_url: `${appUrl}/.netlify/functions/mp-webhooks`,
-    };
-
-    const response = await mercadopago.preferences.create(preference);
+    const response = await preferenceClient.create({
+      body: {
+        items: [{ title: itemTitle, unit_price: finalPrice, quantity: 1, currency_id: "CLP" }],
+        payer: { email: user_email },
+        metadata: {
+          user_id,
+          user_email,
+          coupon_code:      couponData ? couponData.code             : null,
+          influencer_name:  couponData ? couponData.influencer_name  : null,
+          influencer_email: couponData ? couponData.influencer_email : null,
+          discount_amount:  discountAmount,
+          final_price:      finalPrice,
+        },
+        back_urls: {
+          success: `${appUrl}/app.html?payment=success`,
+          failure: `${appUrl}/app.html?payment=failure`,
+          pending: `${appUrl}/app.html?payment=pending`,
+        },
+        auto_return: "approved",
+        notification_url: `${appUrl}/.netlify/functions/mp-webhooks`,
+      }
+    });
 
     return {
       statusCode: 200,
       headers,
       body: JSON.stringify({
-        init_point:      response.body.init_point,
-        preference_id:   response.body.id,
+        init_point:      response.init_point,
+        preference_id:   response.id,
         final_price:     finalPrice,
         discount_amount: discountAmount,
         coupon_applied:  !!couponData,
