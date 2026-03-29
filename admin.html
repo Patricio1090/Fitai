@@ -357,7 +357,7 @@ function paidSet(){ return new Set(DB.payments.filter(p=>(p.status||'').toLowerC
     <div class="kpi c1"><div class="kv sm" id="p-total"><span class="skel" style="width:80px;height:26px"></span></div><div class="kl">💰 Total recaudado</div><div class="ksub" id="p-total-sub"></div></div>
     <div class="kpi c2"><div class="kv" id="p-tx"><span class="skel" style="width:40px;height:32px"></span></div><div class="kl">🧾 Transacciones</div></div>
     <div class="kpi c3"><div class="kv sm" id="p-mes"><span class="skel" style="width:80px;height:26px"></span></div><div class="kl">📅 Este mes</div><div class="ksub" id="p-mes-sub"></div></div>
-    <div class="kpi c4"><div class="kv sm">${fmtClp(9990)}</div><div class="kl">💵 Precio base</div></div>
+    <div class="kpi c4"><div class="kv sm">$9.990</div><div class="kl">💵 Precio base</div></div>
   </div>
   <div class="card">
     <div class="ct">Evolución de ingresos</div><div class="cs">Barras = mes · Línea = acumulado</div>
@@ -426,7 +426,7 @@ function setDtype(type) {
 // ── Dashboard ───────────────────────────────────────────
 function renderDashboard() {
   const paid=paidSet(), total=DB.users.length, pagados=paid.size;
-  const ingresos=pagados*PRECIO, setupOk=DB.users.filter(u=>u.setup_done||u.setup_completed).length;
+  const ingresos=DB.payments.filter(p=>(p.status||"").toLowerCase()==="approved").reduce((acc,p)=>{const a=Number(p.amount||p.transaction_amount||0);return acc+(a>=1000?a:PRECIO);},0), setupOk=DB.users.filter(u=>u.setup_done||u.setup_completed).length;
   const conv=total>0?Math.round(pagados/total*100):0;
   document.getElementById('k-usuarios').textContent=total;
   document.getElementById('k-pagados').textContent=pagados;
