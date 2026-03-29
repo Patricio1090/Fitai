@@ -310,6 +310,11 @@ function paidSet(){ return new Set(DB.payments.filter(p=>(p.status||'').toLowerC
       <input type="email" id="new-email-inf" placeholder="Ej: liss@gmail.com">
     </div>
     <div class="field">
+      <label>Comisión por uso <span style="color:var(--muted);font-weight:400">(CLP que gana el influencer por cada pago)</span></label>
+      <input type="number" id="new-commission" placeholder="Ej: 1000" min="0">
+      <small style="color:var(--muted);font-size:.7rem;margin-top:4px;display:block">Ej: 1000 = $1.000 CLP por cada cliente que pague</small>
+    </div>
+    <div class="field">
       <label>Tipo de descuento</label>
       <div class="dtype-toggle">
         <button class="dtype-btn active" id="btn-dtype-pct" onclick="setDtype('percent')">% Porcentaje</button>
@@ -367,8 +372,33 @@ function paidSet(){ return new Set(DB.payments.filter(p=>(p.status||'').toLowerC
   <div class="card"><div class="ct">Total por mes</div><div class="cs">Suma de transacciones aprobadas</div><div id="month-table"></div></div>
   <div class="card">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-      <div><div class="ct">Transacciones</div><div class="cs" style="margin-bottom:0">Desde MercadoPago</div></div>
+      <div><div class="ct">Transacciones</div><div class="cs" style="margin-bottom:0">Filtrar por mes y año</div></div>
       <a href="https://www.mercadopago.cl/activities" target="_blank" class="mp-link">Ver en MP →</a>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:14px;align-items:center;flex-wrap:wrap">
+      <select id="filter-mes" style="background:#0d0d1e;border:1px solid var(--border);border-radius:9px;padding:8px 12px;color:var(--text);font-family:DM Sans,sans-serif;font-size:.83rem;outline:none;flex:1">
+        <option value="">— Todos los meses —</option>
+        <option value="01">Enero</option><option value="02">Febrero</option>
+        <option value="03">Marzo</option><option value="04">Abril</option>
+        <option value="05">Mayo</option><option value="06">Junio</option>
+        <option value="07">Julio</option><option value="08">Agosto</option>
+        <option value="09">Septiembre</option><option value="10">Octubre</option>
+        <option value="11">Noviembre</option><option value="12">Diciembre</option>
+      </select>
+      <select id="filter-anio" style="background:#0d0d1e;border:1px solid var(--border);border-radius:9px;padding:8px 12px;color:var(--text);font-family:DM Sans,sans-serif;font-size:.83rem;outline:none;flex:1">
+        <option value="">— Todos los años —</option>
+        <option value="2025">2025</option>
+        <option value="2026">2026</option>
+        <option value="2027">2027</option>
+      </select>
+      <button onclick="filtrarTx()" style="background:var(--p);border:none;color:#fff;border-radius:9px;padding:8px 16px;font-size:.8rem;font-weight:700;cursor:pointer;font-family:DM Sans,sans-serif;white-space:nowrap">Filtrar</button>
+      <button onclick="limpiarFiltro()" style="background:var(--border);border:none;color:var(--muted);border-radius:9px;padding:8px 12px;font-size:.8rem;cursor:pointer;font-family:DM Sans,sans-serif">✕ Limpiar</button>
+    </div>
+    <div id="tx-resumen" style="background:#00e67615;border:1px solid #00e67630;border-radius:10px;padding:10px 14px;margin-bottom:12px;display:none">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:.78rem;color:var(--muted)" id="tx-resumen-label">—</span>
+        <span style="font-family:Bebas Neue,sans-serif;font-size:1.2rem;color:var(--g)" id="tx-resumen-total">—</span>
+      </div>
     </div>
     <div id="list-tx"></div>
   </div>
@@ -550,19 +580,25 @@ function renderCupones() {
     const months = Object.keys(byMonth).sort().reverse();
     const monNames = {'01':'Enero','02':'Febrero','03':'Marzo','04':'Abril','05':'Mayo','06':'Junio','07':'Julio','08':'Agosto','09':'Septiembre','10':'Octubre','11':'Noviembre','12':'Diciembre'};
 
+    const commission = c.commission_amount || 0;
     const monthsHtml = months.length > 0 ? `
       <div class="cpmonths">
         <div class="cpmo-title">
-          <span>Mes</span><span>Usos</span><span>Pagaron</span><span>Descontado</span>
+          <span>Mes</span><span>Usos</span><span>Pagaron</span><span>Descontado</span><span>Comisión</span>
         </div>
         ${months.map(mo => {
           const [yr,mn] = mo.split('-');
           const d = byMonth[mo];
-          return `<div class="cpmo-row">
+          const comisionMes = d.pagaron * commission;
+          return `<div class="cpmo-row" style="grid-template-columns:1fr auto auto auto auto">
             <span class="cpmo-mes">${monNames[mn]||mn} ${yr}</span>
             <span class="cpmo-usos">${d.usos} uso${d.usos!==1?'s':''}</span>
             <span class="cpmo-pagaron">${d.pagaron} 💳</span>
             <span class="cpmo-ahorro">${fmtClp(d.ahorro)}</span>
+            <span style="color:#fbbf24;font-family:Bebas Neue,sans-serif;font-size:.9rem;text-align:right">${fmtClp(comisionMes)}</span>
+          </div>
+          <div style="padding:4px 14px 8px;display:flex;justify-content:flex-end">
+            <button onclick="exportarMes('${c.code}','${mo}')" style="background:#fbbf2418;border:1px solid #fbbf2430;color:#fbbf24;border-radius:8px;padding:4px 12px;font-size:.68rem;font-weight:700;cursor:pointer;font-family:DM Sans,sans-serif">📥 Exportar Excel</button>
           </div>`;
         }).join('')}
       </div>` : `<div style="padding:12px 16px;font-size:.75rem;color:var(--muted)">Sin usos registrados aún</div>`;
@@ -573,6 +609,7 @@ function renderCupones() {
           <span class="ccode ${!c.active?'inactive':''}">${c.code}</span>
           <span class="cinf">${c.influencer_name||'—'}</span>
           <span class="cdesc-badge ${isPct?'pct':'amt'}">${discLabel} off</span>
+          ${c.commission_amount>0 ? `<span style="font-size:.7rem;font-weight:700;padding:2px 8px;border-radius:10px;background:#fbbf2418;color:#fbbf24">\$${Number(c.commission_amount).toLocaleString('es-CL')} comisión</span>` : ''}
           ${!c.active?'<span style="font-size:.65rem;color:#555;background:#ffffff08;padding:2px 7px;border-radius:8px">INACTIVO</span>':''}
         </div>
         <button class="cp-toggle ${c.active?'on':'off'}" onclick="toggleCoupon('${c.code}',${c.active},${ci})">
@@ -631,11 +668,11 @@ document.getElementById('btn-crear-cupon').onclick = async function() {
 
   this.disabled=true; this.textContent='Creando…';
   try {
-    await sbPost('coupons',{code, influencer_name:inf, influencer_email:infEmail, discount_pct:val, discount_type:currentDtype, active:true, created_at:new Date().toISOString()});
+    const commission = Number(document.getElementById('new-commission')?.value||0); await sbPost('coupons',{code, influencer_name:inf, influencer_email:infEmail, commission_amount:commission, discount_pct:val, discount_type:currentDtype, active:true, created_at:new Date().toISOString()});
     okEl.classList.add('show');
     document.getElementById('new-code').value='';
     document.getElementById('new-inf').value='';
-    document.getElementById('new-email-inf').value='';
+    document.getElementById('new-email-inf').value=''; document.getElementById('new-commission').value='';
     document.getElementById('new-val').value='';
     await reloadCoupons();
     setTimeout(()=>okEl.classList.remove('show'),3500);
@@ -664,7 +701,7 @@ function renderPagos(){
   const maxV=Math.max(...keys.map(k=>byMonth[k]),PRECIO);
   document.getElementById('month-table').innerHTML=`<table style="width:100%;border-collapse:collapse"><thead><tr><th style="text-align:left;font-size:.68rem;color:var(--muted);padding:5px 6px;border-bottom:1px solid var(--border)">Mes</th><th style="text-align:center;font-size:.68rem;color:var(--muted);padding:5px 6px;border-bottom:1px solid var(--border)">Pagos</th><th style="text-align:right;font-size:.68rem;color:var(--muted);padding:5px 6px;border-bottom:1px solid var(--border)">Total</th><th style="border-bottom:1px solid var(--border)"></th></tr></thead><tbody>${[...keys].reverse().map(k=>{const[yr,mo]=k.split('-'),cnt=aprobadas.filter(p=>(p.created_at||'').startsWith(k)).length,pct=Math.round((byMonth[k]/maxV)*100),isThis=k===thisMo;return`<tr><td style="padding:9px 6px;font-size:.8rem;color:${isThis?'#fff':'var(--text)'};border-bottom:1px solid #0d0d1e">${MON[parseInt(mo)-1]} ${yr}</td><td style="padding:9px 6px;text-align:center;font-size:.78rem;color:var(--muted);border-bottom:1px solid #0d0d1e">${cnt}</td><td style="padding:9px 6px;text-align:right;font-family:'Bebas Neue',sans-serif;font-size:1rem;color:var(--g);border-bottom:1px solid #0d0d1e">${fmtClp(byMonth[k])}</td><td style="padding:9px 6px;width:35%;border-bottom:1px solid #0d0d1e"><div style="background:#1e1e3a;border-radius:3px;height:5px;overflow:hidden"><div style="height:5px;background:var(--g);border-radius:3px;width:${pct}%"></div></div></td></tr>`;}).join('')}</tbody></table>`;
   const emailMap=Object.fromEntries(DB.users.map(u=>[u.id,u.email]));
-  document.getElementById('list-tx').innerHTML=DB.payments.length?DB.payments.map(p=>{const st=(p.status||'').toLowerCase();let bc='pendiente',bt='⏳ Pendiente';if(st==='approved'){bc='aprobado';bt='✅ Aprobado';}if(st==='rejected'||st==='cancelled'){bc='rechazado';bt='❌ Rechazado';}const email=emailMap[p.user_id]||p.payer_email||p.user_email||'—';return`<div class="tx-row"><div><div class="tx-email">${email}</div><div class="tx-date">${fmtDate(p.created_at)}</div></div><div class="tx-amt">${fmtClp(realAmt(p))}</div><div class="txb ${bc}">${bt}</div></div>`;}).join(''):'<div class="empty">Sin transacciones</div>';
+  renderTxFiltradas('', '');
 }
 
 function drawEvoChart(keys,byMonth){
@@ -696,6 +733,114 @@ function openModal(){
     return `<div style="display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--border)"><div style="font-family:'Bebas Neue',sans-serif;font-size:1rem;color:#333;width:24px;text-align:right">#${i+1}</div><div class="cav" style="background:${avatarColor(i)}22;color:${avatarColor(i)};width:34px;height:34px;flex-shrink:0">${initials(u)}</div><div style="flex:1;min-width:0"><div style="font-size:.83rem;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${displayName(u)}</div><div style="font-size:.7rem;color:var(--muted)">${u.email||'—'}</div></div><div style="text-align:right;flex-shrink:0"><div class="badge ${isPaid?'paid':'free'}">${isPaid?'💳 Pagado':'Gratis'}</div>${hasSetup?'<div class="badge setup" style="display:block;margin-top:3px">✅ Setup</div>':''}<div style="font-size:.65rem;color:#444;margin-top:3px">${fmtDate(u.created_at)}</div></div></div>`;
   }).join('');
   document.getElementById('modal-ov').classList.add('open');
+}
+
+// ── Exportar Excel por mes ──────────────────────────────
+function exportarMes(couponCode, mesKey) {
+  const [yr, mn] = mesKey.split('-');
+  const monNames = {'01':'Enero','02':'Febrero','03':'Marzo','04':'Abril','05':'Mayo','06':'Junio','07':'Julio','08':'Agosto','09':'Septiembre','10':'Octubre','11':'Noviembre','12':'Diciembre'};
+  const mesNom = monNames[mn] + ' ' + yr;
+
+  const coupon = DB.coupons.find(c => c.code === couponCode);
+  const commission = coupon?.commission_amount || 0;
+  const usersMap = Object.fromEntries(DB.users.map(u => [u.id, u]));
+  const paid = paidSet();
+
+  const uses = DB.couponUses.filter(u =>
+    u.coupon_code === couponCode &&
+    (u.created_at || '').startsWith(mesKey)
+  );
+
+  if (!uses.length) { alert('Sin usos en este mes'); return; }
+
+  // Construir CSV
+  const headers = ['Email Cliente','Nombre','Fecha','Pagó','Descuento CLP','Precio Final CLP','Comisión Influencer CLP'];
+  const rows = uses.map(u => {
+    const usr = usersMap[u.user_id] || {};
+    const isPaid = paid.has(u.user_id) || paid.has(u.user_email);
+    const email = usr.email || u.user_email || u.user_id || '—';
+    const nombre = usr.name || usr.full_name || '—';
+    const fecha = fmtDate(u.created_at);
+    const pago = isPaid ? 'Sí' : 'No';
+    const descuento = u.discount_amount || 0;
+    const finalPrecio = u.final_price || 0;
+    const comision = isPaid ? commission : 0;
+    return [email, nombre, fecha, pago, descuento, finalPrecio, comision];
+  });
+
+  // Total comisiones
+  const totalComision = rows.reduce((acc, r) => acc + (r[6] || 0), 0);
+  rows.push(['', '', '', 'TOTAL COMISIONES', '', '', totalComision]);
+
+  const csvContent = [headers, ...rows]
+    .map(r => r.map(v => '"' + String(v).replace(/"/g, '""') + '"').join(','))
+    .join('
+');
+
+  const BOM = '﻿';
+  const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'FitAI_' + couponCode + '_' + mesNom.replace(' ', '_') + '.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ── Filtro transacciones ────────────────────────────────
+function filtrarTx() {
+  const mes   = document.getElementById('filter-mes')?.value;
+  const anio  = document.getElementById('filter-anio')?.value;
+  renderTxFiltradas(mes, anio);
+}
+
+function limpiarFiltro() {
+  document.getElementById('filter-mes').value  = '';
+  document.getElementById('filter-anio').value = '';
+  renderTxFiltradas('', '');
+}
+
+function renderTxFiltradas(mes, anio) {
+  const emailMap = Object.fromEntries(DB.users.map(u=>[u.id, u.email]));
+  let pagos = DB.payments;
+
+  if (mes || anio) {
+    pagos = pagos.filter(p => {
+      const d = p.created_at || '';
+      const [yr, mo] = d.split('T')[0].split('-');
+      if (mes  && mo !== mes)   return false;
+      if (anio && yr !== anio)  return false;
+      return true;
+    });
+  }
+
+  const aprobadas = pagos.filter(p => (p.status||'').toLowerCase() === 'approved');
+  const totalFiltrado = aprobadas.reduce((acc,p) => acc + Number(p.amount||0), 0);
+
+  const resumenEl = document.getElementById('tx-resumen');
+  const labelEl   = document.getElementById('tx-resumen-label');
+  const totalEl   = document.getElementById('tx-resumen-total');
+
+  if (mes || anio) {
+    const mesNom = mes ? ['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'][parseInt(mes)] : '';
+    resumenEl.style.display = 'block';
+    labelEl.textContent = mesNom + (anio ? ' ' + anio : '') + ' · ' + aprobadas.length + ' pagos aprobados';
+    totalEl.textContent = fmtClp(totalFiltrado);
+  } else {
+    resumenEl.style.display = 'none';
+  }
+
+  const listEl = document.getElementById('list-tx');
+  if (!pagos.length) { listEl.innerHTML = '<div class="empty">Sin transacciones en este período</div>'; return; }
+
+  listEl.innerHTML = pagos.map(p => {
+    const st = (p.status||'').toLowerCase();
+    let bc='pendiente', bt='⏳ Pendiente';
+    if (st==='approved')  { bc='aprobado';  bt='✅ Aprobado'; }
+    if (st==='rejected'||st==='cancelled') { bc='rechazado'; bt='❌ Rechazado'; }
+    const email = emailMap[p.user_id] || p.payer_email || p.user_email || '—';
+    return `<div class="tx-row"><div><div class="tx-email">${email}</div><div class="tx-date">${fmtDate(p.created_at)}</div></div><div class="tx-amt">${fmtClp(Number(p.amount||0))}</div><div class="txb ${bc}">${bt}</div></div>`;
+  }).join('');
 }
 
 // ── Eventos ─────────────────────────────────────────────
