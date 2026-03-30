@@ -380,7 +380,7 @@ if (window.location.hash === '#login') {
       const desc = `${p.name}, ${p.age}años, ${p.gender}, ${p.weight}kg, ${p.height}cm, objetivo: ${p.goal}, meta: ${p.targetWeight}kg en ${p.weeksGoal} semanas, actividad: ${p.activityLevel}`;
       const withTimeout = (pr, ms) => Promise.race([pr, new Promise((_,rej) => setTimeout(() => rej(new Error('timeout')), ms))]);
       try {
-        STATE.plan = await withTimeout(claude([{role:'user',content:`Plan entrenamiento semanal para ${desc}, lugar: ${p.trainingPlace||'gimnasio'}. ${getTrainingPrompt(p.trainingPlace)} Máx 250 palabras.`}]), 25000);
+        STATE.plan = await withTimeout(claude([{role:'user',content:`Plan entrenamiento semanal para ${desc}, lugar: ${p.trainingPlace||'gimnasio'}. ${getTrainingPrompt(p.trainingPlace)}\n\nFORMATO OBLIGATORIO (NO uses tablas markdown):\n## DÍA 1 - LUNES: Nombre del grupo\n- Nombre del ejercicio (X series x Y reps - Z min descanso)\n- Nombre del ejercicio (X series x Y reps - Z min descanso)\netc.\n\nMáx 250 palabras. Incluye series, reps y descanso entre paréntesis.`}]), 25000);
         STATE.nutrition = await withTimeout(claude([{role:'user',content:`Plan alimentación diario para ${desc}. Formato: ## Desayuno, ## Colación AM, ## Almuerzo, ## Merienda PM, ## Cena. Solo alimentos con cantidades. Máx 200 palabras.`}]), 25000);
         STATE.planGeneratedAt = new Date().toISOString();
         dbSavePlanNutrition(STATE.user?.email, STATE.plan, STATE.nutrition);
@@ -943,7 +943,7 @@ function renderSetup() {
       const desc=`${p.name},${p.age}años,${p.gender},${p.weight}kg,${p.height}cm,objetivo:${p.goal},meta:${p.targetWeight}kg en ${p.weeksGoal} semanas,actividad:${p.activityLevel}`;
       const withTimeout=(promise,ms)=>Promise.race([promise,new Promise((_,reject)=>setTimeout(()=>reject(new Error('timeout')),ms))]);
       try {
-        STATE.plan=await withTimeout(claude([{role:'user',content:`Plan entrenamiento semanal para ${desc}, lugar: ${p.trainingPlace||'gimnasio'}. ${getTrainingPrompt(p.trainingPlace)} Máx 250 palabras.`}]),25000);
+        STATE.plan=await withTimeout(claude([{role:'user',content:`Plan entrenamiento semanal para ${desc}, lugar: ${p.trainingPlace||'gimnasio'}. ${getTrainingPrompt(p.trainingPlace)}\n\nFORMATO OBLIGATORIO (NO uses tablas markdown):\n## DÍA 1 - LUNES: Nombre del grupo\n- Nombre del ejercicio (X series x Y reps - Z min descanso)\n- Nombre del ejercicio (X series x Y reps - Z min descanso)\netc.\n\nMáx 250 palabras. Incluye series, reps y descanso entre paréntesis.`}]),25000);
         STATE.nutrition=await withTimeout(claude([{role:'user',content:`Plan alimentación diario para ${desc}. Formato: ## Desayuno, ## Colación AM, ## Almuerzo, ## Merienda PM, ## Cena. Solo alimentos con cantidades. Máx 200 palabras.`}]),25000);
         STATE.planGeneratedAt=new Date().toISOString();
         STATE.screen='app';
@@ -1035,7 +1035,64 @@ function matchExerciseKey(text){const lower=text.toLowerCase().normalize("NFD").
 function buildExerciseCard(name,detail,exKey){const data=EXERCISE_IMAGES[exKey];if(!data)return'';const c=data.color;const hasImgs=data.imgs&&data.imgs.length>0;const imgData=hasImgs?`data-imgs="${data.imgs.join(',')}" data-exname="${name}" data-muscle="${data.muscle}" data-color="${c}"`:'';return`<div class="ex-card" ${imgData} ${hasImgs?'onclick="openExerciseModal(this)"':''}><div class="ex-card-accent" style="background:linear-gradient(180deg,${c},${c}40)"></div><div class="ex-card-info"><div class="ex-card-name">${name}</div>${detail?`<div class="ex-card-detail">${detail}</div>`:''}<div class="ex-card-badge" style="color:${c};background:${c}14;border:1px solid ${c}18"><span style="width:5px;height:5px;border-radius:50%;background:${c};display:inline-block"></span> ${data.muscle}</div></div>${hasImgs?`<div class="ex-card-tap" style="color:${c}80">›</div>`:''}</div>`;}
 function openExerciseModal(el){const imgs=el.dataset.imgs.split(',');const name=el.dataset.exname;const muscle=el.dataset.muscle;const color=el.dataset.color;const existing=document.querySelector('.ex-modal-overlay');if(existing)existing.remove();const overlay=document.createElement('div');overlay.className='ex-modal-overlay';overlay.innerHTML=`<div class="ex-modal"><div class="ex-modal-close"><button onclick="closeExerciseModal()">✕</button></div><div class="ex-modal-header"><div class="ex-modal-title" style="color:${color}">${name}</div><div class="ex-modal-muscle" style="color:${color}cc">${muscle}</div></div><div class="ex-modal-images">${imgs.map((img,i)=>`<div style="flex:1;text-align:center"><img src="${IMG_BASE}${img}/0.jpg" alt="${name}" loading="lazy" onerror="this.src='${IMG_BASE}${img}/1.jpg'" style="width:100%;border-radius:12px;background:#1a1735;min-height:140px;object-fit:cover;border:1px solid ${color}20"/><div class="ex-modal-label">${imgs.length>1?(i===0?'Variante 1':'Variante 2'):'Ejercicio'}</div></div>`).join('')}</div><div style="padding:0 16px 8px;display:flex;gap:6px">${imgs.map(img=>`<div style="flex:1;text-align:center"><img src="${IMG_BASE}${img}/1.jpg" alt="Final" loading="lazy" onerror="this.parentElement.style.display='none'" style="width:100%;border-radius:12px;background:#1a1735;min-height:140px;object-fit:cover;border:1px solid ${color}10"/><div class="ex-modal-label" style="opacity:0.6">Posición final</div></div>`).join('')}</div><div style="padding:12px 20px 20px;text-align:center"><button class="btn btn-ghost btn-sm" onclick="closeExerciseModal()" style="width:100%">Cerrar</button></div></div>`;overlay.onclick=(e)=>{if(e.target===overlay)closeExerciseModal();};document.body.appendChild(overlay);requestAnimationFrame(()=>overlay.classList.add('open'));}
 function closeExerciseModal(){const overlay=document.querySelector('.ex-modal-overlay');if(overlay){overlay.classList.remove('open');setTimeout(()=>overlay.remove(),250);}}
-function formatPlanWithImages(planText){if(!planText)return'';const lines=planText.split('\n');let html='';for(const line of lines){const trimmed=line.trim();if(!trimmed){html+='<div style="height:6px"></div>';continue;}if(/^#{1,3}\s/.test(trimmed)||/^\*\*DÍA/i.test(trimmed)||/^DÍA\s/i.test(trimmed)||/^\*\*Día/i.test(trimmed)){const clean=trimmed.replace(/^#+\s*/,'').replace(/\*\*/g,'').trim();html+=`<div class="plan-section-title">${clean}</div>`;continue;}const exMatch=trimmed.match(/^[-–•*]\s*(.+)|^(\d+)[.)]\s*(.+)/);if(exMatch){const exText=(exMatch[1]||exMatch[3]||'').replace(/\*\*/g,'').trim();const exKey=matchExerciseKey(exText);if(exKey){let name=exText,detail='';const parenIdx=exText.indexOf('(');const dashIdx=exText.indexOf(' - ');const colonIdx=exText.indexOf(':');if(parenIdx>3){name=exText.slice(0,parenIdx).trim();detail=exText.slice(parenIdx).trim();}else if(dashIdx>3){name=exText.slice(0,dashIdx).trim();detail=exText.slice(dashIdx+3).trim();}else if(colonIdx>3){name=exText.slice(0,colonIdx).trim();detail=exText.slice(colonIdx+1).trim();}html+=buildExerciseCard(name,detail,exKey);continue;}}const formatted=trimmed.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/^#+\s*/,'');html+=`<div class="plan-text-line">${formatted}</div>`;}return html;}
+function formatPlanWithImages(planText){
+  if(!planText)return'';
+  const lines=planText.split('\n');
+  let html='';
+  for(const line of lines){
+    const trimmed=line.trim();
+    if(!trimmed){html+='<div style="height:6px"></div>';continue;}
+
+    // ── Encabezados de día / sección ────────────────────────────────
+    if(/^#{1,3}\s/.test(trimmed)||/^\*\*DÍA/i.test(trimmed)||/^DÍA\s/i.test(trimmed)||/^\*\*Día/i.test(trimmed)){
+      const clean=trimmed.replace(/^#+\s*/,'').replace(/\*\*/g,'').trim();
+      html+=`<div class="plan-section-title">${clean}</div>`;continue;
+    }
+
+    // ── Filas de tabla markdown: | Ejercicio | Series | Reps | ... ──
+    if(trimmed.startsWith('|')){
+      // Ignorar separadores de tabla (|---|---|)
+      if(/^\|[-:\s|]+\|$/.test(trimmed))continue;
+      const cells=trimmed.split('|').map(c=>c.trim()).filter(c=>c!=='');
+      if(!cells.length)continue;
+      // Primera celda es el nombre del ejercicio; el resto son detalles
+      const exName=cells[0].replace(/\*\*/g,'').trim();
+      // Si es encabezado de tabla (Ejercicio, Series, etc.) lo saltamos
+      if(/^ejercicio$/i.test(exName)||/^nombre$/i.test(exName))continue;
+      const detail=cells.slice(1).join(' · ').replace(/\*\*/g,'').trim();
+      const exKey=matchExerciseKey(exName);
+      if(exKey){
+        html+=buildExerciseCard(exName,detail,exKey);
+      } else {
+        // Sin imagen pero igual lo mostramos como línea
+        html+=`<div class="plan-text-line" style="padding-left:8px">• <strong>${exName}</strong>${detail?' — '+detail:''}</div>`;
+      }
+      continue;
+    }
+
+    // ── Listas con guión, bullet, número ───────────────────────────
+    const exMatch=trimmed.match(/^[-–•*]\s*(.+)|^(\d+)[.)]\s*(.+)/);
+    if(exMatch){
+      const exText=(exMatch[1]||exMatch[3]||'').replace(/\*\*/g,'').trim();
+      const exKey=matchExerciseKey(exText);
+      if(exKey){
+        let name=exText,detail='';
+        const parenIdx=exText.indexOf('(');
+        const dashIdx=exText.indexOf(' - ');
+        const colonIdx=exText.indexOf(':');
+        if(parenIdx>3){name=exText.slice(0,parenIdx).trim();detail=exText.slice(parenIdx).trim();}
+        else if(dashIdx>3){name=exText.slice(0,dashIdx).trim();detail=exText.slice(dashIdx+3).trim();}
+        else if(colonIdx>3){name=exText.slice(0,colonIdx).trim();detail=exText.slice(colonIdx+1).trim();}
+        html+=buildExerciseCard(name,detail,exKey);continue;
+      }
+    }
+
+    // ── Texto plano ─────────────────────────────────────────────────
+    const formatted=trimmed.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/^#+\s*/,'');
+    html+=`<div class="plan-text-line">${formatted}</div>`;
+  }
+  return html;
+}
 
 // Nutrition
 const FOOD_IMAGES={pollo:{label:"Pollo",img:"photo-1604503468506-a8da13d82571"},pechuga:{label:"Pechuga",img:"photo-1604503468506-a8da13d82571"},carne:{label:"Carne",img:"photo-1588168333986-5078d3ae3976"},salmon:{label:"Salmón",img:"photo-1519708227418-c8fd9a32b7a2"},pescado:{label:"Pescado",img:"photo-1510130113840-198f8b27e60c"},atun:{label:"Atún",img:"photo-1528207776546-365bb710ee93"},huevo:{label:"Huevos",img:"photo-1482049016688-2d3e1b311543"},pavo:{label:"Pavo",img:"photo-1574672280600-4accfa5b6f98"},arroz:{label:"Arroz",img:"photo-1516684732162-798a0062be99"},avena:{label:"Avena",img:"photo-1517673400267-0251440c45dc"},pan:{label:"Pan integral",img:"photo-1509440159596-0249088772ff"},pasta:{label:"Pasta",img:"photo-1551462147-ff29053bfc14"},quinoa:{label:"Quinoa",img:"photo-1586201375761-83865001e31c"},papa:{label:"Papa",img:"photo-1518977676601-b53f82ber9eb"},batata:{label:"Batata",img:"photo-1596097635121-14b63a7fal24"},ensalada:{label:"Ensalada",img:"photo-1512621776951-a57141f2eefd"},verdura:{label:"Verduras",img:"photo-1540420773420-3366772f4999"},brocoli:{label:"Brócoli",img:"photo-1459411552884-841db9b3cc2a"},espinaca:{label:"Espinaca",img:"photo-1576045057995-568f588f82fb"},tomate:{label:"Tomate",img:"photo-1546470427-f5fd1a04e976"},fruta:{label:"Frutas",img:"photo-1619566636858-adf3ef46400b"},platano:{label:"Plátano",img:"photo-1571771894821-ce9b6c11b08e"},manzana:{label:"Manzana",img:"photo-1560806887-1e4cd0b6cbd6"},berries:{label:"Berries",img:"photo-1563746098251-d35aef196e83"},palta:{label:"Palta",img:"photo-1523049673857-eb18f1d7b578"},aguacate:{label:"Aguacate",img:"photo-1523049673857-eb18f1d7b578"},yogurt:{label:"Yogurt",img:"photo-1488477181946-6428a0291777"},leche:{label:"Leche",img:"photo-1563636619-e9143da7973b"},queso:{label:"Queso",img:"photo-1486297678162-eb2a19b0a32d"},almendra:{label:"Frutos secos",img:"photo-1508061253366-f7da158b6d46"},nuez:{label:"Nueces",img:"photo-1508061253366-f7da158b6d46"},mani:{label:"Maní",img:"photo-1567892737950-30c4db37cd89"},smoothie:{label:"Smoothie",img:"photo-1505252585461-04db1eb84625"},batido:{label:"Batido proteico",img:"photo-1505252585461-04db1eb84625"},sopa:{label:"Sopa",img:"photo-1547592166-23ac45744acd"},tostada:{label:"Tostadas",img:"photo-1525351484163-7529414344d8"},granola:{label:"Granola",img:"photo-1517093602195-b40af9688929"}};
@@ -1071,7 +1128,7 @@ function renderWorkout(){
     </button>
     <div class="card" style="margin-top:12px"><div class="card-h">💬 Pregunta al coach de entrenamiento</div><div id="chat-w" style="max-height:400px;overflow-y:auto"></div><div class="chat-row"><input type="text" id="ci-w" placeholder="¿Cómo reemplazo las sentadillas?"/><button id="cs-w">→</button></div></div>`;
   STATE.chat.slice(-4).forEach(m=>{const el=document.createElement('div');el.className='chat-msg '+(m.role==='user'?'chat-user':'chat-ai');el.innerHTML=`<strong>${m.role==='user'?'Tú:':'🤖 '}</strong> ${m.content}`;div.querySelector('#chat-w').appendChild(el);});
-  div.querySelector('#btn-newplan').onclick=async()=>{STATE.aiLoading=true;render();const tp=STATE.profile.trainingPlace;const r=await claude([{role:'user',content:`Plan entrenamiento semanal adaptado para ${STATE.profile.name}, ${STATE.profile.goal}, nivel: ${STATE.profile.activityLevel}, lugar: ${tp||'gimnasio'}, semana ${weekNum}. ${getTrainingPrompt(tp)} Máx 700 palabras. Formato: día por día con ejercicios, series, repeticiones.`}]);STATE.plan=r;STATE.planGeneratedAt=new Date().toISOString();STATE.aiLoading=false;save();dbSavePlanNutrition(STATE.user?.email,STATE.plan,STATE.nutrition);render();};
+  div.querySelector('#btn-newplan').onclick=async()=>{STATE.aiLoading=true;render();const tp=STATE.profile.trainingPlace;const r=await claude([{role:'user',content:`Plan entrenamiento semanal para ${STATE.profile.name}, objetivo: ${STATE.profile.goal}, nivel: ${STATE.profile.activityLevel}, lugar: ${tp||'gimnasio'}, semana ${weekNum}. ${getTrainingPrompt(tp)}\n\nFORMATO OBLIGATORIO (NO uses tablas markdown):\n## DÍA 1 - LUNES: Nombre del grupo\n- Nombre del ejercicio (X series x Y reps - Z min descanso)\n- Nombre del ejercicio (X series x Y reps - Z min descanso)\n## DÍA 2 - MARTES: Descanso activo\netc.\n\nMáx 700 palabras. Incluye series, reps y descanso entre paréntesis de cada ejercicio.`}]);STATE.plan=r;STATE.planGeneratedAt=new Date().toISOString();STATE.aiLoading=false;save();dbSavePlanNutrition(STATE.user?.email,STATE.plan,STATE.nutrition);render();};
   const send=async()=>{const inp=div.querySelector('#ci-w');const txt=inp?.value.trim();if(!txt)return;STATE.chat.push({role:'user',content:txt});inp.value='';STATE.aiLoading=true;render();const msgs=STATE.chat.slice(-6).map(m=>({role:m.role,content:m.content}));msgs[0]={...msgs[0],content:`${STATE.profile.name},${STATE.profile.goal}\n${msgs[0].content}`};const r=await claude(msgs);STATE.chat.push({role:'assistant',content:r});STATE.qaHistory.push({date:new Date().toLocaleDateString('es-CL'),q:txt,a:r});STATE.qaHistory=STATE.qaHistory.slice(-100);STATE.aiLoading=false;save();render();};
   div.querySelector('#cs-w').onclick=send;div.querySelector('#ci-w').onkeydown=e=>{if(e.key==='Enter')send();};
   return div;
