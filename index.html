@@ -218,7 +218,7 @@ footer{background:var(--black);border-top:1px solid var(--border);padding:32px 2
   <div class="nav-right">
     <span class="nav-users">+<strong id="uc">1.247</strong> usuarios activos</span>
     <button onclick="location.href='app.html#login'" style="background:none;border:1px solid var(--border);border-radius:100px;padding:8px 18px;font-size:12px;font-weight:600;color:var(--text);cursor:pointer;font-family:'Space Grotesk',sans-serif;transition:all 0.2s;white-space:nowrap">Iniciar sesión</button>
-    <button class="nav-cta" onclick="location.href='app.html'">Empezar $9.990 →</button>
+    <button class="nav-cta" onclick="location.href='app.html'" id="lp-nav-cta">Empezar $9.990 →</button>
   </div>
 </nav>
 
@@ -231,10 +231,10 @@ footer{background:var(--black);border-top:1px solid var(--border);padding:32px 2
   <p class="hero-sub">El primer entrenador personal con IA que usa <strong>investigación de Harvard</strong> para crear tu plan exacto — y te guía cada día hasta tu objetivo.</p>
   <div class="price-wrap">
     <div><div class="price-old">$59.990/año</div></div>
-    <div><div class="price-new">$9.990</div><div class="price-sub">pesos chilenos · pago único · de por vida</div></div>
+    <div><div class="price-new" id="lp-price-main">$9.990</div><div class="price-sub">pesos chilenos · pago único · de por vida</div></div>
   </div>
   <div class="cta-wrap">
-    <button class="btn-main" onclick="location.href='app.html'">⚡ Empezar ahora por $9.990 CLP (USD 10)</button>
+    <button class="btn-main" onclick="location.href='app.html'" id="lp-hero-cta">⚡ Empezar ahora por $9.990 CLP (USD 10)</button>
     <span class="guarantee">🔒 Sin suscripciones · Acceso de por vida</span>
   </div>
   <div class="social-proof">
@@ -327,7 +327,7 @@ footer{background:var(--black);border-top:1px solid var(--border);padding:32px 2
           <tr><td>Análisis diario con IA</td><td class="col-fitai-cell"><span class="chk">✓</span></td><td class="col-other-cell"><span class="crs">✗</span></td><td class="col-other-cell"><span class="crs">✗</span></td></tr>
           <tr><td>Entrenamiento + Nutrición</td><td class="col-fitai-cell"><span class="chk">✓</span></td><td class="col-other-cell" style="color:var(--muted)">Solo nutrición</td><td class="col-other-cell" style="color:var(--muted)">Solo entrena</td></tr>
           <tr><td>Sin suscripción mensual</td><td class="col-fitai-cell"><span class="chk">✓</span></td><td class="col-other-cell"><span class="crs">✗</span></td><td class="col-other-cell"><span class="crs">✗</span></td></tr>
-          <tr class="price-row"><td style="font-weight:700">Precio</td><td class="col-fitai-cell">$9.990 único</td><td class="col-other-cell">$30.000+/mes</td><td class="col-other-cell">$8.000+/mes</td></tr>
+          <tr class="price-row"><td style="font-weight:700">Precio</td><td class="col-fitai-cell" id="lp-table-price">$9.990 único</td><td class="col-other-cell">$30.000+/mes</td><td class="col-other-cell">$8.000+/mes</td></tr>
         </tbody>
       </table>
     </div>
@@ -510,7 +510,7 @@ footer{background:var(--black);border-top:1px solid var(--border);padding:32px 2
     <div class="pricing-card reveal">
       <div class="p-best">🏆 Mejor valor</div>
       <div style="text-decoration:line-through;color:var(--muted);font-size:18px;margin-bottom:4px">$59.990</div>
-      <div class="p-amount">$9.990</div>
+      <div class="p-amount" id="lp-pricing-amount">$9.990</div>
       <div class="p-period">pesos chilenos · pago único · acceso de por vida</div>
       <div class="p-feats">
         <div class="p-feat"><span class="p-feat-icon">✓</span>Plan de entrenamiento semanal personalizado</div>
@@ -522,7 +522,7 @@ footer{background:var(--black);border-top:1px solid var(--border);padding:32px 2
         <div class="p-feat"><span class="p-feat-icon">✓</span>App instalable en Android e iOS</div>
         <div class="p-feat"><span class="p-feat-icon">✓</span>Actualizaciones gratuitas para siempre</div>
       </div>
-      <button class="p-cta" onclick="location.href='app.html'">⚡ Empezar por $9.990 CLP (USD 10) →</button>
+      <button class="p-cta" onclick="location.href='app.html'" id="lp-pricing-cta">⚡ Empezar por $9.990 CLP (USD 10) →</button>
       <div class="p-note">🔒 Pago 100% seguro con MercadoPago</div>
       <div class="p-methods">
         <span class="pm" style="background:#00b1ea22;color:#00b1ea;border-color:#00b1ea40">💳 MercadoPago</span>
@@ -542,7 +542,7 @@ footer{background:var(--black);border-top:1px solid var(--border);padding:32px 2
       <div class="faq-item"><button class="faq-q" onclick="this.parentElement.classList.toggle('open')">¿Es necesario ir al gimnasio?<span class="faq-icon">+</span></button><div class="faq-a">No necesariamente. Puedes indicar si entrenas en casa, en gimnasio o en ambos, y el plan se adapta a tu equipamiento disponible. Hay rutinas para todos los niveles y contextos.</div></div>
       <div class="faq-item"><button class="faq-q" onclick="this.parentElement.classList.toggle('open')">¿Cada cuánto se actualiza el plan?<span class="faq-icon">+</span></button><div class="faq-a">El plan de entrenamiento se puede renovar semanalmente. El plan de nutrición puede regenerarse diariamente con diferentes alimentos. Los cambios son ilimitados.</div></div>
       <div class="faq-item"><button class="faq-q" onclick="this.parentElement.classList.toggle('open')">¿Funciona en iPhone y Android?<span class="faq-icon">+</span></button><div class="faq-a">Sí. Es una PWA que se instala desde el navegador en cualquier dispositivo. No necesitas descargarla de ninguna tienda de apps.</div></div>
-      <div class="faq-item"><button class="faq-q" onclick="this.parentElement.classList.toggle('open')">¿Qué pasa si no estoy satisfecho?<span class="faq-icon">+</span></button><div class="faq-a">Nos importa tu experiencia. Si tienes cualquier problema, escríbenos a contacto@fitai.cl y te ayudamos a resolverlo. Queremos que logres tus objetivos.</div></div>
+      <div class="faq-item"><button class="faq-q" onclick="this.parentElement.classList.toggle('open')">¿Qué pasa si no estoy satisfecho?<span class="faq-icon">+</span></button><div class="faq-a">Nos importa tu experiencia. Si tienes cualquier problema, escríbenos a <a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="eb8884859f8a889f84ab8d829f8a82c58887">[email&#160;protected]</a> y te ayudamos a resolverlo. Queremos que logres tus objetivos.</div></div>
       <div class="faq-item"><button class="faq-q" onclick="this.parentElement.classList.toggle('open')">¿Cuántas consultas al coach IA tengo por día?<span class="faq-icon">+</span></button><div class="faq-a">El plan incluye 8 consultas de IA por día para los planes de entrenamiento, nutrición y análisis personalizados. Es más que suficiente para transformar tu cuerpo con resultados reales.</div></div>
     </div>
   </div>
@@ -551,21 +551,21 @@ footer{background:var(--black);border-top:1px solid var(--border);padding:32px 2
 <!-- FINAL CTA -->
 <section class="final-cta">
   <div class="container">
-    <div class="final-big reveal">$9.990</div>
+    <div class="final-big reveal" id="lp-final-price">$9.990</div>
     <h2 class="final-title reveal">¿Qué esperas?<br>Tu cuerpo no.</h2>
     <p class="final-sub reveal">Empieza hoy. Resultados en semanas. Un pago único para siempre.</p>
-    <button class="btn-main reveal" onclick="location.href='app.html'">⚡ Comenzar ahora por $9.990 CLP (USD 10)</button>
+    <button class="btn-main reveal" onclick="location.href='app.html'" id="lp-final-cta">⚡ Comenzar ahora por $9.990 CLP (USD 10)</button>
     <p style="margin-top:16px;font-size:12px;color:var(--muted)" class="reveal">🔒 Sin renovaciones · Acceso de por vida</p>
   </div>
 </section>
 
 <footer>
   <div class="f-logo">⚡ FitAI Pro</div>
-  <div class="f-links"><a href="#">Privacidad</a><a href="#">Términos</a><a href="mailto:contacto@fitai.cl">Contacto</a></div>
+  <div class="f-links"><a href="#">Privacidad</a><a href="#">Términos</a><a href="/cdn-cgi/l/email-protection#27444849534644534867414e53464e09444b">Contacto</a></div>
   <div class="f-copy">© 2026 FitAI Pro · Todos los derechos reservados · Hecho con ❤️ en Chile</div>
 </footer>
 
-<script>
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
 // REVEAL - with fallback for mobile
 if ('IntersectionObserver' in window) {
   const obs = new IntersectionObserver(entries => {
@@ -605,11 +605,37 @@ setTimeout(()=>{showN();setInterval(showN,6000);},3000);
 // LIVE TEXT
 const liveT=['3 personas compraron en la última hora','127 usuarios entrenaron hoy','2 personas compraron en los últimos 30 min','+1.200 usuarios activos ahora'];
 let li=0;
-setInterval(()=>{li=(li+1)%liveT.length;const el=document.getElementById('live-txt');if(el)el.textContent=liveT[li];},5000);
+setInterval(()=>{li=(li+1)%liveT.length;const el=document.getElementById('live-tx
+<!-- ── Precio dinámico desde Netlify env var ────────────────────────────── -->
+<script>
+(async function cargarPrecio() {
+  try {
+    const res = await fetch('/.netlify/functions/get-config');
+    if (!res.ok) return;
+    const cfg = await res.json();
+    const p   = cfg.price_display;
+    const clp = cfg.price_clp;
+    const usd = Math.round(clp / 950);
+    const pClp = p + ' CLP (USD ' + usd + ')';
 
-// COUNTER
-let cnt=1247;
-setInterval(()=>{if(Math.random()>0.6){cnt+=Math.floor(Math.random()*3)+1;const el=document.getElementById('uc');if(el)el.textContent=cnt.toLocaleString('es-CL');}},8000);
+    const updates = {
+      'lp-nav-cta':        'Empezar ' + p + ' →',
+      'lp-price-main':     p,
+      'lp-hero-cta':       '⚡ Empezar ahora por ' + pClp,
+      'lp-table-price':    p + ' único',
+      'lp-pricing-amount': p,
+      'lp-pricing-cta':    '⚡ Empezar por ' + pClp + ' →',
+      'lp-final-price':    p,
+      'lp-final-cta':      '⚡ Comenzar ahora por ' + pClp,
+    };
+
+    Object.entries(updates).forEach(function(entry) {
+      var el = document.getElementById(entry[0]);
+      if (el) el.textContent = entry[1];
+    });
+  } catch(e) {
+    console.warn('get-config no disponible, usando precio por defecto.');
+  }
+})();
 </script>
-</body>
-</html>
+<!-- ──────────────────────────────────────────────────────────────────────── -->
