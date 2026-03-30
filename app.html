@@ -125,6 +125,11 @@ textarea { resize: none; height: 72px; }
 .plan-section-title { font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 700; color: var(--purple); margin: 18px 0 8px; padding: 8px 0; border-bottom: 1px solid #a78bfa18; }
 .plan-section-title.nut { color: var(--green); border-bottom-color: #34d39918; }
 .plan-text-line { font-size: 13.5px; color: #c0c4d8; line-height: 1.7; margin: 4px 0; }
+.day-block { border-radius: 18px; overflow: hidden; margin-bottom: 16px; border: 1px solid transparent; }
+.day-header { display: flex; align-items: center; gap: 12px; padding: 14px 18px; }
+.day-pill { font-family: 'Syne', sans-serif; font-size: 10px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; border-radius: 100px; padding: 3px 12px; }
+.day-title { font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 800; flex: 1; }
+.day-exercises { padding: 0 12px 12px; display: flex; flex-direction: column; gap: 6px; }
 .meal-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; margin-bottom: 14px; overflow: hidden; }
 .meal-card-header { display: flex; align-items: center; gap: 10px; padding: 14px 16px; cursor: pointer; transition: background 0.15s; }
 .meal-card-header:active { background: var(--surface2); }
@@ -1032,64 +1037,97 @@ const EXERCISE_IMAGES={press_pecho:{muscle:"Pecho",color:"#f87171",imgs:["Dumbbe
 const IMG_BASE='https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/';
 const EXERCISE_MATCH=[{key:"press_pecho",kw:["press pecho","press banca","bench press","press mancuerna","press plano","press inclinado","chest press"]},{key:"flexiones",kw:["flexion","push-up","push up","pushup","lagartija"]},{key:"press_hombros",kw:["hombro","press militar","shoulder press","overhead press","arnold press"]},{key:"fondos_dips",kw:["fondo","dip","fondos en banco","fondos en paralelas"]},{key:"extension_triceps",kw:["extension tricep","extensión trícep","tricep","patada de tricep","kickback","press francés"]},{key:"elevaciones_laterales",kw:["elevacion lateral","elevación lateral","lateral raise","vuelos laterales"]},{key:"aperturas",kw:["apertura","fly","pec fly","cruces"]},{key:"remo",kw:["remo","remo con barra","remo mancuerna","cable row"]},{key:"remo_invertido",kw:["remo invertido","inverted row"]},{key:"dominadas",kw:["dominada","pull-up","pull up","pullup","chin-up"]},{key:"jalon",kw:["jalón","jalon","lat pulldown","pulldown"]},{key:"curl_biceps",kw:["curl bicep","curl bícep","curl martillo","hammer curl","curl concentrado","curl barra","curl mancuerna"]},{key:"face_pull",kw:["face pull","tirón facial"]},{key:"abdominales",kw:["abdominal","crunch","sit-up","leg raise","elevación de pierna"]},{key:"cable_crunch",kw:["cable crunch"]},{key:"plancha",kw:["plancha","plank","tabla"]},{key:"dead_bugs",kw:["dead bug","bicho muerto"]},{key:"russian_twist",kw:["russian twist","giro ruso"]},{key:"mountain_climbers",kw:["mountain climber","escalador"]},{key:"bulgarian",kw:["búlgara","bulgara","bulgarian"]},{key:"sentadillas",kw:["sentadilla","squat","goblet squat","front squat","back squat"]},{key:"peso_muerto_rumano",kw:["peso muerto rumano","romanian deadlift","rdl"]},{key:"peso_muerto",kw:["peso muerto","deadlift","sumo deadlift"]},{key:"good_morning",kw:["good morning","buenos días"]},{key:"estocadas",kw:["estocada","lunge","zancada","desplante"]},{key:"hip_thrust",kw:["hip thrust","puente de glúteo","glute bridge","elevación de cadera"]},{key:"pantorrillas",kw:["pantorrilla","gemelo","calf raise","elevación de talón"]},{key:"prensa_piernas",kw:["prensa","leg press"]},{key:"extension_cuadriceps",kw:["extensión de cuádricep","extension de cuadricep","leg extension"]},{key:"curl_femoral",kw:["curl femoral","leg curl","femoral","isquiotibial"]},{key:"encogimientos",kw:["encogimiento de hombro","shrug","trapecio"]},{key:"saltar_cuerda",kw:["saltar cuerda","cuerda","jump rope"]},{key:"cardio_correr",kw:["cardio","correr","trotar","running","caminata","bicicleta","spinning","hiit","interval"]},{key:"burpees",kw:["burpee"]},{key:"jumping_jacks",kw:["jumping jack","salto de tijera"]}];
 function matchExerciseKey(text){const lower=text.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");let best=null,bestLen=0;for(const e of EXERCISE_MATCH){for(const k of e.kw){const n=k.normalize("NFD").replace(/[\u0300-\u036f]/g,"");if(lower.includes(n)&&k.length>bestLen){best=e.key;bestLen=k.length;}}}return best;}
-function buildExerciseCard(name,detail,exKey){const data=EXERCISE_IMAGES[exKey];if(!data)return'';const c=data.color;const hasImgs=data.imgs&&data.imgs.length>0;const imgData=hasImgs?`data-imgs="${data.imgs.join(',')}" data-exname="${name}" data-muscle="${data.muscle}" data-color="${c}"`:'';return`<div class="ex-card" ${imgData} ${hasImgs?'onclick="openExerciseModal(this)"':''}><div class="ex-card-accent" style="background:linear-gradient(180deg,${c},${c}40)"></div><div class="ex-card-info"><div class="ex-card-name">${name}</div>${detail?`<div class="ex-card-detail">${detail}</div>`:''}<div class="ex-card-badge" style="color:${c};background:${c}14;border:1px solid ${c}18"><span style="width:5px;height:5px;border-radius:50%;background:${c};display:inline-block"></span> ${data.muscle}</div></div>${hasImgs?`<div class="ex-card-tap" style="color:${c}80">›</div>`:''}</div>`;}
+function buildExerciseCard(name,detail,exKey){
+  const data=exKey?EXERCISE_IMAGES[exKey]:null;
+  const c=data?data.color:'#8b8fa8';
+  const muscle=data?data.muscle:'Ejercicio';
+  const hasImgs=data&&data.imgs&&data.imgs.length>0;
+  const imgData=hasImgs?`data-imgs="${data.imgs.join(',')}" data-exname="${name}" data-muscle="${muscle}" data-color="${c}"`:'';
+  const tapIcon=hasImgs?`<div class="ex-card-tap" style="color:${c}80">›</div>`:`<div class="ex-card-tap" style="color:#2a2a40;font-size:11px">📷</div>`;
+  return`<div class="ex-card" ${imgData} ${hasImgs?'onclick="openExerciseModal(this)"':'style="cursor:default"'}><div class="ex-card-accent" style="background:linear-gradient(180deg,${c},${c}40)"></div><div class="ex-card-info"><div class="ex-card-name">${name}</div>${detail?`<div class="ex-card-detail">${detail}</div>`:''}<div class="ex-card-badge" style="color:${c};background:${c}14;border:1px solid ${c}18"><span style="width:5px;height:5px;border-radius:50%;background:${c};display:inline-block"></span> ${muscle}</div></div>${tapIcon}</div>`;
+}
 function openExerciseModal(el){const imgs=el.dataset.imgs.split(',');const name=el.dataset.exname;const muscle=el.dataset.muscle;const color=el.dataset.color;const existing=document.querySelector('.ex-modal-overlay');if(existing)existing.remove();const overlay=document.createElement('div');overlay.className='ex-modal-overlay';overlay.innerHTML=`<div class="ex-modal"><div class="ex-modal-close"><button onclick="closeExerciseModal()">✕</button></div><div class="ex-modal-header"><div class="ex-modal-title" style="color:${color}">${name}</div><div class="ex-modal-muscle" style="color:${color}cc">${muscle}</div></div><div class="ex-modal-images">${imgs.map((img,i)=>`<div style="flex:1;text-align:center"><img src="${IMG_BASE}${img}/0.jpg" alt="${name}" loading="lazy" onerror="this.src='${IMG_BASE}${img}/1.jpg'" style="width:100%;border-radius:12px;background:#1a1735;min-height:140px;object-fit:cover;border:1px solid ${color}20"/><div class="ex-modal-label">${imgs.length>1?(i===0?'Variante 1':'Variante 2'):'Ejercicio'}</div></div>`).join('')}</div><div style="padding:0 16px 8px;display:flex;gap:6px">${imgs.map(img=>`<div style="flex:1;text-align:center"><img src="${IMG_BASE}${img}/1.jpg" alt="Final" loading="lazy" onerror="this.parentElement.style.display='none'" style="width:100%;border-radius:12px;background:#1a1735;min-height:140px;object-fit:cover;border:1px solid ${color}10"/><div class="ex-modal-label" style="opacity:0.6">Posición final</div></div>`).join('')}</div><div style="padding:12px 20px 20px;text-align:center"><button class="btn btn-ghost btn-sm" onclick="closeExerciseModal()" style="width:100%">Cerrar</button></div></div>`;overlay.onclick=(e)=>{if(e.target===overlay)closeExerciseModal();};document.body.appendChild(overlay);requestAnimationFrame(()=>overlay.classList.add('open'));}
 function closeExerciseModal(){const overlay=document.querySelector('.ex-modal-overlay');if(overlay){overlay.classList.remove('open');setTimeout(()=>overlay.remove(),250);}}
+
+// ── Colores por día de la semana ──────────────────────────────────
+const DAY_COLORS=[
+  {bg:'#16082e',border:'#a78bfa50',pill:'#a78bfa',icon:'💪'},  // 1 Lunes     – púrpura
+  {bg:'#08182e',border:'#60a5fa50',pill:'#60a5fa',icon:'🔥'},  // 2 Martes    – azul
+  {bg:'#08221a',border:'#34d39950',pill:'#34d399',icon:'⚡'},  // 3 Miércoles – verde
+  {bg:'#221808',border:'#fbbf2450',pill:'#fbbf24',icon:'🏋️'}, // 4 Jueves    – ámbar
+  {bg:'#220818',border:'#f472b650',pill:'#f472b6',icon:'💥'},  // 5 Viernes   – rosa
+  {bg:'#082222',border:'#2dd4bf50',pill:'#2dd4bf',icon:'🚶'}, // 6 Sábado    – teal
+  {bg:'#141420',border:'#8b8fa850',pill:'#8b8fa8',icon:'😴'}, // 7 Domingo   – gris
+];
+const DAY_KW=['lunes','martes','miercoles','jueves','viernes','sabado','domingo'];
+function getDayIdx(text){const l=text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');for(let i=0;i<DAY_KW.length;i++)if(l.includes(DAY_KW[i]))return i;return -1;}
+function isDayLine(t){return /^#{1,3}\s/.test(t)||/^\*\*d[ií]a/i.test(t)||/^d[ií]a\s/i.test(t)||/^\*\*lunes/i.test(t)||/^\*\*martes/i.test(t)||/^\*\*mi[eé]/i.test(t)||/^\*\*jueves/i.test(t)||/^\*\*viernes/i.test(t)||/^\*\*s[aá]b/i.test(t)||/^\*\*domingo/i.test(t);}
+
+function parseExLines(lines){
+  let html='';
+  for(const line of lines){
+    const t=line.trim();if(!t)continue;
+    if(t.startsWith('|')){
+      if(/^\|[-:\s|]+\|$/.test(t))continue;
+      const cells=t.split('|').map(c=>c.trim()).filter(Boolean);
+      if(!cells.length)continue;
+      const n=cells[0].replace(/\*\*/g,'').trim();
+      if(/^(ejercicio|nombre)$/i.test(n))continue;
+      const d=cells.slice(1).join(' · ').replace(/\*\*/g,'').trim();
+      html+=buildExerciseCard(n,d,matchExerciseKey(n));continue;
+    }
+    const m=t.match(/^[-–•*]\s*(.+)|^(\d+)[.)]\s*(.+)/);
+    if(m){
+      const raw=(m[1]||m[3]||'').replace(/\*\*/g,'').trim();
+      let name=raw,detail='';
+      const pi=raw.indexOf('('),di=raw.indexOf(' - '),ci=raw.indexOf(':');
+      if(pi>3){name=raw.slice(0,pi).trim();detail=raw.slice(pi).trim();}
+      else if(di>3){name=raw.slice(0,di).trim();detail=raw.slice(di+3).trim();}
+      else if(ci>3){name=raw.slice(0,ci).trim();detail=raw.slice(ci+1).trim();}
+      html+=buildExerciseCard(name,detail,matchExerciseKey(name));continue;
+    }
+    const f=t.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
+    html+=`<div class="plan-text-line" style="padding:4px 6px;color:#8b8fa8;font-size:12px">${f}</div>`;
+  }
+  return html;
+}
+
 function formatPlanWithImages(planText){
   if(!planText)return'';
   const lines=planText.split('\n');
-  let html='';
+  const blocks=[];let cur=null;
   for(const line of lines){
-    const trimmed=line.trim();
-    if(!trimmed){html+='<div style="height:6px"></div>';continue;}
-
-    // ── Encabezados de día / sección ────────────────────────────────
-    if(/^#{1,3}\s/.test(trimmed)||/^\*\*DÍA/i.test(trimmed)||/^DÍA\s/i.test(trimmed)||/^\*\*Día/i.test(trimmed)){
-      const clean=trimmed.replace(/^#+\s*/,'').replace(/\*\*/g,'').trim();
-      html+=`<div class="plan-section-title">${clean}</div>`;continue;
+    const t=line.trim();if(!t)continue;
+    if(isDayLine(t)){
+      if(cur)blocks.push(cur);
+      cur={header:t.replace(/^#+\s*/,'').replace(/\*\*/g,'').trim(),lines:[]};
+    } else if(cur){
+      cur.lines.push(line);
+    } else {
+      if(!blocks.length||blocks[blocks.length-1].header!==null)blocks.push({header:null,lines:[]});
+      blocks[blocks.length-1].lines.push(line);
     }
+  }
+  if(cur)blocks.push(cur);
 
-    // ── Filas de tabla markdown: | Ejercicio | Series | Reps | ... ──
-    if(trimmed.startsWith('|')){
-      // Ignorar separadores de tabla (|---|---|)
-      if(/^\|[-:\s|]+\|$/.test(trimmed))continue;
-      const cells=trimmed.split('|').map(c=>c.trim()).filter(c=>c!=='');
-      if(!cells.length)continue;
-      // Primera celda es el nombre del ejercicio; el resto son detalles
-      const exName=cells[0].replace(/\*\*/g,'').trim();
-      // Si es encabezado de tabla (Ejercicio, Series, etc.) lo saltamos
-      if(/^ejercicio$/i.test(exName)||/^nombre$/i.test(exName))continue;
-      const detail=cells.slice(1).join(' · ').replace(/\*\*/g,'').trim();
-      const exKey=matchExerciseKey(exName);
-      if(exKey){
-        html+=buildExerciseCard(exName,detail,exKey);
-      } else {
-        // Sin imagen pero igual lo mostramos como línea
-        html+=`<div class="plan-text-line" style="padding-left:8px">• <strong>${exName}</strong>${detail?' — '+detail:''}</div>`;
-      }
+  let html='';let dayN=0;
+  for(const b of blocks){
+    if(b.header===null){
+      for(const l of b.lines){const f=l.trim().replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/^#+\s*/,'');if(f)html+=`<div class="plan-text-line">${f}</div>`;}
       continue;
     }
-
-    // ── Listas con guión, bullet, número ───────────────────────────
-    const exMatch=trimmed.match(/^[-–•*]\s*(.+)|^(\d+)[.)]\s*(.+)/);
-    if(exMatch){
-      const exText=(exMatch[1]||exMatch[3]||'').replace(/\*\*/g,'').trim();
-      const exKey=matchExerciseKey(exText);
-      if(exKey){
-        let name=exText,detail='';
-        const parenIdx=exText.indexOf('(');
-        const dashIdx=exText.indexOf(' - ');
-        const colonIdx=exText.indexOf(':');
-        if(parenIdx>3){name=exText.slice(0,parenIdx).trim();detail=exText.slice(parenIdx).trim();}
-        else if(dashIdx>3){name=exText.slice(0,dashIdx).trim();detail=exText.slice(dashIdx+3).trim();}
-        else if(colonIdx>3){name=exText.slice(0,colonIdx).trim();detail=exText.slice(colonIdx+1).trim();}
-        html+=buildExerciseCard(name,detail,exKey);continue;
-      }
-    }
-
-    // ── Texto plano ─────────────────────────────────────────────────
-    const formatted=trimmed.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/^#+\s*/,'');
-    html+=`<div class="plan-text-line">${formatted}</div>`;
+    const idx=getDayIdx(b.header);
+    const col=DAY_COLORS[idx>=0?idx:dayN%7];
+    dayN++;
+    const exHtml=parseExLines(b.lines)||`<div class="plan-text-line" style="padding:8px 6px;color:#8b8fa8;font-size:13px">Descanso activo o libre 🧘</div>`;
+    html+=`<div class="day-block" style="background:${col.bg};border-color:${col.border}">
+      <div class="day-header" style="border-bottom:1px solid ${col.border};margin-bottom:8px">
+        <span style="font-size:22px">${col.icon}</span>
+        <div class="day-title" style="color:${col.pill}">${b.header}</div>
+        <span class="day-pill" style="background:${col.pill}20;color:${col.pill};border:1px solid ${col.pill}40">DÍA ${dayN}</span>
+      </div>
+      <div class="day-exercises">${exHtml}</div>
+    </div>`;
   }
   return html;
 }
