@@ -556,10 +556,13 @@ function renderCupones() {
         const isPct=(c.discount_type||'percent')==='percent';
         const discPerUse=calcCouponDiscount(c,PRECIO);
         const commission=Number(c.commission_amount||0);
-        const uses=DB.couponUses.filter(u=>u.coupon_code===c.code);
+        // Aplicar filtro de período a los usos
+        const allCpUses=DB.couponUses.filter(u=>u.coupon_code===c.code);
+        const uses=filterKey
+          ? allCpUses.filter(u=>(u.created_at||'').startsWith(filterKey))
+          : allCpUses;
         const pagaronArr=uses.filter(u=>paid.has(u.user_id)||paid.has(u.user_email));
         const totalDesc=uses.length*discPerUse;
-        // Recaudado real en MP: suma de final_price de los usos pagados (o discount_amount)
         const recaudadoReal=pagaronArr.reduce((acc,u)=>acc+Number(u.final_price||0),0);
         const gananciaInfluencer=pagaronArr.length*commission;
         return {c, isPct, discPerUse, commission, uses, pagaron:pagaronArr.length, totalDesc, recaudadoReal, gananciaInfluencer};
