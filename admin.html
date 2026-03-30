@@ -285,6 +285,29 @@ function paidSet(){ return new Set(DB.payments.filter(p=>(p.status||'').toLowerC
     <button onclick="exportarResumenCupones()" style="background:#00e67618;border:1px solid #00e67630;color:var(--g);border-radius:9px;padding:9px 14px;font-size:.8rem;font-weight:700;cursor:pointer;font-family:DM Sans,sans-serif;white-space:nowrap">📥 Excel resumen</button>
   </div>
 
+    <!-- Filtro período integrado en la tabla resumen -->
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap">
+      <select id="cp-filter-mes2" onchange="syncFilters()" style="background:#0d0d1e;border:1px solid var(--border);border-radius:9px;padding:7px 10px;color:var(--text);font-family:DM Sans,sans-serif;font-size:.78rem;outline:none;flex:1">
+        <option value="">— Todos los meses —</option>
+        <option value="01">Enero</option><option value="02">Febrero</option>
+        <option value="03">Marzo</option><option value="04">Abril</option>
+        <option value="05">Mayo</option><option value="06">Junio</option>
+        <option value="07">Julio</option><option value="08">Agosto</option>
+        <option value="09">Septiembre</option><option value="10">Octubre</option>
+        <option value="11">Noviembre</option><option value="12">Diciembre</option>
+      </select>
+      <select id="cp-filter-anio2" onchange="syncFilters()" style="background:#0d0d1e;border:1px solid var(--border);border-radius:9px;padding:7px 10px;color:var(--text);font-family:DM Sans,sans-serif;font-size:.78rem;outline:none;flex:1">
+        <option value="">— Todos los años —</option>
+        <option value="2025">2025</option>
+        <option value="2026" selected>2026</option>
+        <option value="2027">2027</option>
+      </select>
+      <button onclick="syncFilters()" style="background:var(--p);border:none;color:#fff;border-radius:9px;padding:7px 14px;font-size:.78rem;font-weight:700;cursor:pointer;font-family:DM Sans,sans-serif;white-space:nowrap">Ver</button>
+      <button onclick="clearPeriodFilter()" style="background:var(--border);border:none;color:var(--muted);border-radius:9px;padding:7px 10px;font-size:.78rem;cursor:pointer">✕</button>
+      <button onclick="exportarResumenCupones()" style="background:#00e67618;border:1px solid #00e67630;color:var(--g);border-radius:9px;padding:7px 14px;font-size:.78rem;font-weight:700;cursor:pointer;font-family:DM Sans,sans-serif;white-space:nowrap">📥 Excel</button>
+    </div>
+    <div id="cp-periodo-label" style="display:none;background:#a78bfa15;border:1px solid #a78bfa30;border-radius:8px;padding:6px 12px;margin-bottom:8px;font-size:.75rem;color:var(--p);font-weight:600"></div>
+
     <!-- Tabla resumen seleccionable -->
     <div id="cp-summary-table" style="background:#0d0d1e;border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:12px;overflow-x:auto">
       <div style="display:grid;grid-template-columns:1.6fr 0.9fr 0.7fr 0.7fr 1fr 1fr 1fr 0.7fr;gap:4px;padding:8px 12px;font-size:.62rem;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid var(--border);min-width:700px">
@@ -301,8 +324,8 @@ function paidSet(){ return new Set(DB.payments.filter(p=>(p.status||'').toLowerC
     </div>
   </div>
 
-  <!-- Filtro mes/año cupones -->
-  <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center;flex-wrap:wrap">
+  <!-- Filtro mes/año cupones (oculto - controlado desde tabla resumen) -->
+  <div style="display:none">
     <select id="cp-filter-mes" style="background:#0d0d1e;border:1px solid var(--border);border-radius:9px;padding:8px 12px;color:var(--text);font-family:DM Sans,sans-serif;font-size:.8rem;outline:none;flex:1">
       <option value="">— Todos los meses —</option>
       <option value="01">Enero</option><option value="02">Febrero</option>
@@ -320,6 +343,7 @@ function paidSet(){ return new Set(DB.payments.filter(p=>(p.status||'').toLowerC
     </select>
     <button onclick="renderCupones()" style="background:var(--p);border:none;color:#fff;border-radius:9px;padding:8px 14px;font-size:.8rem;font-weight:700;cursor:pointer;font-family:DM Sans,sans-serif">Ver</button>
     <button onclick="document.getElementById('cp-filter-mes').value='';document.getElementById('cp-filter-anio').value='';renderCupones();" style="background:var(--border);border:none;color:var(--muted);border-radius:9px;padding:8px 10px;font-size:.8rem;cursor:pointer">✕</button>
+  </div>
   </div>
 
   <div id="list-cupones"><div class="spin-wrap"><div class="spinner"></div></div></div>
@@ -779,6 +803,39 @@ function exportarPagosMes(mesKey) {
   a.download='FitAI_Pagos_'+mesNom+'.csv';
   a.click();
   URL.revokeObjectURL(url);
+}
+
+// ── Sincronizar filtros entre tabla resumen y cards
+function syncFilters() {
+  const mes  = document.getElementById('cp-filter-mes2')?.value  || '';
+  const anio = document.getElementById('cp-filter-anio2')?.value || '';
+  // Sync to the cards filter selectors
+  const mesEl  = document.getElementById('cp-filter-mes');
+  const anioEl = document.getElementById('cp-filter-anio');
+  if (mesEl)  mesEl.value  = mes;
+  if (anioEl) anioEl.value = anio;
+  // Update label
+  const monNames = {'01':'Enero','02':'Febrero','03':'Marzo','04':'Abril','05':'Mayo','06':'Junio','07':'Julio','08':'Agosto','09':'Septiembre','10':'Octubre','11':'Noviembre','12':'Diciembre'};
+  const label = document.getElementById('cp-periodo-label');
+  if (label) {
+    if (mes || anio) {
+      label.style.display = 'block';
+      label.textContent = '📅 Mostrando: ' + (mes ? monNames[mes]+' ' : '') + (anio || '') + ((!mes && !anio) ? 'Todos los períodos' : '');
+    } else {
+      label.style.display = 'none';
+    }
+  }
+  renderCupones();
+}
+
+function clearPeriodFilter() {
+  ['cp-filter-mes','cp-filter-anio','cp-filter-mes2','cp-filter-anio2'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  const label = document.getElementById('cp-periodo-label');
+  if (label) label.style.display = 'none';
+  renderCupones();
 }
 
 // ── Exportar resumen general de cupones a Excel
