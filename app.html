@@ -191,12 +191,10 @@ async function initConfig() {
     const res = await fetch('/.netlify/functions/get-config');
     if (!res.ok) return;
     const cfg = await res.json();
-    if (cfg.price_clp)   CONFIG.AMOUNT        = cfg.price_clp;
-    if (cfg.price_display) CONFIG.PRICE_DISPLAY = cfg.price_display;
-    // Sincronizar STATE en caso de que ya esté inicializado
+    if (cfg.price_clp)     CONFIG.AMOUNT        = cfg.price_clp;
+    if (cfg.price_display) CONFIG.PRICE_DISPLAY  = cfg.price_display;
     if (!STATE.couponApplied) STATE.couponFinalAmount = CONFIG.AMOUNT;
   } catch(e) {
-    // Si falla, queda el valor por defecto hardcodeado
     console.warn('get-config no disponible, usando precio por defecto:', CONFIG.AMOUNT);
   }
 }
@@ -260,6 +258,20 @@ async function dbSavePlanNutrition(email, plan, nutrition) {
 
 const STORAGE_KEY = 'fitai_v3';
 let mp = null;
+
+// ── Cache de perfil por email (persiste aunque el usuario cierre sesión) ──
+function saveProfileCache(email, profile) {
+  try {
+    localStorage.setItem('fitai_profile_' + btoa(email), JSON.stringify(profile));
+  } catch(e) {}
+}
+function loadProfileCache(email) {
+  try {
+    const d = localStorage.getItem('fitai_profile_' + btoa(email));
+    return d ? JSON.parse(d) : null;
+  } catch(e) { return null; }
+}
+// ─────────────────────────────────────────────────────────────────────────
 
 let STATE = {
   lang: 'es',
@@ -466,20 +478,33 @@ async function loadProfileFromSupabase(email) {
   initSupabase(); if (!supa) return;
   try {
     const { data:u } = await supa.from('users').select('*').eq('email', email).single();
-    if (u && u.setup_done && u.goal) {
-      STATE.profile = {
-        name:u.name, goal:u.goal, age:u.age, gender:u.gender,
-        weight:u.weight_initial||u.weight, height:u.height,
-        targetWeight:u.target_weight, weeksGoal:u.weeks_goal,
-        activityLevel:u.activity_level, trainingPlace:u.training_place,
-        bodyFat:u.body_fat, setup:true
-      };
+    if (u) {
+      // Restaurar perfil si tiene datos suficientes (setup_done O campos clave presentes)
+      const tieneSetup = u.setup_done || u.setup_completed || (u.goal && u.height && u.weight);
+      if (tieneSetup) {
+        const perfil = {
+          name: u.name || u.full_name || STATE.user?.name || '',
+          goal: u.goal,
+          age: u.age,
+          gender: u.gender,
+          weight: u.weight_initial || u.weight,   // siempre el peso inicial del setup
+          height: u.height,
+          targetWeight: u.target_weight,
+          weeksGoal: u.weeks_goal,
+          activityLevel: u.activity_level,
+          trainingPlace: u.training_place,
+          bodyFat: u.body_fat,
+          setup: true
+        };
+        STATE.profile = perfil;
+        saveProfileCache(email, perfil);  // guardar cache por email
+      }
+      if (u.paid) STATE.user.paid = true;
+      if (u.id && STATE.user) STATE.user.id = u.id;
+      if (u.current_plan)       STATE.plan            = u.current_plan;
+      if (u.current_nutrition)  STATE.nutrition       = u.current_nutrition;
+      if (u.plan_generated_at)  STATE.planGeneratedAt = u.plan_generated_at;
     }
-    if (u && u.paid) STATE.user.paid = true;
-    if (u && u.id && STATE.user) STATE.user.id = u.id;
-    if (u && u.current_plan)        STATE.plan           = u.current_plan;
-    if (u && u.current_nutrition)   STATE.nutrition      = u.current_nutrition;
-    if (u && u.plan_generated_at)   STATE.planGeneratedAt= u.plan_generated_at;
     const { data:logs } = await supa.from('daily_logs').select('*').eq('user_email', email).order('date', {ascending:false}).limit(90);
     if (logs && logs.length > 0) {
       STATE.dailyLogs = logs.map(l => ({
@@ -709,8 +734,12 @@ function renderAuth() {
     try {
       if (STATE.authMode==='register'){if(!name)throw new Error('Ingresa tu nombre.');STATE.user=await authRegister(email,pass,name,phone);}
       else STATE.user=await authLogin(email,pass);
+      // ── Restaurar perfil desde cache local (instantáneo, sin esperar Supabase) ──
+      const cached = loadProfileCache(email);
+      if (cached) STATE.profile = cached;
+      // ─────────────────────────────────────────────────────────────────────────
       save();
-      await loadProfileFromSupabase(STATE.user.email);
+      await loadProfileFromSupabase(STATE.user.email);  // luego sincroniza con Supabase
       STATE.screen=!STATE.profile?'setup':!STATE.user.paid?'paywall':'app';
     } catch(e){ STATE.authError=e.message; }
     STATE.authLoading=false; render();
@@ -899,8 +928,9 @@ function renderSetup() {
     else {
       const p=STATE.setupData;
       STATE.profile={...p,setup:true};
+      saveProfileCache(STATE.user?.email, STATE.profile);  // cache por email
       dbMarkSetupDone(STATE.user?.email,p.goal);
-      if(supa){await supa.from('users').update({goal:p.goal,age:parseInt(p.age),gender:p.gender,weight_initial:parseFloat(p.weight),weight:parseFloat(p.weight),height:parseFloat(p.height),target_weight:parseFloat(p.targetWeight),weeks_goal:parseInt(p.weeksGoal),activity_level:p.activityLevel,training_place:p.trainingPlace,body_fat:parseFloat(p.bodyFat)||null,setup_done:true,last_active:new Date().toISOString()}).eq('email',STATE.user?.email);}
+      if(supa){await supa.from('users').update({goal:p.goal,age:parseInt(p.age),gender:p.gender,weight_initial:parseFloat(p.weight),weight:parseFloat(p.weight),height:parseFloat(p.height),target_weight:parseFloat(p.targetWeight),weeks_goal:parseInt(p.weeksGoal),activity_level:p.activityLevel,training_place:p.trainingPlace,body_fat:parseFloat(p.bodyFat)||null,setup_done:true,setup_completed:true,last_active:new Date().toISOString()}).eq('email',STATE.user?.email);}
       save();
       if(!STATE.user.paid){STATE.screen='paywall';render();return;}
       STATE.aiLoading=true;render();
