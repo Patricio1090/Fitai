@@ -1,21 +1,17 @@
 // netlify/functions/validate-coupon.js
 // Validar un cupón desde el app (usa clave anon — solo lectura de cupones activos)
-
 const SUPABASE_URL = "https://wnuehkewxbpahfbemliz.supabase.co";
 const SUPABASE_KEY = "sb_publishable_rfsNbbcySsAlxgH657MSKQ_niGvstWy";
-
 const headers = {
   "Content-Type": "application/json",
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "Content-Type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
-
 exports.handler = async (event) => {
   if (event.httpMethod === "OPTIONS") {
     return { statusCode: 200, headers, body: "" };
   }
-
   if (event.httpMethod !== "POST") {
     return {
       statusCode: 405,
@@ -23,10 +19,8 @@ exports.handler = async (event) => {
       body: JSON.stringify({ error: "Método no permitido" }),
     };
   }
-
   try {
     const { code } = JSON.parse(event.body || "{}");
-
     if (!code || code.trim() === "") {
       return {
         statusCode: 400,
@@ -34,9 +28,7 @@ exports.handler = async (event) => {
         body: JSON.stringify({ valid: false, error: "Código vacío" }),
       };
     }
-
     const upperCode = code.trim().toUpperCase();
-
     // Buscar cupón activo en Supabase (RLS permite lectura pública de activos)
     const res = await fetch(
       `${SUPABASE_URL}/rest/v1/coupons?code=eq.${encodeURIComponent(upperCode)}&active=eq.true&select=code,influencer_name,discount_pct,discount_type`,
@@ -47,9 +39,7 @@ exports.handler = async (event) => {
         },
       }
     );
-
     const data = await res.json();
-
     if (!res.ok || !data || data.length === 0) {
       return {
         statusCode: 200,
@@ -57,13 +47,14 @@ exports.handler = async (event) => {
         body: JSON.stringify({ valid: false, error: "Cupón no válido o expirado" }),
       };
     }
-
     const coupon = data[0];
-    const basePrice = 9990; // CLP
+
+    // ── Precio base configurable desde variable de entorno ──────────────────
+    const basePrice = parseInt(process.env.PRICE_CLP || "9990", 10);
+    // ────────────────────────────────────────────────────────────────────────
 
     let discountAmount = 0;
     let finalPrice = basePrice;
-
     if (coupon.discount_type === "percent") {
       discountAmount = Math.round(basePrice * (coupon.discount_pct / 100));
       finalPrice = basePrice - discountAmount;
@@ -72,7 +63,6 @@ exports.handler = async (event) => {
       discountAmount = Math.min(coupon.discount_pct, basePrice);
       finalPrice = basePrice - discountAmount;
     }
-
     return {
       statusCode: 200,
       headers,
