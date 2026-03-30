@@ -403,7 +403,7 @@ async function claude(messages, max=1000) {
   const today = new Date().toLocaleDateString('es-CL');
   const usageKey = 'fitai_usage_' + today;
   const usage = parseInt(localStorage.getItem(usageKey)||'0');
-  if (usage >= 8) return '⚠️ Alcanzaste el límite de 8 consultas de IA por hoy. Vuelve mañana 💪';
+  if (usage >= 30) return '⚠️ Alcanzaste el límite de 30 consultas de IA por hoy. Vuelve mañana 💪';
   localStorage.setItem(usageKey, usage + 1);
   try {
     const res = await fetch('https://api.anthropic.com/v1/messages', {
@@ -1057,11 +1057,17 @@ function renderWorkout(){
   const div=document.createElement('div');
   const tp=STATE.profile?.trainingPlace;
   const place=tp?.includes('Ambos')?'🏋️🏠 Gym + Casa':tp?.includes('casa')?'🏠 En casa':'🏋️ Gimnasio';
-  const weekNum=getWeekNumber();const daysLeft=getDaysUntilNewPlan();const canGenerate=daysLeft===0;
+  const weekNum=getWeekNumber();const daysLeft=getDaysUntilNewPlan();
+  // Puede generar si pasaron 7 días O si no tiene plan aún
+  const sinPlan=!STATE.plan||STATE.plan.trim()===''||STATE.plan.startsWith('⚠️');
+  const canGenerate=daysLeft===0||sinPlan;
+  const planHtml=sinPlan
+    ?`<div style="text-align:center;padding:28px 16px;color:var(--muted)"><div style="font-size:40px;margin-bottom:10px">🏋️</div><div style="font-size:14px">Aún no tienes un plan generado.</div><div style="font-size:12px;margin-top:6px">Toca el botón de abajo para crear tu rutina personalizada.</div></div>`
+    :formatPlanWithImages(STATE.plan);
   div.innerHTML=`<div style="background:linear-gradient(135deg,#a78bfa18,#7c3aed08);border:1px solid #a78bfa28;border-radius:16px;padding:14px 16px;margin-bottom:14px;display:flex;align-items:center;gap:12px"><div style="font-size:28px">🏋️</div><div style="flex:1"><div style="font-family:Syne,sans-serif;font-size:16px;font-weight:700;color:var(--purple)">Semana ${weekNum} de Entrenamiento</div><div style="font-size:12px;color:var(--muted)">${place} · ${STATE.profile?.goal||''}</div></div></div>
-    <div class="card" style="padding:0;overflow:hidden;margin-bottom:14px"><div style="position:relative;height:160px;background:linear-gradient(135deg,#14083a,#1a0a4a);display:flex;align-items:center;justify-content:center;overflow:hidden"><img src="https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=600&h=300&fit=crop" style="width:100%;height:100%;object-fit:cover;opacity:0.4" onerror="this.style.display='none'"/><div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:16px"><div style="font-family:Syne,sans-serif;font-size:20px;font-weight:800;color:#fff;text-shadow:0 2px 8px rgba(0,0,0,0.5)">💪 Tu Rutina Semanal</div><div style="font-size:12px;color:#d1d5db;margin-top:4px">Personalizada con ciencia de Harvard</div></div></div><div style="padding:16px"><div id="plan-formatted">${formatPlanWithImages(STATE.plan||'')}</div></div></div>
+    <div class="card" style="padding:0;overflow:hidden;margin-bottom:14px"><div style="position:relative;height:160px;background:linear-gradient(135deg,#14083a,#1a0a4a);display:flex;align-items:center;justify-content:center;overflow:hidden"><img src="https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=600&h=300&fit=crop" style="width:100%;height:100%;object-fit:cover;opacity:0.4" onerror="this.style.display='none'"/><div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:16px"><div style="font-family:Syne,sans-serif;font-size:20px;font-weight:800;color:#fff;text-shadow:0 2px 8px rgba(0,0,0,0.5)">💪 Tu Rutina Semanal</div><div style="font-size:12px;color:#d1d5db;margin-top:4px">Personalizada con ciencia de Harvard</div></div></div><div style="padding:16px"><div id="plan-formatted">${planHtml}</div></div></div>
     <button class="btn btn-purple" id="btn-newplan" ${!canGenerate&&!STATE.aiLoading?'disabled':''}>
-      ${STATE.aiLoading?'⏳ Generando tu plan…':canGenerate?'🔄 Nueva semana de entrenamiento':`🔒 Nuevo plan en ${daysLeft} día${daysLeft>1?'s':''}`}
+      ${STATE.aiLoading?'⏳ Generando tu plan…':sinPlan?'🚀 Generar mi plan de entrenamiento':canGenerate?'🔄 Nueva semana de entrenamiento':`🔒 Nuevo plan en ${daysLeft} día${daysLeft>1?'s':''}`}
     </button>
     <div class="card" style="margin-top:12px"><div class="card-h">💬 Pregunta al coach de entrenamiento</div><div id="chat-w" style="max-height:400px;overflow-y:auto"></div><div class="chat-row"><input type="text" id="ci-w" placeholder="¿Cómo reemplazo las sentadillas?"/><button id="cs-w">→</button></div></div>`;
   STATE.chat.slice(-4).forEach(m=>{const el=document.createElement('div');el.className='chat-msg '+(m.role==='user'?'chat-user':'chat-ai');el.innerHTML=`<strong>${m.role==='user'?'Tú:':'🤖 '}</strong> ${m.content}`;div.querySelector('#chat-w').appendChild(el);});
