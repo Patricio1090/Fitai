@@ -18,65 +18,87 @@ exports.handler = async (event) => {
   }
 
   try {
-    const body = JSON.parse(event.body || "{}");
-    const userEmail   = body.user_email || body.email || "";
-    const userId      = body.user_id    || body.userId || "";
-    const couponCode  = body.coupon_code || "";
+    const body        = JSON.parse(event.body || "{}");
+    const userEmail   = body.user_email  || body.email  || "";
+    const userId      = body.user_id     || body.userId || "";
+    const couponCode  = (body.coupon_code || "").trim().toUpperCase();
 
-    // ── Precio configurable desde env var ───────────────────────────────────
+    // ── Precio base configurable ─────────────────────────────────────
     const basePrice = parseInt(process.env.PRICE_CLP || "9990", 10);
-    // ────────────────────────────────────────────────────────────────────────
 
-    // Si viene cupón, calcular precio final leyendo Supabase directamente
-    let finalPrice = basePrice;
+    // ── Si hay cupón: buscar datos en Supabase ───────────────────────
+    let finalPrice      = basePrice;
+    let discountAmount  = 0;
+    let influencerName  = null;
+    let influencerEmail = null;
+
     if (couponCode) {
       try {
-        const supa_url = "https://wnuehkewxbpahfbemliz.supabase.co";
-        const supa_key = process.env.SUPABASE_SERVICE_KEY || "sb_publishable_rfsNbbcySsAlxgH657MSKQ_niGvstWy";
-        const res = await fetch(
-          `${supa_url}/rest/v1/coupons?code=eq.${encodeURIComponent(couponCode.toUpperCase())}&active=eq.true&select=discount_pct,discount_type`,
-          { headers: { apikey: supa_key, Authorization: `Bearer ${supa_key}` } }
+        const supaUrl = "https://wnuehkewxbpahfbemliz.supabase.co";
+        const supaKey = process.env.SUPABASE_SERVICE_KEY || "sb_publishable_rfsNbbcySsAlxgH657MSKQ_niGvstWy";
+
+        const res  = await fetch(
+          `${supaUrl}/rest/v1/coupons?code=eq.${encodeURIComponent(couponCode)}&active=eq.true&select=discount_pct,discount_type,influencer_name,influencer_email`,
+          { headers: { apikey: supaKey, Authorization: `Bearer ${supaKey}` } }
         );
         const data = await res.json();
+
         if (data && data.length > 0) {
           const c = data[0];
+          influencerName  = c.influencer_name  || null;
+          influencerEmail = c.influencer_email || null;
+
           if (c.discount_type === "percent") {
-            finalPrice = basePrice - Math.round(basePrice * (c.discount_pct / 100));
+            discountAmount = Math.round(basePrice * (c.discount_pct / 100));
           } else {
-            finalPrice = basePrice - Math.min(c.discount_pct, basePrice);
+            discountAmount = Math.min(c.discount_pct, basePrice);
           }
-          finalPrice = Math.max(0, finalPrice);
+          finalPrice = Math.max(0, basePrice - discountAmount);
         }
       } catch (e) {
-        console.warn("Error validando cupón en create-preference:", e.message);
+        console.warn("Error buscando cupón:", e.message);
       }
     }
 
+    // ── Crear preferencia en MercadoPago ────────────────────────────
     const client = new MercadoPagoConfig({
       accessToken: process.env.MP_ACCESS_TOKEN,
     });
 
     const preference = new Preference(client);
+    const siteUrl    = process.env.URL || "https://mysuperfitness.netlify.app";
 
     const response = await preference.create({
       body: {
         items: [
           {
-            title: "FitAI Pro – Acceso de por vida",
-            quantity: 1,
-            currency_id: "CLP",
+            title:      "FitAI Pro – Acceso de por vida",
+            quantity:   1,
+            currency_id:"CLP",
             unit_price: finalPrice,
           },
         ],
         payer: { email: userEmail },
-        metadata: { user_id: userId },
-        back_urls: {
-          success: `${process.env.URL}/app.html?payment=success`,
-          failure: `${process.env.URL}/app.html?payment=failure`,
-          pending: `${process.env.URL}/app.html?payment=pending`,
+
+        // ── Todo lo que necesita el webhook ─────────────────────────
+        metadata: {
+          user_id:          userId,
+          user_email:       userEmail,
+          coupon_code:      couponCode  || null,
+          influencer_name:  influencerName,
+          influencer_email: influencerEmail,
+          discount_amount:  discountAmount,
+          base_price:       basePrice,
+          final_price:      finalPrice,
         },
-        auto_return: "approved",
-        notification_url: `${process.env.URL}/.netlify/functions/payment-webhook`,
+
+        back_urls: {
+          success: `${siteUrl}/app.html?payment=success`,
+          failure: `${siteUrl}/app.html?payment=failure`,
+          pending: `${siteUrl}/app.html?payment=pending`,
+        },
+        auto_return:      "approved",
+        notification_url: `${siteUrl}/.netlify/functions/payment-webhook`,
       },
     });
 
@@ -86,21 +108,18 @@ exports.handler = async (event) => {
         "Content-Type": "application/json",
         "Access-Control-Allow-Origin": "*",
       },
-      // La app busca init_point para redirigir al checkout de MercadoPago
       body: JSON.stringify({
         id:                 response.id,
         init_point:         response.init_point,
         sandbox_init_point: response.sandbox_init_point,
       }),
     };
+
   } catch (err) {
     console.error("Error creando preferencia:", err);
     return {
       statusCode: 500,
-      headers: {
-        "Content-Type": "application/json",
-        "Access-Control-Allow-Origin": "*",
-      },
+      headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
       body: JSON.stringify({ error: err.message }),
     };
   }
