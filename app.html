@@ -562,15 +562,21 @@ async function processPayment() {
 // ── Progreso ────────────────────────────────────────────────────
 function calcProgress() {
   const logs = STATE.dailyLogs;
-  const sw = parseFloat(STATE.profile?.weight)||0;
+  const sw = parseFloat(STATE.profile?.weight)||0;   // peso del setup (fallback)
   const tw = parseFloat(STATE.profile?.targetWeight)||sw;
-  const lw = logs.length ? (parseFloat(logs[0]?.weight)||sw) : sw;
-  const lost = sw - lw;
-  const total = sw - tw;
+  const lw = logs.length ? (parseFloat(logs[0]?.weight)||sw) : sw; // peso más reciente
+
+  // Peso inicial = primer log con peso registrado (el más antiguo), o el del setup
+  const logsConPeso = logs.filter(l => parseFloat(l.weight) > 0);
+  const primerLog = logsConPeso.length ? logsConPeso[logsConPeso.length - 1] : null;
+  const pesoInicial = primerLog ? parseFloat(primerLog.weight) : sw;
+
+  const lost = pesoInicial - lw;
+  const total = pesoInicial - tw;
   const pct = total !== 0 ? Math.min(100, (lost/total)*100) : 0;
   const retroceso = logs.length > 0 && lost < 0;
   const trend = logs.slice(0,14).reverse().map(l=>({date:l.date,w:parseFloat(l.weight)||null})).filter(l=>l.w);
-  return { lost:lost.toFixed(1), pct:pct.toFixed(0), days:logs.length, trend, lw:lw||sw, retroceso, pesoInicial:sw };
+  return { lost:lost.toFixed(1), pct:pct.toFixed(0), days:logs.length, trend, lw:lw||sw, retroceso, pesoInicial };
 }
 
 // ── Menú lateral ────────────────────────────────────────────────
