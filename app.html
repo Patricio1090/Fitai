@@ -264,17 +264,18 @@ async function dbSavePlanNutrition(email, plan, nutrition) {
 const STORAGE_KEY = 'fitai_v3';
 let mp = null;
 
-// ── Cache de perfil por email (persiste aunque el usuario cierre sesión) ──
+// ── Cache completo por email (persiste aunque el usuario cierre sesión) ──
 function saveProfileCache(email, profile) {
-  try {
-    localStorage.setItem('fitai_profile_' + btoa(email), JSON.stringify(profile));
-  } catch(e) {}
+  try { localStorage.setItem('fitai_profile_' + btoa(email), JSON.stringify(profile)); } catch(e) {}
 }
 function loadProfileCache(email) {
-  try {
-    const d = localStorage.getItem('fitai_profile_' + btoa(email));
-    return d ? JSON.parse(d) : null;
-  } catch(e) { return null; }
+  try { const d=localStorage.getItem('fitai_profile_'+btoa(email)); return d?JSON.parse(d):null; } catch(e) { return null; }
+}
+function saveUserCache(email, data) {
+  try { localStorage.setItem('fitai_ucache_'+btoa(email), JSON.stringify(data)); } catch(e) {}
+}
+function loadUserCache(email) {
+  try { const d=localStorage.getItem('fitai_ucache_'+btoa(email)); return d?JSON.parse(d):null; } catch(e) { return null; }
 }
 // ─────────────────────────────────────────────────────────────────────────
 
@@ -300,6 +301,8 @@ let STATE = {
   todayLog: { weight:'', bodyFat:'', calories:'', protein:'', sleep:'', water:'', training:'no', energy:'3', notes:'' },
   showUserMenu: false,
   showSideMenu: false,
+  showModeMenu: false,
+  showPlaceMenu: false,
   sideSection: null,
   qaHistory: [],
   // ── Cupón ──────────────────────────────────────────
@@ -320,6 +323,16 @@ function save() {
       plan: STATE.plan, nutrition: STATE.nutrition, chat: STATE.chat,
       qaHistory: STATE.qaHistory, planGeneratedAt: STATE.planGeneratedAt,
     }));
+    // Cache por email: persiste aunque se cierre sesión
+    if (STATE.user?.email) {
+      saveUserCache(STATE.user.email, {
+        plan: STATE.plan,
+        nutrition: STATE.nutrition,
+        qaHistory: STATE.qaHistory,
+        planGeneratedAt: STATE.planGeneratedAt,
+        dailyLogs: STATE.dailyLogs,
+      });
+    }
   } catch{}
 }
 function loadSaved() {
@@ -690,7 +703,13 @@ function render() {
     menu.querySelector('#sm-supplements').onclick=()=>{STATE.showSideMenu=false;STATE.sideSection='supplements';render();};
     menu.querySelector('#sm-harvard').onclick=()=>{STATE.showSideMenu=false;STATE.sideSection='harvard';render();};
     menu.querySelector('#sm-qa').onclick=()=>{STATE.showSideMenu=false;STATE.sideSection='qa';render();};
-    menu.querySelector('#sm-logout').onclick=()=>{STATE.user=null;STATE.profile=null;STATE.dailyLogs=[];STATE.plan=null;STATE.nutrition=null;STATE.chat=[];STATE.screen='auth';STATE.showSideMenu=false;STATE.sideSection=null;save();render();};
+    menu.querySelector('#sm-logout').onclick=()=>{
+      // Guardar todo antes de desloguear (perfil, planes, historial quedan en cache)
+      save();
+      STATE.user=null;STATE.screen='auth';STATE.showSideMenu=false;STATE.sideSection=null;
+      localStorage.removeItem(STORAGE_KEY); // limpiar sesión activa pero NO el cache por email
+      render();
+    };
     root.appendChild(menu);
   }
   if (STATE.showUserMenu) {
@@ -699,14 +718,53 @@ function render() {
       <button class="user-menu-item" id="menu-reset">🔄 Reiniciar programa</button>
       <button class="user-menu-item" id="menu-logout" style="color:#f87171">🚪 Cerrar sesión</button>`;
     root.appendChild(menu);
-    menu.querySelector('#menu-reset').onclick=()=>{if(confirm('¿Reiniciar todo el programa?')){STATE.profile=null;STATE.dailyLogs=[];STATE.plan=null;STATE.nutrition=null;STATE.chat=[];STATE.setupStep=0;STATE.setupData={};STATE.aiMsg='';STATE.screen='setup';STATE.showUserMenu=false;save();render();}};
-    menu.querySelector('#menu-logout').onclick=()=>{STATE.user=null;STATE.profile=null;STATE.dailyLogs=[];STATE.plan=null;STATE.nutrition=null;STATE.chat=[];STATE.screen='auth';STATE.showUserMenu=false;save();render();};
+    menu.querySelector('#menu-reset').onclick=()=>{if(confirm('¿Reiniciar todo el programa?')){const email=STATE.user?.email;STATE.profile=null;STATE.dailyLogs=[];STATE.plan=null;STATE.nutrition=null;STATE.chat=[];STATE.setupStep=0;STATE.setupData={};STATE.aiMsg='';STATE.screen='setup';STATE.showUserMenu=false;if(email)localStorage.removeItem('fitai_profile_'+btoa(email));save();render();}};
+    menu.querySelector('#menu-logout').onclick=()=>{
+      save();
+      STATE.user=null;STATE.screen='auth';STATE.showUserMenu=false;
+      localStorage.removeItem(STORAGE_KEY);
+      render();
+    };
     document.addEventListener('click',function handler(e){if(!menu.contains(e.target)){STATE.showUserMenu=false;document.removeEventListener('click',handler);render();}},{once:true});
   }
   if (STATE.aiLoading) {
     const ov=document.createElement('div'); ov.className='loading-overlay';
     ov.innerHTML='<div class="dot"></div><div class="dot"></div><div class="dot"></div><span style="font-size:12px;color:var(--purple)">Procesando con IA…</span>';
     root.appendChild(ov);
+  }
+
+  // ── Popup: cambiar objetivo ──────────────────────────────────────
+  if (STATE.showModeMenu && STATE.profile) {
+    const m=document.createElement('div');
+    m.style.cssText='position:fixed;top:62px;right:56px;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:8px;z-index:200;min-width:200px;box-shadow:0 8px 32px #00000060';
+    const goals=['🔥 Quemar grasa','💪 Ganar masa muscular','⚡ Ambos (recomposición)'];
+    m.innerHTML=`<div style="font-size:10px;color:var(--muted);font-weight:700;letter-spacing:1px;padding:4px 10px 8px;text-transform:uppercase">Cambiar objetivo</div>`+
+      goals.map(g=>`<button class="user-menu-item" data-g="${g}" style="font-size:13px;${STATE.profile.goal===g?'color:var(--purple);font-weight:700':''}">${g}</button>`).join('');
+    m.querySelectorAll('[data-g]').forEach(b=>b.onclick=async()=>{
+      STATE.profile.goal=b.dataset.g;
+      saveProfileCache(STATE.user?.email,STATE.profile);
+      if(supa)await supa.from('users').update({goal:b.dataset.g}).eq('email',STATE.user?.email);
+      STATE.showModeMenu=false;STATE.plan=null;STATE.needsAIPlan=true;save();render();
+    });
+    root.appendChild(m);
+    document.addEventListener('click',function h(e){if(!m.contains(e.target)){STATE.showModeMenu=false;document.removeEventListener('click',h);render();}},{once:true});
+  }
+
+  // ── Popup: cambiar equipamiento ──────────────────────────────────
+  if (STATE.showPlaceMenu && STATE.profile) {
+    const m=document.createElement('div');
+    m.style.cssText='position:fixed;top:62px;right:12px;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:8px;z-index:200;min-width:220px;box-shadow:0 8px 32px #00000060';
+    const places=['🏋️ En el gimnasio (con equipamiento completo)','🏠 En casa (con equipamiento limitado o sin equipamiento)','🏋️🏠 Ambos (gimnasio y casa)'];
+    m.innerHTML=`<div style="font-size:10px;color:var(--muted);font-weight:700;letter-spacing:1px;padding:4px 10px 8px;text-transform:uppercase">Cambiar equipamiento</div>`+
+      places.map(p=>`<button class="user-menu-item" data-p="${p}" style="font-size:12px;${STATE.profile.trainingPlace===p?'color:var(--blue);font-weight:700':''}">${p}</button>`).join('');
+    m.querySelectorAll('[data-p]').forEach(b=>b.onclick=async()=>{
+      STATE.profile.trainingPlace=b.dataset.p;
+      saveProfileCache(STATE.user?.email,STATE.profile);
+      if(supa)await supa.from('users').update({training_place:b.dataset.p}).eq('email',STATE.user?.email);
+      STATE.showPlaceMenu=false;STATE.plan=null;STATE.needsAIPlan=true;save();render();
+    });
+    root.appendChild(m);
+    document.addEventListener('click',function h(e){if(!m.contains(e.target)){STATE.showPlaceMenu=false;document.removeEventListener('click',h);render();}},{once:true});
   }
 }
 
@@ -745,12 +803,18 @@ function renderAuth() {
     try {
       if (STATE.authMode==='register'){if(!name)throw new Error('Ingresa tu nombre.');STATE.user=await authRegister(email,pass,name,phone);}
       else STATE.user=await authLogin(email,pass);
-      // ── Restaurar perfil desde cache local (instantáneo, sin esperar Supabase) ──
-      const cached = loadProfileCache(email);
-      if (cached) STATE.profile = cached;
-      // ─────────────────────────────────────────────────────────────────────────
+      // ── Restaurar TODO desde cache local (instantáneo, sin esperar Supabase) ──
+      const cachedProfile = loadProfileCache(email);
+      const cachedData    = loadUserCache(email);
+      if (cachedProfile)              STATE.profile        = cachedProfile;
+      if (cachedData?.plan)           STATE.plan           = cachedData.plan;
+      if (cachedData?.nutrition)      STATE.nutrition      = cachedData.nutrition;
+      if (cachedData?.qaHistory)      STATE.qaHistory      = cachedData.qaHistory;
+      if (cachedData?.planGeneratedAt)STATE.planGeneratedAt= cachedData.planGeneratedAt;
+      if (cachedData?.dailyLogs?.length) STATE.dailyLogs   = cachedData.dailyLogs;
+      // ──────────────────────────────────────────────────────────────────────────
       save();
-      await loadProfileFromSupabase(STATE.user.email);  // luego sincroniza con Supabase
+      await loadProfileFromSupabase(STATE.user.email);  // sincroniza/actualiza desde Supabase
       STATE.screen=!STATE.profile?'setup':!STATE.user.paid?'paywall':'app';
     } catch(e){ STATE.authError=e.message; }
     STATE.authLoading=false; render();
@@ -969,22 +1033,24 @@ function renderSetup() {
 function renderHeader() {
   const p=STATE.profile;
   const tabNames=['Dashboard','Entrenamiento','Nutrición','Registro','Progreso'];
-  const goal=p.goal?.includes('grasa')?'🔥 Fat Burn':p.goal?.includes('muscular')?'💪 Muscle':'⚡ Recomp';
+  const goalIcon=p.goal?.includes('grasa')?'🔥':p.goal?.includes('muscular')?'💪':'⚡';
+  const placeIcon=p.trainingPlace?.includes('casa')?'🏠':'🏋️';
   const h=document.createElement('div'); h.className='header';
   h.innerHTML=`<div class="header-inner">
     <div style="display:flex;align-items:center;gap:10px">
       <button id="side-menu-btn" style="background:none;border:none;color:var(--text);cursor:pointer;font-size:20px;padding:4px;line-height:1">☰</button>
       <div><div class="logo">⚡ FitAI Pro</div><div class="sub">Hola, ${STATE.user?.name||p.name} · ${tabNames[STATE.tab]}</div></div>
     </div>
-    <div style="display:flex;align-items:center;gap:4px">
-      ${['es','en','fr','pt'].map(l=>`<button data-l="${l}" style="background:${STATE.lang===l?'#a78bfa25':'none'};border:1px solid ${STATE.lang===l?'var(--purple)':'var(--border)'};border-radius:6px;padding:3px 6px;font-size:10px;font-weight:700;color:${STATE.lang===l?'var(--purple)':'var(--muted)'};cursor:pointer">${l.toUpperCase()}</button>`).join('')}
-      <span class="badge" style="background:#a78bfa20;color:var(--purple);font-size:10px;margin-left:2px">${goal}</span>
+    <div style="display:flex;align-items:center;gap:6px">
+      <button id="btn-mode" title="Cambiar objetivo" style="background:#a78bfa20;border:1px solid #a78bfa40;border-radius:20px;padding:4px 10px;font-size:12px;font-weight:700;color:var(--purple);cursor:pointer;white-space:nowrap">${goalIcon}</button>
+      <button id="btn-place" title="Cambiar equipamiento" style="background:#60a5fa20;border:1px solid #60a5fa40;border-radius:20px;padding:4px 10px;font-size:12px;font-weight:700;color:var(--blue);cursor:pointer;white-space:nowrap">${placeIcon}</button>
       <button class="avatar-btn" id="btn-user">👤</button>
     </div>
   </div>`;
-  h.querySelectorAll('[data-l]').forEach(b=>b.addEventListener('click',(e)=>{e.stopPropagation();STATE.lang=b.dataset.l;STATE.aiMsg='';render();}));
   h.querySelector('#side-menu-btn').onclick=(e)=>{e.stopPropagation();STATE.showSideMenu=true;render();};
   h.querySelector('#btn-user').onclick=(e)=>{e.stopPropagation();STATE.showUserMenu=!STATE.showUserMenu;render();};
+  h.querySelector('#btn-mode').onclick=(e)=>{e.stopPropagation();STATE.showModeMenu=!STATE.showModeMenu;STATE.showPlaceMenu=false;render();};
+  h.querySelector('#btn-place').onclick=(e)=>{e.stopPropagation();STATE.showPlaceMenu=!STATE.showPlaceMenu;STATE.showModeMenu=false;render();};
   return h;
 }
 
