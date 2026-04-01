@@ -60,27 +60,29 @@ exports.handler = async (event) => {
       }
     }
 
+    // ── URL base del sitio: usa env var de Netlify, fallback a mysuperfitness ──
+    const siteUrl = process.env.URL || "https://mysuperfitness.netlify.app";
+
     // ── Crear preferencia en MercadoPago ────────────────────────────
     const client = new MercadoPagoConfig({
       accessToken: process.env.MP_ACCESS_TOKEN,
     });
 
     const preference = new Preference(client);
-    const siteUrl    = process.env.URL || "https://mysuperfitness.netlify.app";
 
     const response = await preference.create({
       body: {
         items: [
           {
-            title:      "FitAI Pro – Acceso de por vida",
-            quantity:   1,
-            currency_id:"CLP",
-            unit_price: finalPrice,
+            title:       "FitAI Pro – Acceso de por vida",
+            quantity:    1,
+            currency_id: "CLP",
+            unit_price:  finalPrice,
           },
         ],
         payer: { email: userEmail },
 
-        // ── Todo lo que necesita el webhook ─────────────────────────
+        // ── Metadata completo para el webhook ───────────────────────
         metadata: {
           user_id:          userId,
           user_email:       userEmail,
@@ -98,7 +100,8 @@ exports.handler = async (event) => {
           pending: `${siteUrl}/app.html?payment=pending`,
         },
         auto_return:      "approved",
-        notification_url: `${siteUrl}/.netlify/functions/payment-webhook`,
+        // El webhook se llama mp-webhooks (nombre del archivo en tu repo)
+        notification_url: `${siteUrl}/.netlify/functions/mp-webhooks`,
       },
     });
 
