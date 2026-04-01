@@ -1256,7 +1256,7 @@ function renderLog(){
   const today=new Date().toLocaleDateString('es-CL',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
   const log=STATE.todayLog;
   div.innerHTML=`<div class="card card-amber" style="margin-bottom:12px"><div class="card-h">📝 Registro de Hoy</div><div style="font-size:12px;color:var(--amber)">${today}</div></div>
-    ${[{k:'weight',l:'⚖️ Peso actual (kg)',t:'number',p:'Ej: 79.5'},{k:'bodyFat',l:'📊 % Grasa corporal',t:'number',p:'Opcional'},{k:'calories',l:'🔥 Calorías consumidas',t:'number',p:'Ej: 1800'},{k:'protein',l:'🥩 Proteína (g)',t:'number',p:'Ej: 150'},{k:'sleep',l:'😴 Horas de sueño',t:'number',p:'Ej: 7.5'},{k:'water',l:'💧 Agua (litros)',t:'number',p:'Ej: 2.5'}].map(f=>`<div class="field"><label>${f.l}</label><input type="${f.t}" placeholder="${f.p}" data-key="${f.k}" value="${log[f.k]||''}"/></div>`).join('')}
+    ${[{k:'weight',l:'⚖️ Peso actual (kg)',t:'number',p:'Ej: 79.5'},{k:'calories',l:'🔥 Calorías consumidas',t:'number',p:'Ej: 1800'},{k:'protein',l:'🥩 Proteína (g)',t:'number',p:'Ej: 150'},{k:'sleep',l:'😴 Horas de sueño',t:'number',p:'Ej: 7.5'},{k:'water',l:'💧 Agua (litros)',t:'number',p:'Ej: 2.5'}].map(f=>`<div class="field"><label>${f.l}</label><input type="${f.t}" placeholder="${f.p}" data-key="${f.k}" value="${log[f.k]||''}"/></div>`).join('')}
     <div class="field"><label>🏋️ ¿Entrenaste hoy?</label><select data-key="training"><option value="no" ${log.training==='no'?'selected':''}>No entrené</option><option value="si" ${log.training==='si'?'selected':''}>Sí, entrené</option><option value="activo" ${log.training==='activo'?'selected':''}>Descanso activo</option></select></div>
     <div class="field"><label>⚡ Nivel de energía (1-5)</label><div class="energy-row">${[1,2,3,4,5].map(n=>`<button class="energy-btn ${log.energy==n?'active':''}" data-e="${n}">${n}</button>`).join('')}</div></div>
     <div class="field"><label>📓 Notas</label><textarea placeholder="¿Cómo te sentiste hoy?">${log.notes||''}</textarea></div>
@@ -1272,7 +1272,7 @@ function renderLog(){
     dbSaveDailyLog(STATE.user?.email,newLog);STATE.aiLoading=true;render();
     const prog=calcProgress();const p=STATE.profile;
     const contextoRetroceso=prog.retroceso?`⚠️ ALERTA: El usuario ha SUBIDO de peso. Peso inicial: ${prog.pesoInicial}kg, actual: ${prog.lw}kg (subió ${Math.abs(prog.lost)}kg). Identifica posibles causas y propón 2-3 acciones concretas.`:'';
-    const r=await claude([{role:'user',content:`Análisis de hoy de ${p.name} (máx 200 palabras):\n${contextoRetroceso}\nDatos: ${JSON.stringify(newLog)}\nProgreso: ${prog.lost}kg en ${prog.days} días.\nObjetivo: ${p.goal}, meta ${p.targetWeight}kg.`}]);
+    const r=await claude([{role:'user',content:`Análisis de hoy de ${p.name} (máx 200 palabras):\n${contextoRetroceso}\nDatos: peso ${newLog.weight||'-'}kg, calorías ${newLog.calories||'-'}, proteína ${newLog.protein||'-'}g, sueño ${newLog.sleep||'-'}h, agua ${newLog.water||'-'}L, energía ${newLog.energy||'-'}/5, entrenamiento: ${newLog.training}.\nProgreso: ${prog.lost}kg en ${prog.days} días. Objetivo: ${p.goal}, meta ${p.targetWeight}kg.`}]);
     STATE.aiMsg=r;STATE.aiLoading=false;render();
   };
   return div;
