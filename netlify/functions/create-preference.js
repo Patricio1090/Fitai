@@ -60,8 +60,8 @@ exports.handler = async (event) => {
       }
     }
 
-    // ── URL base del sitio: usa env var de Netlify, fallback a mysuperfitness ──
-    const siteUrl = process.env.URL || "https://mysuperfitness.netlify.app";
+    // ── URL base del sitio ───────────────────────────────────────────
+    const siteUrl = process.env.URL || "https://www.fitaipro.cl";
 
     // ── Crear preferencia en MercadoPago ────────────────────────────
     const client = new MercadoPagoConfig({
@@ -100,8 +100,7 @@ exports.handler = async (event) => {
           pending: `${siteUrl}/app.html?payment=pending`,
         },
         auto_return:      "approved",
-        // El webhook se llama mp-webhooks (nombre del archivo en tu repo)
-        notification_url: `${siteUrl}/.netlify/functions/mp-webhooks`,
+        notification_url: `${siteUrl}/.netlify/functions/payment-webhook`,
       },
     });
 
