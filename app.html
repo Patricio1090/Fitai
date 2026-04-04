@@ -541,26 +541,27 @@ async function loadProfileFromSupabase(email) {
   try {
     const { data:u } = await supa.from('users').select('*').eq('email', email).single();
     if (u) {
-      // Restaurar perfil si tiene datos suficientes (setup_done O campos clave presentes)
-      const tieneSetup = u.setup_done || u.setup_completed || (u.goal && u.height && u.weight);
+      // Usar caché existente como fallback para campos que Supabase pueda no tener (ej: goal)
+      const existing = STATE.profile || loadProfileCache(email) || {};
+      const tieneSetup = u.setup_done || u.setup_completed || (u.goal && u.height && u.weight) || existing.goal;
       if (tieneSetup) {
         const perfil = {
-          name: u.name || u.full_name || STATE.user?.name || '',
-          goal: u.goal,
-          age: u.age,
-          gender: u.gender,
-          weight: u.weight_initial || u.weight,   // siempre el peso inicial del setup
-          height: u.height,
-          targetWeight: u.target_weight,
-          weeksGoal: u.weeks_goal,
-          activityLevel: u.activity_level,
-          trainingPlace: u.training_place,
-          bodyFat: u.body_fat,
-          muscleMass: u.muscle_mass || null,
+          name:          u.name          || u.full_name      || STATE.user?.name    || existing.name          || '',
+          goal:          u.goal          || existing.goal    || '',
+          age:           u.age           || existing.age,
+          gender:        u.gender        || existing.gender,
+          weight:        u.weight_initial|| u.weight         || existing.weight,
+          height:        u.height        || existing.height,
+          targetWeight:  u.target_weight || existing.targetWeight,
+          weeksGoal:     u.weeks_goal    || existing.weeksGoal,
+          activityLevel: u.activity_level|| existing.activityLevel,
+          trainingPlace: u.training_place|| existing.trainingPlace,
+          bodyFat:       u.body_fat      || existing.bodyFat,
+          muscleMass:    u.muscle_mass   || existing.muscleMass || null,
           setup: true
         };
         STATE.profile = perfil;
-        saveProfileCache(email, perfil);  // guardar cache por email
+        saveProfileCache(email, perfil);
       }
       if (u.paid) STATE.user.paid = true;
       if (u.id && STATE.user) STATE.user.id = u.id;
