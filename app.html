@@ -466,11 +466,21 @@ async function authLogin(email, password) {
     return { id: null, email:'admin@fitai.cl', name:'Admin', paid:true, token:'admin-token' };
   }
   const TEST_USERS = {
-    'test1@fitai.cl':{name:'Test Usuario 1',pass:'fitai_test_1'},
-    'test2@fitai.cl':{name:'Test Usuario 2',pass:'fitai_test_2'},
-    'test3@fitai.cl':{name:'Test Usuario 3',pass:'fitai_test_3'},
-    'test4@fitai.cl':{name:'Test Usuario 4',pass:'fitai_test_4'},
-    'test5@fitai.cl':{name:'Test Usuario 5',pass:'fitai_test_5'},
+    'test1@fitai.cl': {name:'Test Usuario 1',  pass:'fitai_test_1'},
+    'test2@fitai.cl': {name:'Test Usuario 2',  pass:'fitai_test_2'},
+    'test3@fitai.cl': {name:'Test Usuario 3',  pass:'fitai_test_3'},
+    'test4@fitai.cl': {name:'Test Usuario 4',  pass:'fitai_test_4'},
+    'test5@fitai.cl': {name:'Test Usuario 5',  pass:'fitai_test_5'},
+    'test6@fitai.cl': {name:'Test Usuario 6',  pass:'fitai_test_6'},
+    'test7@fitai.cl': {name:'Test Usuario 7',  pass:'fitai_test_7'},
+    'test8@fitai.cl': {name:'Test Usuario 8',  pass:'fitai_test_8'},
+    'test9@fitai.cl': {name:'Test Usuario 9',  pass:'fitai_test_9'},
+    'test10@fitai.cl':{name:'Test Usuario 10', pass:'fitai_test_10'},
+    'test11@fitai.cl':{name:'Test Usuario 11', pass:'fitai_test_11'},
+    'test12@fitai.cl':{name:'Test Usuario 12', pass:'fitai_test_12'},
+    'test13@fitai.cl':{name:'Test Usuario 13', pass:'fitai_test_13'},
+    'test14@fitai.cl':{name:'Test Usuario 14', pass:'fitai_test_14'},
+    'test15@fitai.cl':{name:'Test Usuario 15', pass:'fitai_test_15'},
   };
   if (TEST_USERS[email] && TEST_USERS[email].pass === password) {
     return { id: null, email, name:TEST_USERS[email].name, paid:true, token:'test-token-'+email };
@@ -512,6 +522,7 @@ async function loadProfileFromSupabase(email) {
           activityLevel: u.activity_level,
           trainingPlace: u.training_place,
           bodyFat: u.body_fat,
+          muscleMass: u.muscle_mass || null,
           setup: true
         };
         STATE.profile = perfil;
@@ -527,6 +538,7 @@ async function loadProfileFromSupabase(email) {
     if (logs && logs.length > 0) {
       STATE.dailyLogs = logs.map(l => ({
         date:l.date, weight:l.weight, bodyFat:l.body_fat,
+        muscleMass:l.muscle_mass || null,
         calories:l.calories, protein:l.protein, sleep:l.sleep,
         water:l.water, training:l.training, energy:l.energy, notes:l.notes
       }));
@@ -578,23 +590,54 @@ async function processPayment() {
 }
 
 // ── Progreso ────────────────────────────────────────────────────
+function getGoalType() {
+  const g = (STATE.profile?.goal || '').toLowerCase();
+  if (g.includes('aumento') || g.includes('ganar masa')) return 'gain';
+  if (g.includes('recomp')) return 'recomp';
+  return 'loss';
+}
 function calcProgress() {
   const logs = STATE.dailyLogs;
-  const sw = parseFloat(STATE.profile?.weight)||0;   // peso del setup (fallback)
+  const gtype = getGoalType();
+  const sw = parseFloat(STATE.profile?.weight)||0;
   const tw = parseFloat(STATE.profile?.targetWeight)||sw;
-  const lw = logs.length ? (parseFloat(logs[0]?.weight)||sw) : sw; // peso más reciente
+  const lw = logs.length ? (parseFloat(logs[0]?.weight)||sw) : sw;
 
-  // Peso inicial = primer log con peso registrado (el más antiguo), o el del setup
   const logsConPeso = logs.filter(l => parseFloat(l.weight) > 0);
   const primerLog = logsConPeso.length ? logsConPeso[logsConPeso.length - 1] : null;
   const pesoInicial = primerLog ? parseFloat(primerLog.weight) : sw;
 
-  const lost = pesoInicial - lw;
-  const total = pesoInicial - tw;
-  const pct = total !== 0 ? Math.min(100, (lost/total)*100) : 0;
-  const retroceso = logs.length > 0 && lost < 0;
+  let lost, pct, retroceso, kgLabel, kgIcon, kgColor;
+
+  if (gtype === 'gain') {
+    lost = lw - pesoInicial;                           // positivo = ganó
+    const total = Math.max(0.1, tw - pesoInicial);
+    pct = Math.min(100, Math.max(0, (lost / total) * 100));
+    retroceso = logs.length > 0 && lost < 0;           // bajó en vez de subir
+    kgLabel = retroceso ? 'Kg perdidos' : 'Kg ganados';
+    kgIcon  = retroceso ? '📉' : '📈';
+    kgColor = retroceso ? '#f87171' : 'var(--green)';
+  } else if (gtype === 'recomp') {
+    lost = pesoInicial - lw;
+    const totalWeeks = Math.max(1, parseInt(STATE.profile?.weeksGoal||12));
+    pct = Math.min(100, (logs.length / (totalWeeks * 7)) * 100);
+    retroceso = false;
+    kgLabel = 'Kg ajustados';
+    kgIcon  = '🔄';
+    kgColor = 'var(--blue)';
+  } else {
+    // loss
+    lost = pesoInicial - lw;                           // positivo = perdió
+    const total = Math.max(0.1, pesoInicial - tw);
+    pct = Math.min(100, (lost / total) * 100);
+    retroceso = logs.length > 0 && lost < 0;
+    kgLabel = retroceso ? 'Kg ganados' : 'Kg perdidos';
+    kgIcon  = retroceso ? '📈' : '🔥';
+    kgColor = retroceso ? '#f87171' : 'var(--amber)';
+  }
+
   const trend = logs.slice(0,14).reverse().map(l=>({date:l.date,w:parseFloat(l.weight)||null})).filter(l=>l.w);
-  return { lost:lost.toFixed(1), pct:pct.toFixed(0), days:logs.length, trend, lw:lw||sw, retroceso, pesoInicial };
+  return { lost:lost.toFixed(1), pct:Math.max(0,pct).toFixed(0), days:logs.length, trend, lw:lw||sw, retroceso, pesoInicial, kgLabel, kgIcon, kgColor, gtype };
 }
 
 // ── Menú lateral ────────────────────────────────────────────────
@@ -737,7 +780,7 @@ function render() {
   if (STATE.showModeMenu && STATE.profile) {
     const m=document.createElement('div');
     m.style.cssText='position:fixed;top:62px;right:56px;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:8px;z-index:200;min-width:200px;box-shadow:0 8px 32px #00000060';
-    const goals=['🔥 Quemar grasa','💪 Ganar masa muscular','⚡ Ambos (recomposición)'];
+    const goals=['⚖️ Bajar de peso (quema de grasa)','🔄 Recomposición corporal (mantener peso, bajar grasa y ganar músculo)','💪 Aumento de peso (ganar masa muscular)'];
     m.innerHTML=`<div style="font-size:10px;color:var(--muted);font-weight:700;letter-spacing:1px;padding:4px 10px 8px;text-transform:uppercase">Cambiar objetivo</div>`+
       goals.map(g=>`<button class="user-menu-item" data-g="${g}" style="font-size:13px;${STATE.profile.goal===g?'color:var(--purple);font-weight:700':''}">${g}</button>`).join('');
     m.querySelectorAll('[data-g]').forEach(b=>b.onclick=async()=>{
@@ -952,17 +995,22 @@ function renderPaywall() {
 
 // ── Setup ────────────────────────────────────────────────────────
 const STEPS=[
-  {key:'name',q:'¿Cuál es tu nombre?',type:'text',ph:'Tu nombre'},
-  {key:'age',q:'¿Cuántos años tienes?',type:'number',ph:'Ej: 28'},
-  {key:'gender',q:'¿Cuál es tu sexo biológico?',type:'select',opts:['Masculino','Femenino']},
-  {key:'weight',q:'¿Cuál es tu peso actual? (kg)',type:'number',ph:'Ej: 82'},
-  {key:'height',q:'¿Cuál es tu altura? (cm)',type:'number',ph:'Ej: 175'},
-  {key:'bodyFat',q:'¿Sabes tu % de grasa corporal? (opcional)',type:'number',ph:'Deja vacío si no sabes'},
-  {key:'goal',q:'¿Cuál es tu objetivo principal?',type:'select',opts:['🔥 Quemar grasa','💪 Ganar masa muscular','⚡ Ambos (recomposición)']},
-  {key:'targetWeight',q:'¿Cuál es tu peso objetivo? (kg)',type:'number',ph:'Ej: 72'},
-  {key:'weeksGoal',q:'¿En cuántas semanas quieres lograrlo?',type:'number',ph:'Ej: 12'},
-  {key:'activityLevel',q:'¿Cuál es tu nivel de actividad actual?',type:'select',opts:['Sedentario (sin ejercicio)','Ligero (1-2 días/sem)','Moderado (3-4 días/sem)','Activo (5+ días/sem)','Atleta (2x/día)']},
-  {key:'trainingPlace',q:'¿Dónde entrenas habitualmente?',type:'select',opts:['🏋️ En el gimnasio (con equipamiento completo)','🏠 En casa (con equipamiento limitado o sin equipamiento)','🏋️🏠 Ambos (gimnasio y casa)']},
+  {key:'name',        q:'¿Cuál es tu nombre?',                              type:'text',   ph:'Tu nombre'},
+  {key:'age',         q:'¿Cuántos años tienes?',                            type:'number', ph:'Ej: 28'},
+  {key:'gender',      q:'¿Cuál es tu sexo biológico?',                      type:'select', opts:['Masculino','Femenino']},
+  {key:'weight',      q:'¿Cuál es tu peso actual? (kg)',                    type:'number', ph:'Ej: 82'},
+  {key:'height',      q:'¿Cuál es tu altura? (cm)',                         type:'number', ph:'Ej: 175'},
+  {key:'bodyFat',     q:'¿Sabes tu % de grasa corporal? (opcional)',        type:'number', ph:'Deja vacío si no sabes', optional:true},
+  {key:'muscleMass',  q:'¿Sabes tu masa muscular en kg? (opcional)',        type:'number', ph:'Deja vacío si no sabes', optional:true},
+  {key:'goal',        q:'¿Cuál es tu objetivo principal?',                  type:'select', opts:[
+    '⚖️ Bajar de peso (quema de grasa)',
+    '🔄 Recomposición corporal (mantener peso, bajar grasa y ganar músculo)',
+    '💪 Aumento de peso (ganar masa muscular)'
+  ]},
+  {key:'targetWeight',q:'__dynamic__',                                      type:'number', ph:'Ej: 72'},
+  {key:'weeksGoal',   q:'¿En cuántas semanas quieres lograrlo?',            type:'number', ph:'Ej: 12'},
+  {key:'activityLevel',q:'¿Cuál es tu nivel de actividad actual?',         type:'select', opts:['Sedentario (sin ejercicio)','Ligero (1-2 días/sem)','Moderado (3-4 días/sem)','Activo (5+ días/sem)','Atleta (2x/día)']},
+  {key:'trainingPlace',q:'¿Dónde entrenas habitualmente?',                  type:'select', opts:['🏋️ En el gimnasio (con equipamiento completo)','🏠 En casa (con equipamiento limitado o sin equipamiento)','🏋️🏠 Ambos (gimnasio y casa)']},
 ];
 
 function renderSetup() {
@@ -972,6 +1020,21 @@ function renderSetup() {
     return wrap;
   }
   const step=STEPS[STATE.setupStep];
+  // Pregunta y placeholder dinámicos para targetWeight según objetivo
+  let stepQ = step.q, stepPh = step.ph;
+  if (step.key === 'targetWeight') {
+    const g = (STATE.setupData.goal || '').toLowerCase();
+    if (g.includes('bajar') || g.includes('grasa')) {
+      stepQ = '¿Cuál es tu peso objetivo? (kg) — debe ser menor a tu peso actual';
+      stepPh = 'Ej: ' + Math.round((parseFloat(STATE.setupData.weight)||80)*0.9) + ' kg';
+    } else if (g.includes('recomp')) {
+      stepQ = '¿Cuál es tu peso objetivo? (kg) — puede ser igual o similar a tu peso actual';
+      stepPh = 'Ej: ' + (STATE.setupData.weight||'80') + ' kg (igual o similar)';
+    } else {
+      stepQ = '¿Cuánto quieres pesar al final? (kg) — debe ser mayor a tu peso actual';
+      stepPh = 'Ej: ' + Math.round((parseFloat(STATE.setupData.weight)||80)*1.08) + ' kg';
+    }
+  }
   const pct=(STATE.setupStep/STEPS.length)*100;
   wrap.innerHTML=`<div class="screen-logo">🏋️</div>
     <div class="screen-title">Configura tu plan</div>
@@ -982,7 +1045,7 @@ function renderSetup() {
     </div>
     <div class="setup-card">
       <div style="font-size:12px;color:var(--purple);font-weight:700;margin-bottom:14px">Paso ${STATE.setupStep+1}</div>
-      <div style="font-family:Syne,sans-serif;font-size:17px;font-weight:700;margin-bottom:20px;line-height:1.4">${step.q}</div>
+      <div style="font-family:Syne,sans-serif;font-size:17px;font-weight:700;margin-bottom:20px;line-height:1.4">${stepQ}</div>
       <div id="step-inp"></div>
       <button class="btn btn-purple" id="btn-next" style="margin-top:16px">${STATE.setupStep===STEPS.length-1?'🚀 Generar mi plan':'Continuar →'}</button>
       ${STATE.setupStep>0?`<button class="btn btn-ghost" id="btn-back">← Atrás</button>`:''}
@@ -991,21 +1054,21 @@ function renderSetup() {
   if (step.type==='select') {
     step.opts.forEach(o=>{const b=document.createElement('button');b.className='option-btn'+(STATE.setupData[step.key]===o?' selected':'');b.textContent=o;b.onclick=()=>{STATE.setupData[step.key]=o;render();};inp.appendChild(b);});
   } else {
-    const el=document.createElement('input');el.type=step.type;el.placeholder=step.ph;el.value=STATE.setupData[step.key]||'';el.style.cssText='width:100%';
+    const el=document.createElement('input');el.type=step.type;el.placeholder=stepPh;el.value=STATE.setupData[step.key]||'';el.style.cssText='width:100%';
     el.oninput=e=>STATE.setupData[step.key]=e.target.value;
     el.onkeydown=e=>{if(e.key==='Enter')wrap.querySelector('#btn-next')?.click();};
     inp.appendChild(el);setTimeout(()=>el.focus(),100);
   }
   wrap.querySelector('#btn-next').onclick=async()=>{
     const val=STATE.setupData[step.key];
-    if(step.key!=='bodyFat'&&!val){inp.querySelector('input,select')?.focus();return;}
+    if(!step.optional&&!val){inp.querySelector('input,select')?.focus();return;}
     if(STATE.setupStep<STEPS.length-1){STATE.setupStep++;render();}
     else {
       const p=STATE.setupData;
       STATE.profile={...p,setup:true};
       saveProfileCache(STATE.user?.email, STATE.profile);  // cache por email
       dbMarkSetupDone(STATE.user?.email,p.goal);
-      if(supa){await supa.from('users').update({goal:p.goal,age:parseInt(p.age),gender:p.gender,weight_initial:parseFloat(p.weight),weight:parseFloat(p.weight),height:parseFloat(p.height),target_weight:parseFloat(p.targetWeight),weeks_goal:parseInt(p.weeksGoal),activity_level:p.activityLevel,training_place:p.trainingPlace,body_fat:parseFloat(p.bodyFat)||null,setup_done:true,setup_completed:true,last_active:new Date().toISOString()}).eq('email',STATE.user?.email);}
+      if(supa){await supa.from('users').update({goal:p.goal,age:parseInt(p.age),gender:p.gender,weight_initial:parseFloat(p.weight),weight:parseFloat(p.weight),height:parseFloat(p.height),target_weight:parseFloat(p.targetWeight),weeks_goal:parseInt(p.weeksGoal),activity_level:p.activityLevel,training_place:p.trainingPlace,body_fat:parseFloat(p.bodyFat)||null,muscle_mass:parseFloat(p.muscleMass)||null,setup_done:true,setup_completed:true,last_active:new Date().toISOString()}).eq('email',STATE.user?.email);}
       save();
       if(!STATE.user.paid){STATE.screen='paywall';render();return;}
       STATE.aiLoading=true;render();
@@ -1033,7 +1096,7 @@ function renderSetup() {
 function renderHeader() {
   const p=STATE.profile;
   const tabNames=['Dashboard','Entrenamiento','Nutrición','Registro','Progreso'];
-  const goalIcon=p.goal?.includes('grasa')?'🔥':p.goal?.includes('muscular')?'💪':'⚡';
+  const goalIcon=p.goal?.includes('Bajar')||p.goal?.includes('grasa')?'⚖️':p.goal?.includes('Aumento')||p.goal?.includes('ganar masa')||p.goal?.includes('muscular')?'💪':'🔄';
   const placeIcon=p.trainingPlace?.includes('casa')?'🏠':'🏋️';
   const h=document.createElement('div'); h.className='header';
   h.innerHTML=`<div class="header-inner">
@@ -1071,14 +1134,16 @@ function renderDashboard() {
   const prog=calcProgress();
   const div=document.createElement('div');
   const pctColor=prog.retroceso?'#f87171':parseInt(prog.pct)>=50?'var(--green)':'var(--purple)';
-  const kgColor=prog.retroceso?'#f87171':'var(--green)';
-  const kgVal=prog.retroceso?`+${Math.abs(prog.lost)}kg`:`${Math.max(0,prog.lost)}kg`;
+  const kgColor=prog.kgColor;
+  const kgVal=prog.gtype==='gain'
+    ? (parseFloat(prog.lost)>=0?`+${prog.lost}kg`:`${prog.lost}kg`)
+    : (prog.retroceso?`+${Math.abs(prog.lost)}kg`:`${Math.max(0,prog.lost)}kg`);
   const progBarW=Math.max(0,Math.min(100,Math.abs(parseInt(prog.pct))));
   div.innerHTML=`
     ${prog.retroceso?`<div style="background:linear-gradient(135deg,#f8717115,#ef444408);border:1px solid #f8717140;border-radius:16px;padding:14px 16px;margin-bottom:14px;display:flex;align-items:center;gap:12px"><div style="font-size:28px">⚠️</div><div><div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:800;color:#f87171">Retroceso detectado</div><div style="font-size:12px;color:var(--muted)">Subiste ${Math.abs(prog.lost)}kg desde que empezaste. ¡Revisa tu plan con la IA!</div></div></div>`:''}
     <div class="stats-grid">
       <div class="stat-box" style="background:#60a5fa12;border:1px solid #60a5fa25"><div class="stat-icon">🗓️</div><div class="stat-val" style="color:var(--blue)">${prog.days}</div><div class="stat-lbl">Días activo</div></div>
-      <div class="stat-box" style="background:${kgColor}18;border:1px solid ${kgColor}30"><div class="stat-icon">${prog.retroceso?'📈':'⚖️'}</div><div class="stat-val" style="color:${kgColor}">${kgVal}</div><div class="stat-lbl">${prog.retroceso?'Kg ganados':'Kg perdidos'}</div></div>
+      <div class="stat-box" style="background:${kgColor}18;border:1px solid ${kgColor}30"><div class="stat-icon">${prog.kgIcon}</div><div class="stat-val" style="color:${kgColor}">${kgVal}</div><div class="stat-lbl">${prog.kgLabel}</div></div>
       <div class="stat-box" style="background:${pctColor}18;border:1px solid ${pctColor}30"><div class="stat-icon">${prog.retroceso?'📉':'🎯'}</div><div class="stat-val" style="color:${pctColor}">${prog.pct}%</div><div class="stat-lbl">${prog.retroceso?'Retroceso':'Progreso'}</div></div>
     </div>
     <div class="card" style="background:linear-gradient(135deg,${pctColor}10,var(--surface));border:1px solid ${pctColor}28;">
@@ -1256,7 +1321,7 @@ function renderLog(){
   const today=new Date().toLocaleDateString('es-CL',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
   const log=STATE.todayLog;
   div.innerHTML=`<div class="card card-amber" style="margin-bottom:12px"><div class="card-h">📝 Registro de Hoy</div><div style="font-size:12px;color:var(--amber)">${today}</div></div>
-    ${[{k:'weight',l:'⚖️ Peso actual (kg)',t:'number',p:'Ej: 79.5'},{k:'calories',l:'🔥 Calorías consumidas',t:'number',p:'Ej: 1800'},{k:'protein',l:'🥩 Proteína (g)',t:'number',p:'Ej: 150'},{k:'sleep',l:'😴 Horas de sueño',t:'number',p:'Ej: 7.5'},{k:'water',l:'💧 Agua (litros)',t:'number',p:'Ej: 2.5'}].map(f=>`<div class="field"><label>${f.l}</label><input type="${f.t}" placeholder="${f.p}" data-key="${f.k}" value="${log[f.k]||''}"/></div>`).join('')}
+    ${[{k:'weight',l:'⚖️ Peso actual (kg)',t:'number',p:'Ej: 79.5'},{k:'muscleMass',l:'💪 Masa muscular (kg) — opcional',t:'number',p:'Ej: 35.2'},{k:'bodyFat',l:'📊 % Grasa corporal — opcional',t:'number',p:'Ej: 22'},{k:'calories',l:'🔥 Calorías consumidas',t:'number',p:'Ej: 1800'},{k:'protein',l:'🥩 Proteína (g)',t:'number',p:'Ej: 150'},{k:'sleep',l:'😴 Horas de sueño',t:'number',p:'Ej: 7.5'},{k:'water',l:'💧 Agua (litros)',t:'number',p:'Ej: 2.5'}].map(f=>`<div class="field"><label>${f.l}</label><input type="${f.t}" placeholder="${f.p}" data-key="${f.k}" value="${log[f.k]||''}"/></div>`).join('')}
     <div class="field"><label>🏋️ ¿Entrenaste hoy?</label><select data-key="training"><option value="no" ${log.training==='no'?'selected':''}>No entrené</option><option value="si" ${log.training==='si'?'selected':''}>Sí, entrené</option><option value="activo" ${log.training==='activo'?'selected':''}>Descanso activo</option></select></div>
     <div class="field"><label>⚡ Nivel de energía (1-5)</label><div class="energy-row">${[1,2,3,4,5].map(n=>`<button class="energy-btn ${log.energy==n?'active':''}" data-e="${n}">${n}</button>`).join('')}</div></div>
     <div class="field"><label>📓 Notas</label><textarea placeholder="¿Cómo te sentiste hoy?">${log.notes||''}</textarea></div>
@@ -1282,7 +1347,7 @@ function buildWeightChart(logs){const withWeight=logs.filter(l=>l.weight&&parseF
 
 function renderProgress(){
   const prog=calcProgress();const div=document.createElement('div');
-  div.innerHTML=`<div class="stats-grid stats-grid2">${[{l:'Días registrados',v:prog.days,i:'🗓️',c:'var(--blue)'},{l:prog.retroceso?'Kg ganados':'Kg perdidos',v:prog.retroceso?`+${Math.abs(prog.lost)}kg`:Math.max(0,prog.lost)+'kg',i:prog.retroceso?'📈':'🔥',c:prog.retroceso?'#f87171':'var(--amber)'},{l:prog.retroceso?'Retroceso':'Progreso meta',v:prog.pct+'%',i:prog.retroceso?'📉':'🎯',c:prog.retroceso?'#f87171':'var(--purple)'},{l:'Peso actual',v:prog.lw+'kg',i:'⚖️',c:'var(--green)'}].map(s=>`<div class="stat-box" style="background:${s.c}12;border:1px solid ${s.c}25"><div class="stat-icon">${s.i}</div><div class="stat-val" style="color:${s.c}">${s.v}</div><div class="stat-lbl">${s.l}</div></div>`).join('')}</div>
+  div.innerHTML=`<div class="stats-grid stats-grid2">${[{l:'Días registrados',v:prog.days,i:'🗓️',c:'var(--blue)'},{l:prog.kgLabel,v:(prog.gtype==='gain'?(parseFloat(prog.lost)>=0?'+':'')+prog.lost+'kg':prog.retroceso?'+'+Math.abs(prog.lost)+'kg':Math.max(0,prog.lost)+'kg'),i:prog.kgIcon,c:prog.kgColor},{l:prog.retroceso?'Retroceso':'Progreso meta',v:prog.pct+'%',i:prog.retroceso?'📉':'🎯',c:prog.retroceso?'#f87171':'var(--purple)'},{l:'Peso actual',v:prog.lw+'kg',i:'⚖️',c:'var(--green)'}].map(s=>`<div class="stat-box" style="background:${s.c}12;border:1px solid ${s.c}25"><div class="stat-icon">${s.i}</div><div class="stat-val" style="color:${s.c}">${s.v}</div><div class="stat-lbl">${s.l}</div></div>`).join('')}</div>
     <div class="card" style="background:linear-gradient(135deg,${prog.retroceso?'#f8717112':'#a78bfa12'},var(--surface));border:1px solid ${prog.retroceso?'#f8717128':'#a78bfa28'}">
       <div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="font-weight:700">${prog.retroceso?'⚠️ Retroceso':'Progreso hacia la meta'}</span><span style="color:${prog.retroceso?'#f87171':'var(--purple)'};font-weight:800">${prog.pct}%</span></div>
       <div class="prog-wrap"><div class="prog-fill" style="width:${Math.max(0,Math.min(100,Math.abs(parseInt(prog.pct))))}%;background:linear-gradient(90deg,${prog.retroceso?'#f87171':'var(--purple)'},${prog.retroceso?'#f8717180':'#7c3aed80'})"></div></div>
