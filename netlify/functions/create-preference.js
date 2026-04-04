@@ -61,7 +61,7 @@ exports.handler = async (event) => {
     }
 
     // ── URL base del sitio ───────────────────────────────────────────
-    const siteUrl = "https://mysuperfitness.netlify.app";
+    const siteUrl = "https://fitaipro.cl";
 
     // ── Crear preferencia en MercadoPago ────────────────────────────
     const client = new MercadoPagoConfig({
