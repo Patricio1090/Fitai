@@ -324,6 +324,28 @@ let STATE = {
   planGeneratedAt: null,
 };
 
+function clearUserState() {
+  STATE.profile      = null;
+  STATE.dailyLogs    = [];
+  STATE.plan         = null;
+  STATE.nutrition    = null;
+  STATE.chat         = [];
+  STATE.qaHistory    = [];
+  STATE.aiMsg        = '';
+  STATE.todayLog     = { weight:'', bodyFat:'', muscleMass:'', calories:'', protein:'', sleep:'', water:'', training:'no', energy:'3', notes:'' };
+  STATE.planGeneratedAt = null;
+  STATE.setupStep    = 0;
+  STATE.setupData    = {};
+  STATE.tab          = 0;
+  STATE.needsAIPlan  = false;
+  STATE.couponApplied = false;
+  STATE.couponCode   = '';
+  STATE.couponData   = null;
+  STATE.couponDiscount = 0;
+  STATE.couponFinalAmount = CONFIG.AMOUNT;
+  localStorage.removeItem(STORAGE_KEY);
+}
+
 function save() {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
@@ -771,10 +793,9 @@ function render() {
     menu.querySelector('#sm-harvard').onclick=()=>{STATE.showSideMenu=false;STATE.sideSection='harvard';render();};
     menu.querySelector('#sm-qa').onclick=()=>{STATE.showSideMenu=false;STATE.sideSection='qa';render();};
     menu.querySelector('#sm-logout').onclick=()=>{
-      // Guardar todo antes de desloguear (perfil, planes, historial quedan en cache)
-      save();
-      STATE.user=null;STATE.screen='auth';STATE.showSideMenu=false;STATE.sideSection=null;
-      localStorage.removeItem(STORAGE_KEY); // limpiar sesión activa pero NO el cache por email
+      save(); // guardar cache por email antes de salir
+      clearUserState();
+      STATE.user=null; STATE.screen='auth'; STATE.showSideMenu=false; STATE.sideSection=null;
       render();
     };
     root.appendChild(menu);
@@ -787,9 +808,9 @@ function render() {
     root.appendChild(menu);
     menu.querySelector('#menu-reset').onclick=()=>{if(confirm('¿Reiniciar todo el programa?')){const email=STATE.user?.email;STATE.profile=null;STATE.dailyLogs=[];STATE.plan=null;STATE.nutrition=null;STATE.chat=[];STATE.setupStep=0;STATE.setupData={};STATE.aiMsg='';STATE.screen='setup';STATE.showUserMenu=false;if(email)localStorage.removeItem('fitai_profile_'+btoa(email));save();render();}};
     menu.querySelector('#menu-logout').onclick=()=>{
-      save();
-      STATE.user=null;STATE.screen='auth';STATE.showUserMenu=false;
-      localStorage.removeItem(STORAGE_KEY);
+      save(); // guardar cache por email antes de salir
+      clearUserState();
+      STATE.user=null; STATE.screen='auth'; STATE.showUserMenu=false;
       render();
     };
     document.addEventListener('click',function handler(e){if(!menu.contains(e.target)){STATE.showUserMenu=false;document.removeEventListener('click',handler);render();}},{once:true});
@@ -870,7 +891,9 @@ function renderAuth() {
     try {
       if (STATE.authMode==='register'){if(!name)throw new Error('Ingresa tu nombre.');STATE.user=await authRegister(email,pass,name,phone);}
       else STATE.user=await authLogin(email,pass);
-      // ── Restaurar TODO desde cache local (instantáneo, sin esperar Supabase) ──
+      // ── Limpiar datos del usuario anterior antes de cargar el nuevo ──
+      clearUserState();
+      // ── Restaurar TODO desde cache local del nuevo usuario ──
       const cachedProfile = loadProfileCache(email);
       const cachedData    = loadUserCache(email);
       if (cachedProfile)              STATE.profile        = cachedProfile;
@@ -958,7 +981,7 @@ function renderPaywall() {
     <button class="btn btn-ghost" style="max-width:420px;margin-top:8px" id="btn-logout-pay">← Cambiar cuenta</button>`;
 
   div.querySelector('#btn-pay').onclick = processPayment;
-  div.querySelector('#btn-logout-pay').onclick = () => { STATE.user=null; STATE.screen='auth'; save(); render(); };
+  div.querySelector('#btn-logout-pay').onclick = () => { clearUserState(); STATE.user=null; STATE.screen='auth'; render(); };
 
   // ── Handler del cupón → llama a validate-coupon function ──
   div.querySelector('#btn-apply-coupon').onclick = async () => {
