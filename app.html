@@ -247,11 +247,19 @@ async function dbSaveDailyLog(email, log) {
     await supa.from('daily_logs').upsert({
       user_email: email, date: log.date,
       weight: parseFloat(log.weight)||null, body_fat: parseFloat(log.bodyFat)||null,
+      muscle_mass: parseFloat(log.muscleMass)||null,
       calories: parseInt(log.calories)||null, protein: parseInt(log.protein)||null,
       sleep: parseFloat(log.sleep)||null, water: parseFloat(log.water)||null,
       training: log.training, energy: parseInt(log.energy)||null, notes: log.notes||null,
     }, { onConflict: 'user_email,date' });
   } catch(e) { console.log('DB log error:', e); }
+}
+
+async function dbSaveQAHistory(email, qaHistory) {
+  initSupabase(); if (!supa || !email || !qaHistory?.length) return;
+  try {
+    await supa.from('users').update({ qa_history: qaHistory }).eq('email', email);
+  } catch(e) { console.log('DB QA save error:', e); }
 }
 
 async function dbSavePlanNutrition(email, plan, nutrition) {
@@ -389,6 +397,10 @@ if (window.location.hash === '#login') {
     await loadProfileFromSupabase(STATE.user.email);
     if (STATE.screen === 'setup' && STATE.profile) {
       STATE.screen = !STATE.user.paid ? 'paywall' : 'app';
+    }
+    // Si el perfil existe pero le faltan campos críticos, volver a setup
+    if (STATE.screen === 'app' && STATE.profile && !profileIsComplete(STATE.profile)) {
+      STATE.screen = 'setup';
     }
     if (STATE.needsAIPlan && STATE.profile && !STATE.plan) {
       STATE.needsAIPlan = false;
@@ -533,6 +545,12 @@ async function loadProfileFromSupabase(email) {
       if (u.current_plan)       STATE.plan            = u.current_plan;
       if (u.current_nutrition)  STATE.nutrition       = u.current_nutrition;
       if (u.plan_generated_at)  STATE.planGeneratedAt = u.plan_generated_at;
+      // Cargar Q&A history desde Supabase (prioridad sobre caché local si tiene más entradas)
+      if (u.qa_history?.length) {
+        if (u.qa_history.length >= (STATE.qaHistory?.length||0)) {
+          STATE.qaHistory = u.qa_history;
+        }
+      }
     }
     const { data:logs } = await supa.from('daily_logs').select('*').eq('user_email', email).order('date', {ascending:false}).limit(90);
     if (logs && logs.length > 0) {
@@ -589,7 +607,13 @@ async function processPayment() {
   }
 }
 
-// ── Progreso ────────────────────────────────────────────────────
+// ── Validación de perfil completo ────────────────────────────────
+function profileIsComplete(p) {
+  return p && p.weight && p.height && p.age && p.activityLevel && p.goal;
+}
+function perfilIncompleto() {
+  return `<div class="card card-amber" style="margin-top:12px"><div class="card-h">⚠️ Perfil incompleto</div><div style="font-size:13px;color:var(--muted);margin-bottom:12px">Faltan datos esenciales para generar tu plan personalizado. Por favor completa tu configuración.</div><button class="btn btn-purple" onclick="STATE.profile=null;STATE.setupStep=0;STATE.setupData={};STATE.screen='setup';render()">⚙️ Completar configuración</button></div>`;
+}
 function getGoalType() {
   const g = (STATE.profile?.goal || '').toLowerCase();
   if (g.includes('aumento') || g.includes('ganar masa')) return 'gain';
@@ -1297,8 +1321,11 @@ function renderWorkout(){
     </button>
     <div class="card" style="margin-top:12px"><div class="card-h">💬 Pregunta al coach de entrenamiento</div><div id="chat-w" style="max-height:400px;overflow-y:auto"></div><div class="chat-row"><input type="text" id="ci-w" placeholder="¿Cómo reemplazo las sentadillas?"/><button id="cs-w">→</button></div></div>`;
   STATE.chat.slice(-4).forEach(m=>{const el=document.createElement('div');el.className='chat-msg '+(m.role==='user'?'chat-user':'chat-ai');el.innerHTML=`<strong>${m.role==='user'?'Tú:':'🤖 '}</strong> ${m.content}`;div.querySelector('#chat-w').appendChild(el);});
-  div.querySelector('#btn-newplan').onclick=async()=>{STATE.aiLoading=true;render();const tp=STATE.profile.trainingPlace;const r=await claude([{role:'user',content:`Plan entrenamiento semanal para ${STATE.profile.name}, objetivo: ${STATE.profile.goal}, nivel: ${STATE.profile.activityLevel}, lugar: ${tp||'gimnasio'}, semana ${weekNum}. ${getTrainingPrompt(tp)}\n\nFORMATO OBLIGATORIO (NO uses tablas markdown):\n## DÍA 1 - LUNES: Nombre del grupo\n- Nombre del ejercicio (X series x Y reps - Z min descanso)\n- Nombre del ejercicio (X series x Y reps - Z min descanso)\n## DÍA 2 - MARTES: Descanso activo\netc.\n\nMáx 700 palabras. Incluye series, reps y descanso entre paréntesis de cada ejercicio.`}]);STATE.plan=r;STATE.planGeneratedAt=new Date().toISOString();STATE.aiLoading=false;save();dbSavePlanNutrition(STATE.user?.email,STATE.plan,STATE.nutrition);render();};
-  const send=async()=>{const inp=div.querySelector('#ci-w');const txt=inp?.value.trim();if(!txt)return;STATE.chat.push({role:'user',content:txt});inp.value='';STATE.aiLoading=true;render();const msgs=STATE.chat.slice(-6).map(m=>({role:m.role,content:m.content}));msgs[0]={...msgs[0],content:`${STATE.profile.name},${STATE.profile.goal}\n${msgs[0].content}`};const r=await claude(msgs);STATE.chat.push({role:'assistant',content:r});STATE.qaHistory.push({date:new Date().toLocaleDateString('es-CL'),q:txt,a:r});STATE.qaHistory=STATE.qaHistory.slice(-100);STATE.aiLoading=false;save();render();};
+  div.querySelector('#btn-newplan').onclick=async()=>{
+    if(!profileIsComplete(STATE.profile)){STATE.aiMsg='⚠️ Tu perfil está incompleto. Ve a ⚙️ Reiniciar programa (menú 👤) para completar tu configuración.';render();return;}
+    STATE.aiLoading=true;render();const tp=STATE.profile.trainingPlace;const r=await claude([{role:'user',content:`Plan entrenamiento semanal para ${STATE.profile.name}, objetivo: ${STATE.profile.goal}, nivel: ${STATE.profile.activityLevel}, lugar: ${tp||'gimnasio'}, semana ${weekNum}. ${getTrainingPrompt(tp)}\n\nFORMATO OBLIGATORIO (NO uses tablas markdown):\n## DÍA 1 - LUNES: Nombre del grupo\n- Nombre del ejercicio (X series x Y reps - Z min descanso)\n- Nombre del ejercicio (X series x Y reps - Z min descanso)\n## DÍA 2 - MARTES: Descanso activo\netc.\n\nMáx 700 palabras. Incluye series, reps y descanso entre paréntesis de cada ejercicio.`}]);STATE.plan=r;STATE.planGeneratedAt=new Date().toISOString();STATE.aiLoading=false;save();dbSavePlanNutrition(STATE.user?.email,STATE.plan,STATE.nutrition);render();
+  };
+  const send=async()=>{const inp=div.querySelector('#ci-w');const txt=inp?.value.trim();if(!txt)return;STATE.chat.push({role:'user',content:txt});inp.value='';STATE.aiLoading=true;render();const msgs=STATE.chat.slice(-6).map(m=>({role:m.role,content:m.content}));msgs[0]={...msgs[0],content:`${STATE.profile.name},${STATE.profile.goal}\n${msgs[0].content}`};const r=await claude(msgs);STATE.chat.push({role:'assistant',content:r});STATE.qaHistory.push({date:new Date().toLocaleDateString('es-CL'),q:txt,a:r});STATE.qaHistory=STATE.qaHistory.slice(-100);STATE.aiLoading=false;save();dbSaveQAHistory(STATE.user?.email,STATE.qaHistory);render();};
   div.querySelector('#cs-w').onclick=send;div.querySelector('#ci-w').onkeydown=e=>{if(e.key==='Enter')send();};
   return div;
 }
@@ -1310,8 +1337,11 @@ function renderNutrition(){
     <button class="btn btn-green" id="btn-newnut">${STATE.aiLoading?'⏳ Generando menú…':'🔄 Nuevo menú del día'}</button>
     <div class="card" style="margin-top:12px"><div class="card-h">💬 Consulta nutricional</div><div id="chat-n" style="max-height:400px;overflow-y:auto"></div><div class="chat-row"><input type="text" id="ci-n" placeholder="¿Puedo sustituir el pollo?"/><button id="cs-n" style="background:var(--green)">→</button></div></div>`;
   STATE.chat.slice(-2).forEach(m=>{const el=document.createElement('div');el.className='chat-msg '+(m.role==='user'?'chat-user':'chat-ai');el.style.color=m.role==='assistant'?'#6ee7b7':'';el.innerHTML=`<strong>${m.role==='user'?'Tú:':'🤖 '}</strong> ${m.content}`;div.querySelector('#chat-n').appendChild(el);});
-  div.querySelector('#btn-newnut').onclick=async()=>{STATE.aiLoading=true;render();const p=STATE.profile;const r=await claude([{role:'user',content:`Plan alimentación VARIADO para ${p.name},${p.goal},${calcProgress().lw}kg,${p.height}cm,${p.gender},${p.age}años. Formato ESTRICTO:\n## 📊 Calorías y Macros\n- Calorías: X kcal\n- Proteína: Xg\n- Carbohidratos: Xg\n- Grasas: Xg\n## 🌅 Desayuno\n- alimento (cantidad)\n## 🍎 Colación AM\n- alimento (cantidad)\n## ☀️ Almuerzo\n- alimento (cantidad)\n## 🥤 Merienda PM\n- alimento (cantidad)\n## 🌙 Cena\n- alimento (cantidad)\nNO incluir recetas ni preparación. Solo alimentos con cantidades. Máx 300 palabras.`}]);STATE.nutrition=r;STATE.aiLoading=false;save();dbSavePlanNutrition(STATE.user?.email,STATE.plan,STATE.nutrition);render();};
-  const send=async()=>{const inp=div.querySelector('#ci-n');const txt=inp?.value.trim();if(!txt)return;STATE.chat.push({role:'user',content:txt});inp.value='';STATE.aiLoading=true;render();const msgs=STATE.chat.slice(-4).map(m=>({role:m.role,content:m.content}));msgs[0]={...msgs[0],content:`${STATE.profile.name},${STATE.profile.goal}\n${msgs[0].content}`};const r=await claude(msgs);STATE.chat.push({role:'assistant',content:r});STATE.qaHistory.push({date:new Date().toLocaleDateString('es-CL'),q:txt,a:r});STATE.qaHistory=STATE.qaHistory.slice(-100);STATE.aiLoading=false;save();render();};
+  div.querySelector('#btn-newnut').onclick=async()=>{
+    if(!profileIsComplete(STATE.profile)){STATE.aiMsg='⚠️ Tu perfil está incompleto. Ve a ⚙️ Reiniciar programa (menú 👤) para completar tu configuración.';render();return;}
+    STATE.aiLoading=true;render();const p=STATE.profile;const r=await claude([{role:'user',content:`Plan alimentación VARIADO para ${p.name},${p.goal},${calcProgress().lw}kg,${p.height}cm,${p.gender},${p.age}años. Formato ESTRICTO:\n## 📊 Calorías y Macros\n- Calorías: X kcal\n- Proteína: Xg\n- Carbohidratos: Xg\n- Grasas: Xg\n## 🌅 Desayuno\n- alimento (cantidad)\n## 🍎 Colación AM\n- alimento (cantidad)\n## ☀️ Almuerzo\n- alimento (cantidad)\n## 🥤 Merienda PM\n- alimento (cantidad)\n## 🌙 Cena\n- alimento (cantidad)\nNO incluir recetas ni preparación. Solo alimentos con cantidades. Máx 300 palabras.`}]);STATE.nutrition=r;STATE.aiLoading=false;save();dbSavePlanNutrition(STATE.user?.email,STATE.plan,STATE.nutrition);render();
+  };
+  const send=async()=>{const inp=div.querySelector('#ci-n');const txt=inp?.value.trim();if(!txt)return;STATE.chat.push({role:'user',content:txt});inp.value='';STATE.aiLoading=true;render();const msgs=STATE.chat.slice(-4).map(m=>({role:m.role,content:m.content}));msgs[0]={...msgs[0],content:`${STATE.profile.name},${STATE.profile.goal}\n${msgs[0].content}`};const r=await claude(msgs);STATE.chat.push({role:'assistant',content:r});STATE.qaHistory.push({date:new Date().toLocaleDateString('es-CL'),q:txt,a:r});STATE.qaHistory=STATE.qaHistory.slice(-100);STATE.aiLoading=false;save();dbSaveQAHistory(STATE.user?.email,STATE.qaHistory);render();};
   div.querySelector('#cs-n').onclick=send;div.querySelector('#ci-n').onkeydown=e=>{if(e.key==='Enter')send();};
   return div;
 }
@@ -1359,7 +1389,10 @@ function renderProgress(){
     </div>
     <button class="btn btn-blue" id="btn-weekly">${STATE.aiLoading?'⏳ Analizando…':'🧠 Análisis semanal con IA'}</button>
     ${STATE.aiMsg?`<div class="card card-blue" style="margin-top:12px"><div class="card-sh">📊 Informe de progreso</div><div class="ai-text">${STATE.aiMsg}</div></div>`:''}`;
-  div.querySelector('#btn-weekly').onclick=async()=>{STATE.aiLoading=true;render();const p=STATE.profile;const prog2=calcProgress();const alertaRetroceso=prog2.retroceso?`⚠️ ALERTA CRÍTICA: subió ${Math.abs(prog2.lost)}kg desde inicio (${prog2.pesoInicial}kg→${prog2.lw}kg). Sé directo, propón plan de corrección con pasos claros.`:'';const r=await claude([{role:'user',content:`Análisis de progreso de ${p.name} (300 palabras):\n${alertaRetroceso}\nPerfil: ${JSON.stringify(p)}\nRegistros últimos 7 días: ${JSON.stringify(STATE.dailyLogs.slice(0,7))}\nProgreso: ${prog2.lost}kg en ${prog2.days} días.`}]);STATE.aiMsg=r;STATE.aiLoading=false;render();};
+  div.querySelector('#btn-weekly').onclick=async()=>{
+    if(!profileIsComplete(STATE.profile)){STATE.aiMsg='⚠️ Tu perfil está incompleto. Ve a ⚙️ Reiniciar programa (menú 👤) para completar tu configuración.';render();return;}
+    STATE.aiLoading=true;render();const p=STATE.profile;const prog2=calcProgress();const alertaRetroceso=prog2.retroceso?`⚠️ ALERTA CRÍTICA: subió ${Math.abs(prog2.lost)}kg desde inicio (${prog2.pesoInicial}kg→${prog2.lw}kg). Sé directo, propón plan de corrección con pasos claros.`:'';const r=await claude([{role:'user',content:`Análisis de progreso de ${p.name} (300 palabras):\n${alertaRetroceso}\nPerfil: ${JSON.stringify(p)}\nRegistros últimos 7 días: ${JSON.stringify(STATE.dailyLogs.slice(0,7))}\nProgreso: ${prog2.lost}kg en ${prog2.days} días.`}]);STATE.aiMsg=r;STATE.aiLoading=false;render();
+  };
   return div;
 }
 
