@@ -100,7 +100,7 @@ exports.handler = async (event) => {
           pending: `${siteUrl}/app.html?payment=pending`,
         },
         auto_return:      "approved",
-        notification_url: `${siteUrl}/.netlify/functions/payment-webhook`,
+        notification_url: `${siteUrl}/.netlify/functions/mp-webhooks`,
       },
     });
 
