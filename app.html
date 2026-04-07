@@ -650,9 +650,8 @@ function calcProgress() {
   const tw = parseFloat(STATE.profile?.targetWeight)||sw;
   const lw = logs.length ? (parseFloat(logs[0]?.weight)||sw) : sw;
 
-  const logsConPeso = logs.filter(l => parseFloat(l.weight) > 0);
-  const primerLog = logsConPeso.length ? logsConPeso[logsConPeso.length - 1] : null;
-  const pesoInicial = primerLog ? parseFloat(primerLog.weight) : sw;
+  // pesoInicial siempre es el peso del setup (profile.weight), no el primer log
+  const pesoInicial = sw;
 
   let lost, pct, retroceso, kgLabel, kgIcon, kgColor;
 
