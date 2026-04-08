@@ -1215,7 +1215,7 @@ function renderDashboard() {
     <div class="card" style="background:linear-gradient(135deg,${pctColor}10,var(--surface));border:1px solid ${pctColor}28;">
       <div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:14px;font-weight:700">${prog.retroceso?'⚠️':'🎯'} Meta: ${STATE.profile.targetWeight}kg</span><span style="color:${pctColor};font-weight:800">${prog.pct}%</span></div>
       <div class="prog-wrap"><div class="prog-fill" style="width:${progBarW}%;background:linear-gradient(90deg,${pctColor},${pctColor}80)"></div></div>
-      <div style="font-size:11px;color:var(--muted);margin-top:6px">${prog.retroceso?`⚠️ Actual: ${prog.lw}kg · Inicio: ${prog.pesoInicial}kg`:`Actual: ${prog.lw}kg → Meta: ${STATE.profile.targetWeight}kg · ${STATE.profile.weeksGoal} semanas`}</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:6px">${prog.retroceso?`⚠️ Actual: ${prog.lw}kg · Inicio: ${prog.pesoInicial}kg`:`🏁 Inicio: ${prog.pesoInicial}kg · Actual: ${prog.lw}kg · Meta: ${STATE.profile.targetWeight}kg`}</div>
     </div>
     ${prog.trend.length>1?renderMiniChart(prog.trend):''}
     ${STATE.aiMsg?`<div class="card" style="background:linear-gradient(135deg,${prog.retroceso?'#f8717112':'#34d39912'},var(--surface));border:1px solid ${prog.retroceso?'#f8717128':'#34d39928'}"><div class="card-sh">${prog.retroceso?'⚠️ Alerta de la IA':'🧠 Análisis de hoy'}</div><div class="ai-text">${STATE.aiMsg}</div></div>`:''}
@@ -1411,7 +1411,23 @@ function renderLog(){
   return div;
 }
 
-function buildWeightChart(logs){const withWeight=logs.filter(l=>l.weight&&parseFloat(l.weight)>0).slice(0,30).reverse();if(withWeight.length<2)return'<div style="color:var(--muted);font-size:13px;text-align:center;padding:20px">Registra tu peso diariamente para ver el gráfico 📊</div>';const weights=withWeight.map(l=>parseFloat(l.weight));const dates=withWeight.map(l=>l.date?.slice(0,5)||'');const mn=Math.min(...weights)-0.5,mx=Math.max(...weights)+0.5;const W=300,H=120,pad=30;const xScale=i=>pad+(i/(withWeight.length-1))*(W-pad*2);const yScale=v=>H-pad-((v-mn)/(mx-mn))*(H-pad*2);const points=weights.map((w,i)=>`${xScale(i)},${yScale(w)}`).join(' ');const area=`${xScale(0)},${H-10} `+weights.map((w,i)=>`${xScale(i)},${yScale(w)}`).join(' ')+` ${xScale(weights.length-1)},${H-10}`;return`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto"><defs><linearGradient id="wg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#a78bfa" stop-opacity="0.4"/><stop offset="100%" stop-color="#a78bfa" stop-opacity="0"/></linearGradient></defs><polygon points="${area}" fill="url(#wg)"/><polyline points="${points}" fill="none" stroke="#a78bfa" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>${weights.map((w,i)=>`<circle cx="${xScale(i)}" cy="${yScale(w)}" r="3.5" fill="#a78bfa"/><text x="${xScale(i)}" y="${yScale(w)-8}" text-anchor="middle" font-size="9" fill="#a78bfa">${w}</text>`).join('')}</svg>`;}
+function buildWeightChart(logs){
+  const withWeight=logs.filter(l=>l.weight&&parseFloat(l.weight)>0).slice(0,29).reverse();
+  // Siempre anclar el primer punto al peso inicial del perfil
+  const initialWeight=parseFloat(STATE.profile?.weight);
+  const startPoint=initialWeight?[{date:'Inicio',weight:initialWeight}]:[];
+  const chartData=[...startPoint,...withWeight];
+  if(chartData.length<2)return'<div style="color:var(--muted);font-size:13px;text-align:center;padding:20px">Registra tu peso diariamente para ver el gráfico 📊</div>';
+  const weights=chartData.map(l=>parseFloat(l.weight));
+  const mn=Math.min(...weights)-0.5,mx=Math.max(...weights)+0.5;
+  const W=300,H=120,pad=30;
+  const xScale=i=>pad+(i/(chartData.length-1))*(W-pad*2);
+  const yScale=v=>H-pad-((v-mn)/(mx-mn))*(H-pad*2);
+  const points=weights.map((w,i)=>`${xScale(i)},${yScale(w)}`).join(' ');
+  const area=`${xScale(0)},${H-10} `+weights.map((w,i)=>`${xScale(i)},${yScale(w)}`).join(' ')+` ${xScale(weights.length-1)},${H-10}`;
+  return`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto"><defs><linearGradient id="wg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#a78bfa" stop-opacity="0.4"/><stop offset="100%" stop-color="#a78bfa" stop-opacity="0"/></linearGradient></defs><polygon points="${area}" fill="url(#wg)"/><polyline points="${points}" fill="none" stroke="#a78bfa" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>${chartData.map((d,i)=>`<circle cx="${xScale(i)}" cy="${yScale(parseFloat(d.weight))}" r="${i===0?4.5:3.5}" fill="${i===0?'#fbbf24':'#a78bfa'}"/><text x="${xScale(i)}" y="${yScale(parseFloat(d.weight))-8}" text-anchor="middle" font-size="9" fill="${i===0?'#fbbf24':'#a78bfa'}">${d.weight}</text>`).join('')}</svg>
+  <div style="font-size:10px;color:var(--muted);text-align:left;margin-top:4px"><span style="color:#fbbf24">●</span> Inicio: ${initialWeight}kg</div>`;
+}
 
 function renderProgress(){
   const prog=calcProgress();const div=document.createElement('div');
