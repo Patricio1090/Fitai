@@ -635,9 +635,10 @@ function getGoalType() {
 
 // ── FIX: Solo logs desde la fecha de inicio del programa ─────────
 function getActiveLogs() {
-  const ref = STATE.programStartDate || STATE.planGeneratedAt;
-  if (!ref) return STATE.dailyLogs;
-  const setupTs = new Date(ref).setHours(0, 0, 0, 0);
+  // Solo filtrar si hay una fecha de inicio de programa explícita
+  // (se setea en el setup). Si no existe, mostrar todos los logs.
+  if (!STATE.programStartDate) return STATE.dailyLogs;
+  const setupTs = new Date(STATE.programStartDate).setHours(0, 0, 0, 0);
   return STATE.dailyLogs.filter(l => {
     if (!l.date) return false;
     let d;
