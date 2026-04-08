@@ -843,7 +843,25 @@ function render() {
       STATE.profile.goal=b.dataset.g;
       saveProfileCache(STATE.user?.email,STATE.profile);
       if(supa)await supa.from('users').update({goal:b.dataset.g}).eq('email',STATE.user?.email);
-      STATE.showModeMenu=false;STATE.plan=null;STATE.needsAIPlan=true;save();render();
+      STATE.showModeMenu=false;
+      STATE.plan=null;
+      STATE.nutrition=null;
+      STATE.aiLoading=true;
+      save();render();
+      const p=STATE.profile;
+      const desc=`${p.name},${p.age}años,${p.gender},${p.weight}kg,${p.height}cm,objetivo:${p.goal},meta:${p.targetWeight}kg en ${p.weeksGoal} semanas,actividad:${p.activityLevel}`;
+      const tp=p.trainingPlace;
+      try {
+        STATE.plan=await claude([{role:'user',content:`Plan entrenamiento semanal para ${desc}, lugar: ${tp||'gimnasio'}. ${getTrainingPrompt(tp)}\n\nFORMATO OBLIGATORIO (NO uses tablas markdown):\n## DÍA 1 - LUNES: Nombre del grupo\n- Nombre del ejercicio (X series x Y reps - Z min descanso)\netc.\n\nMáx 500 palabras. Incluye series, reps y descanso entre paréntesis.`}]);
+        STATE.nutrition=await claude([{role:'user',content:`Plan alimentación diario para ${desc}. Formato ESTRICTO:\n## 📊 Calorías y Macros\n- Calorías: X kcal\n- Proteína: Xg\n- Carbohidratos: Xg\n- Grasas: Xg\n## 🌅 Desayuno\n- alimento (cantidad)\n## 🍎 Colación AM\n- alimento (cantidad)\n## ☀️ Almuerzo\n- alimento (cantidad)\n## 🥤 Merienda PM\n- alimento (cantidad)\n## 🌙 Cena\n- alimento (cantidad)\nSolo alimentos con cantidades. Máx 300 palabras.`}]);
+        STATE.planGeneratedAt=new Date().toISOString();
+        dbSavePlanNutrition(STATE.user?.email,STATE.plan,STATE.nutrition);
+      } catch(e) {
+        STATE.plan='⚠️ Error al generar. Toca "🔄 Nueva semana" para reintentar.';
+        STATE.nutrition='⚠️ Error al generar. Toca "🔄 Nuevo menú" para reintentar.';
+      }
+      STATE.aiLoading=false;
+      save();render();
     });
     root.appendChild(m);
     document.addEventListener('click',function h(e){if(!m.contains(e.target)){STATE.showModeMenu=false;document.removeEventListener('click',h);render();}},{once:true});
@@ -859,7 +877,22 @@ function render() {
       STATE.profile.trainingPlace=b.dataset.p;
       saveProfileCache(STATE.user?.email,STATE.profile);
       if(supa)await supa.from('users').update({training_place:b.dataset.p}).eq('email',STATE.user?.email);
-      STATE.showPlaceMenu=false;STATE.plan=null;STATE.needsAIPlan=true;save();render();
+      STATE.showPlaceMenu=false;
+      STATE.plan=null;
+      STATE.aiLoading=true;
+      save();render();
+      const p=STATE.profile;
+      const desc=`${p.name},${p.age}años,${p.gender},${p.weight}kg,${p.height}cm,objetivo:${p.goal},meta:${p.targetWeight}kg en ${p.weeksGoal} semanas,actividad:${p.activityLevel}`;
+      const tp=p.trainingPlace;
+      try {
+        STATE.plan=await claude([{role:'user',content:`Plan entrenamiento semanal para ${desc}, lugar: ${tp||'gimnasio'}. ${getTrainingPrompt(tp)}\n\nFORMATO OBLIGATORIO (NO uses tablas markdown):\n## DÍA 1 - LUNES: Nombre del grupo\n- Nombre del ejercicio (X series x Y reps - Z min descanso)\netc.\n\nMáx 500 palabras. Incluye series, reps y descanso entre paréntesis.`}]);
+        STATE.planGeneratedAt=new Date().toISOString();
+        dbSavePlanNutrition(STATE.user?.email,STATE.plan,STATE.nutrition);
+      } catch(e) {
+        STATE.plan='⚠️ Error al generar. Toca "🔄 Nueva semana" para reintentar.';
+      }
+      STATE.aiLoading=false;
+      save();render();
     });
     root.appendChild(m);
     document.addEventListener('click',function h(e){if(!m.contains(e.target)){STATE.showPlaceMenu=false;document.removeEventListener('click',h);render();}},{once:true});
