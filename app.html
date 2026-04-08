@@ -316,6 +316,7 @@ let STATE = {
   couponFinalAmount: CONFIG.AMOUNT,
   needsAIPlan: false,
   planGeneratedAt: null,
+  programStartDate: null,
 };
 
 function clearUserState() {
@@ -328,6 +329,7 @@ function clearUserState() {
   STATE.aiMsg        = '';
   STATE.todayLog     = { weight:'', bodyFat:'', muscleMass:'', calories:'', protein:'', sleep:'', water:'', training:'no', energy:'3', notes:'' };
   STATE.planGeneratedAt = null;
+  STATE.programStartDate = null;
   STATE.setupStep    = 0;
   STATE.setupData    = {};
   STATE.tab          = 0;
@@ -346,6 +348,7 @@ function save() {
       user: STATE.user, profile: STATE.profile, dailyLogs: STATE.dailyLogs,
       plan: STATE.plan, nutrition: STATE.nutrition, chat: STATE.chat,
       qaHistory: STATE.qaHistory, planGeneratedAt: STATE.planGeneratedAt,
+      programStartDate: STATE.programStartDate,
     }));
     if (STATE.user?.email) {
       saveUserCache(STATE.user.email, {
@@ -353,6 +356,7 @@ function save() {
         nutrition: STATE.nutrition,
         qaHistory: STATE.qaHistory,
         planGeneratedAt: STATE.planGeneratedAt,
+        programStartDate: STATE.programStartDate,
         dailyLogs: STATE.dailyLogs,
       });
     }
@@ -369,6 +373,7 @@ function loadSaved() {
     if (d.chat)           STATE.chat           = d.chat;
     if (d.qaHistory)      STATE.qaHistory      = d.qaHistory;
     if (d.planGeneratedAt)STATE.planGeneratedAt= d.planGeneratedAt;
+    if (d.programStartDate)STATE.programStartDate= d.programStartDate;
   } catch{}
 }
 loadSaved();
@@ -426,6 +431,7 @@ if (window.location.hash === '#login') {
         STATE.plan = await withTimeout(claude([{role:'user',content:`Plan entrenamiento semanal para ${desc}, lugar: ${p.trainingPlace||'gimnasio'}. ${getTrainingPrompt(p.trainingPlace)}\n\nFORMATO OBLIGATORIO (NO uses tablas markdown):\n## DÍA 1 - LUNES: Nombre del grupo\n- Nombre del ejercicio (X series x Y reps - Z min descanso)\n- Nombre del ejercicio (X series x Y reps - Z min descanso)\netc.\n\nMáx 250 palabras. Incluye series, reps y descanso entre paréntesis.`}]), 25000);
         STATE.nutrition = await withTimeout(claude([{role:'user',content:`Plan alimentación diario para ${desc}. Formato: ## Desayuno, ## Colación AM, ## Almuerzo, ## Merienda PM, ## Cena. Solo alimentos con cantidades. Máx 200 palabras.`}]), 25000);
         STATE.planGeneratedAt = new Date().toISOString();
+        if (!STATE.programStartDate) STATE.programStartDate = STATE.planGeneratedAt;
         dbSavePlanNutrition(STATE.user?.email, STATE.plan, STATE.nutrition);
       } catch(e) {
         STATE.plan = '⚠️ Toca "🔄 Nueva semana" para generar tu plan.';
@@ -629,8 +635,9 @@ function getGoalType() {
 
 // ── FIX: Solo logs desde la fecha de inicio del programa ─────────
 function getActiveLogs() {
-  if (!STATE.planGeneratedAt) return STATE.dailyLogs;
-  const setupTs = new Date(STATE.planGeneratedAt).setHours(0, 0, 0, 0);
+  const ref = STATE.programStartDate || STATE.planGeneratedAt;
+  if (!ref) return STATE.dailyLogs;
+  const setupTs = new Date(ref).setHours(0, 0, 0, 0);
   return STATE.dailyLogs.filter(l => {
     if (!l.date) return false;
     let d;
@@ -900,6 +907,7 @@ function renderAuth() {
       if (cachedData?.nutrition)      STATE.nutrition      = cachedData.nutrition;
       if (cachedData?.qaHistory)      STATE.qaHistory      = cachedData.qaHistory;
       if (cachedData?.planGeneratedAt)STATE.planGeneratedAt= cachedData.planGeneratedAt;
+      if (cachedData?.programStartDate)STATE.programStartDate= cachedData.programStartDate;
       if (cachedData?.dailyLogs?.length) STATE.dailyLogs   = cachedData.dailyLogs;
       save();
       await loadProfileFromSupabase(STATE.user.email);
@@ -1103,6 +1111,7 @@ function renderSetup() {
         STATE.plan=await withTimeout(claude([{role:'user',content:`Plan entrenamiento semanal para ${desc}, lugar: ${p.trainingPlace||'gimnasio'}. ${getTrainingPrompt(p.trainingPlace)}\n\nFORMATO OBLIGATORIO (NO uses tablas markdown):\n## DÍA 1 - LUNES: Nombre del grupo\n- Nombre del ejercicio (X series x Y reps - Z min descanso)\n- Nombre del ejercicio (X series x Y reps - Z min descanso)\netc.\n\nMáx 250 palabras. Incluye series, reps y descanso entre paréntesis.`}]),25000);
         STATE.nutrition=await withTimeout(claude([{role:'user',content:`Plan alimentación diario para ${desc}. Formato: ## Desayuno, ## Colación AM, ## Almuerzo, ## Merienda PM, ## Cena. Solo alimentos con cantidades. Máx 200 palabras.`}]),25000);
         STATE.planGeneratedAt=new Date().toISOString();
+        if (!STATE.programStartDate) STATE.programStartDate = STATE.planGeneratedAt;
         STATE.screen='app';
         dbSavePlanNutrition(STATE.user?.email,STATE.plan,STATE.nutrition);
       } catch(e) {
