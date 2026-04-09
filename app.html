@@ -654,6 +654,18 @@ function getActiveLogs() {
 }
 // ─────────────────────────────────────────────────────────────────
 
+function getDaysActive() {
+  if (STATE.programStartDate) {
+    const start = new Date(STATE.programStartDate);
+    start.setHours(0, 0, 0, 0);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return Math.floor((today - start) / (1000 * 60 * 60 * 24)) + 1;
+  }
+  // Fallback: si no hay fecha de inicio, contar logs
+  return STATE.dailyLogs.length;
+}
+
 function calcProgress() {
   // ← CAMBIO: usa getActiveLogs() en vez de STATE.dailyLogs
   const logs = getActiveLogs();
@@ -697,7 +709,7 @@ function calcProgress() {
   }
 
   const trend = logs.slice(0,14).reverse().map(l=>({date:l.date,w:parseFloat(l.weight)||null})).filter(l=>l.w);
-  return { lost:lost.toFixed(1), pct:Math.max(0,pct).toFixed(0), days:logs.length, trend, lw:lw||sw, retroceso, pesoInicial, kgLabel, kgIcon, kgColor, gtype };
+  return { lost:lost.toFixed(1), pct:Math.max(0,pct).toFixed(0), days:getDaysActive(), trend, lw:lw||sw, retroceso, pesoInicial, kgLabel, kgIcon, kgColor, gtype };
 }
 
 function renderSideSection() {
