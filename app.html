@@ -675,13 +675,18 @@ function getDaysActive() {
         if (!l.date) return null;
         let d;
         if (l.date.includes('/')) {
+          // Formato es-CL con slashes: DD/MM/YYYY o D/M/YYYY
           const parts = l.date.split('/');
-          // Formato es-CL: DD/MM/YYYY
           d = new Date(+parts[2], +parts[1] - 1, +parts[0]);
-        } else if (l.date.includes('-') && l.date.length === 10) {
-          // Formato ISO: YYYY-MM-DD
+        } else if (l.date.includes('-')) {
           const parts = l.date.split('-');
-          d = new Date(+parts[0], +parts[1] - 1, +parts[2]);
+          if (+parts[0] > 31) {
+            // ISO: YYYY-MM-DD
+            d = new Date(+parts[0], +parts[1] - 1, +parts[2]);
+          } else {
+            // es-CL con guiones: DD-MM-YYYY
+            d = new Date(+parts[2], +parts[1] - 1, +parts[0]);
+          }
         } else {
           d = new Date(l.date);
         }
