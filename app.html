@@ -655,8 +655,25 @@ function getActiveLogs() {
 // ─────────────────────────────────────────────────────────────────
 
 function getDaysActive() {
-  // Usar programStartDate, o planGeneratedAt como fallback (ambos son ISO strings)
-  const startDate = STATE.programStartDate || STATE.planGeneratedAt;
+  let startDate = STATE.programStartDate;
+
+  // Si no hay programStartDate, buscar la fecha del log más antiguo
+  if (!startDate && STATE.dailyLogs.length > 0) {
+    // dailyLogs está ordenado descendente, el último es el más antiguo
+    const oldest = STATE.dailyLogs[STATE.dailyLogs.length - 1];
+    if (oldest?.date) {
+      if (oldest.date.includes('/')) {
+        const [d, m, y] = oldest.date.split('/');
+        startDate = new Date(+y, +m - 1, +d).toISOString();
+      } else {
+        startDate = new Date(oldest.date).toISOString();
+      }
+    }
+  }
+
+  // Último fallback: planGeneratedAt
+  if (!startDate) startDate = STATE.planGeneratedAt;
+
   if (startDate) {
     const start = new Date(startDate);
     start.setHours(0, 0, 0, 0);
@@ -664,7 +681,8 @@ function getDaysActive() {
     today.setHours(0, 0, 0, 0);
     return Math.floor((today - start) / (1000 * 60 * 60 * 24)) + 1;
   }
-  // Último fallback: cantidad de logs
+
+  // Sin datos: contar logs
   return STATE.dailyLogs.length;
 }
 
