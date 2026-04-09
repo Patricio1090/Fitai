@@ -655,14 +655,16 @@ function getActiveLogs() {
 // ─────────────────────────────────────────────────────────────────
 
 function getDaysActive() {
-  if (STATE.programStartDate) {
-    const start = new Date(STATE.programStartDate);
+  // Usar programStartDate, o planGeneratedAt como fallback (ambos son ISO strings)
+  const startDate = STATE.programStartDate || STATE.planGeneratedAt;
+  if (startDate) {
+    const start = new Date(startDate);
     start.setHours(0, 0, 0, 0);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     return Math.floor((today - start) / (1000 * 60 * 60 * 24)) + 1;
   }
-  // Fallback: si no hay fecha de inicio, contar logs
+  // Último fallback: cantidad de logs
   return STATE.dailyLogs.length;
 }
 
