@@ -655,34 +655,70 @@ function getActiveLogs() {
 // ─────────────────────────────────────────────────────────────────
 
 function getDaysActive() {
-  let startDate = STATE.programStartDate;
+  // Para usuarios con fecha de inicio explícita (setup reciente)
+  if (STATE.programStartDate) {
+    const start = new Date(STATE.programStartDate);
+    start.setHours(0, 0, 0, 0);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const diff = Math.floor((today - start) / (1000 * 60 * 60 * 24)) + 1;
+    // Sanity: no puede ser mayor que weeksGoal*7+14 ni negativo
+    const maxDias = (parseInt(STATE.profile?.weeksGoal) || 16) * 7 + 14;
+    return Math.max(1, Math.min(diff, maxDias));
+  }
 
-  // Si no hay programStartDate, buscar la fecha del log más antiguo
-  if (!startDate && STATE.dailyLogs.length > 0) {
-    // dailyLogs está ordenado descendente, el último es el más antiguo
-    const oldest = STATE.dailyLogs[STATE.dailyLogs.length - 1];
-    if (oldest?.date) {
-      if (oldest.date.includes('/')) {
-        const [d, m, y] = oldest.date.split('/');
-        startDate = new Date(+y, +m - 1, +d).toISOString();
-      } else {
-        startDate = new Date(oldest.date).toISOString();
+  // Para usuarios existentes: detectar gaps para encontrar inicio del programa actual
+  if (STATE.dailyLogs.length > 0) {
+    const GAP_DIAS = 14;
+    const logDates = STATE.dailyLogs
+      .map(l => {
+        if (!l.date) return null;
+        let d;
+        if (l.date.includes('/')) {
+          const parts = l.date.split('/');
+          // Formato es-CL: DD/MM/YYYY
+          d = new Date(+parts[2], +parts[1] - 1, +parts[0]);
+        } else if (l.date.includes('-') && l.date.length === 10) {
+          // Formato ISO: YYYY-MM-DD
+          const parts = l.date.split('-');
+          d = new Date(+parts[0], +parts[1] - 1, +parts[2]);
+        } else {
+          d = new Date(l.date);
+        }
+        // Filtrar Invalid Date y fechas absurdas (antes de 2025)
+        if (!d || isNaN(d.getTime()) || d.getFullYear() < 2025) return null;
+        return d;
+      })
+      .filter(d => d !== null)
+      .sort((a, b) => a - b); // ascendente: más antiguo primero
+
+    if (logDates.length > 0) {
+      let programStart = logDates[0];
+      for (let i = logDates.length - 1; i > 0; i--) {
+        const gapDias = (logDates[i] - logDates[i - 1]) / (1000 * 60 * 60 * 24);
+        if (!isNaN(gapDias) && gapDias > GAP_DIAS) {
+          programStart = logDates[i];
+          break;
+        }
       }
+      programStart.setHours(0, 0, 0, 0);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const diff = Math.floor((today - programStart) / (1000 * 60 * 60 * 24)) + 1;
+      const maxDias = (parseInt(STATE.profile?.weeksGoal) || 16) * 7 + 14;
+      return Math.max(1, Math.min(diff, maxDias));
     }
   }
 
-  // Último fallback: planGeneratedAt
-  if (!startDate) startDate = STATE.planGeneratedAt;
-
-  if (startDate) {
-    const start = new Date(startDate);
+  // Fallback: planGeneratedAt
+  if (STATE.planGeneratedAt) {
+    const start = new Date(STATE.planGeneratedAt);
     start.setHours(0, 0, 0, 0);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     return Math.floor((today - start) / (1000 * 60 * 60 * 24)) + 1;
   }
 
-  // Sin datos: contar logs
   return STATE.dailyLogs.length;
 }
 
