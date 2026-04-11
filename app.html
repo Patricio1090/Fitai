@@ -267,6 +267,18 @@ async function dbSavePlanNutrition(email, plan, nutrition) {
   } catch(e) { console.log('DB save plan error:', e); }
 }
 
+async function dbSaveFeedback(email, name, comment) {
+  initSupabase(); if (!supa) return;
+  try {
+    await supa.from('feedback').insert({
+      user_email: email,
+      user_name: name || email,
+      comment: comment,
+      created_at: new Date().toISOString(),
+    });
+  } catch(e) { console.log('DB feedback error:', e); }
+}
+
 const STORAGE_KEY = 'fitai_v3';
 let mp = null;
 
@@ -551,6 +563,8 @@ async function loadProfileFromSupabase(email) {
           trainingPlace: u.training_place|| existing.trainingPlace,
           bodyFat:       u.body_fat      || existing.bodyFat,
           muscleMass:    u.muscle_mass   || existing.muscleMass || null,
+          foodLikes:     u.food_likes     || existing.foodLikes  || '',
+          foodDislikes:  u.food_dislikes  || existing.foodDislikes|| '',
           setup: true
         };
         STATE.profile = perfil;
@@ -840,6 +854,35 @@ function renderSideSection() {
         :STATE.qaHistory.slice().reverse().map(qa=>`<div class="qa-item"><div class="qa-date">${qa.date}</div><div class="qa-q">❓ ${qa.q}</div><div class="qa-a">🤖 ${qa.a}</div></div>`).join('')
       }
     </div>`;
+  } else if (s === 'feedback') {
+    div.innerHTML=`<div class="content fade-in">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+        <button onclick="STATE.sideSection=null;render()" style="background:none;border:none;color:var(--purple);font-size:20px;cursor:pointer">←</button>
+        <div style="font-family:Syne,sans-serif;font-size:18px;font-weight:800">💡 Tu opinión</div>
+      </div>
+      <div class="card card-purple" style="margin-bottom:14px">
+        <div style="font-size:28px;text-align:center;margin-bottom:8px">🙌</div>
+        <div style="font-family:Syne,sans-serif;font-size:16px;font-weight:700;text-align:center;margin-bottom:6px">¿Cómo podríamos mejorar aún más FitAI Pro?</div>
+        <div style="font-size:13px;color:var(--muted);text-align:center;line-height:1.6">Tu comentario llega directo al equipo. Cada sugerencia nos ayuda a mejorar la app para ti.</div>
+      </div>
+      <div id="feedback-msg" style="display:none;background:#34d39915;border:1px solid #34d39930;border-radius:12px;padding:12px 16px;font-size:13px;color:var(--green);margin-bottom:12px;text-align:center">
+        ✅ ¡Gracias por tu comentario! Lo leeremos con atención 💚
+      </div>
+      <div class="field"><label style="font-size:13px;color:var(--muted);margin-bottom:6px;display:block">Tu comentario o sugerencia</label>
+        <textarea id="feedback-text" placeholder="Ej: Me gustaría poder registrar mis medidas corporales, agregar más ejercicios en casa, ver recetas con fotos…" style="height:130px;width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:12px;color:var(--text);font-size:14px;font-family:'DM Sans',sans-serif;resize:none;outline:none"></textarea>
+      </div>
+      <button class="btn btn-purple" id="btn-send-feedback">💡 Enviar sugerencia</button>
+    </div>`;
+    div.querySelector('#btn-send-feedback').onclick = async () => {
+      const txt = div.querySelector('#feedback-text').value.trim();
+      if (!txt) { div.querySelector('#feedback-text').focus(); return; }
+      const btn = div.querySelector('#btn-send-feedback');
+      btn.disabled = true; btn.textContent = '⏳ Enviando…';
+      await dbSaveFeedback(STATE.user?.email, STATE.user?.name || STATE.profile?.name, txt);
+      div.querySelector('#feedback-msg').style.display = 'block';
+      div.querySelector('#feedback-text').value = '';
+      btn.textContent = '✅ Enviado';
+    };
   }
   return div;
 }
@@ -872,11 +915,14 @@ function render() {
       <div class="side-item" id="sm-harvard"><span class="side-item-icon">🔬</span>Top 10 Estudios Harvard</div>
       <div class="side-section-title">Mi Historia</div>
       <div class="side-item" id="sm-qa"><span class="side-item-icon">💬</span>Mis Preguntas y Respuestas</div>
+      <div class="side-section-title">Comunidad</div>
+      <div class="side-item" id="sm-feedback"><span class="side-item-icon">💡</span>Deja tu opinión</div>
       <div class="side-section-title">Cuenta</div>
       <div class="side-item" id="sm-logout" style="color:#f87171"><span class="side-item-icon">🚪</span>Cerrar sesión</div>`;
     menu.querySelector('#sm-supplements').onclick=()=>{STATE.showSideMenu=false;STATE.sideSection='supplements';render();};
     menu.querySelector('#sm-harvard').onclick=()=>{STATE.showSideMenu=false;STATE.sideSection='harvard';render();};
     menu.querySelector('#sm-qa').onclick=()=>{STATE.showSideMenu=false;STATE.sideSection='qa';render();};
+    menu.querySelector('#sm-feedback').onclick=()=>{STATE.showSideMenu=false;STATE.sideSection='feedback';render();};
     menu.querySelector('#sm-logout').onclick=()=>{
       save();
       clearUserState();
@@ -1152,7 +1198,129 @@ const STEPS=[
   {key:'weeksGoal',   q:'¿En cuántas semanas quieres lograrlo?',            type:'number', ph:'Ej: 12'},
   {key:'activityLevel',q:'¿Cuál es tu nivel de actividad actual?',         type:'select', opts:['Sedentario (sin ejercicio)','Ligero (1-2 días/sem)','Moderado (3-4 días/sem)','Activo (5+ días/sem)','Atleta (2x/día)']},
   {key:'trainingPlace',q:'¿Dónde entrenas habitualmente?',                  type:'select', opts:['🏋️ En el gimnasio (con equipamiento completo)','🏠 En casa (con equipamiento limitado o sin equipamiento)','🏋️🏠 Ambos (gimnasio y casa)']},
+  {key:'foodLikes',    q:'¿Qué alimentos te gustan?',                        type:'food-prefs',   optional:true},
+  {key:'foodDislikes', q:'¿Qué alimentos NO comes o no te gustan?',          type:'food-exclude', optional:true},
 ];
+
+const FOOD_PREFS_CATS = [
+  { cat:'🥩 Proteínas',     items:['Pollo','Pechuga de pavo','Carne de vacuno','Cerdo','Salmón','Atún','Merluza','Huevos','Camarones'] },
+  { cat:'🫘 Legumbres',     items:['Lentejas','Garbanzos','Porotos negros','Porotos rojos','Arvejas','Tofu'] },
+  { cat:'🍚 Carbohidratos', items:['Arroz integral','Arroz blanco','Avena','Papa','Camote','Pan integral','Pasta','Quinoa','Marraqueta'] },
+  { cat:'🥦 Verduras',      items:['Brócoli','Espinaca','Lechuga','Tomate','Zanahoria','Pepino','Pimentón','Acelga','Zapallo','Champiñones','Cebolla'] },
+  { cat:'🍎 Frutas',        items:['Manzana','Plátano','Naranja','Frutilla','Arándanos','Mango','Palta','Melón','Sandía','Kiwi','Uvas'] },
+  { cat:'🥛 Lácteos',       items:['Leche descremada','Yogurt griego','Queso cottage','Quesillo','Queso','Leche vegetal'] },
+  { cat:'🌰 Otros',         items:['Almendras','Nueces','Maní','Aceite de oliva','Hummus','Granola','Proteína en polvo'] },
+];
+
+function renderFoodChips(key, question, color) {
+  const wrap = document.createElement('div');
+  wrap.className = 'setup-wrap';
+  const selected = new Set(STATE.setupData[key] ? STATE.setupData[key].split(',').map(s=>s.trim()).filter(Boolean) : []);
+
+  const pct = (STATE.setupStep / STEPS.length) * 100;
+  const selCount = selected.size > 0 ? ('\u2705 ' + selected.size + ' seleccionado' + (selected.size>1?'s':'')) : 'Ninguno seleccionado a\u00fan';
+  wrap.innerHTML =
+    '<div style="width:100%;max-width:440px;margin-top:16px">' +
+      '<div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="font-size:11px;color:var(--muted)">Configuraci\u00f3n inicial</span><span style="font-size:11px;color:var(--purple)">' + (STATE.setupStep+1) + '/' + STEPS.length + '</span></div>' +
+      '<div class="prog-wrap"><div class="prog-fill" style="width:' + pct + '%;background:linear-gradient(90deg,var(--purple),#7c3aed)"></div></div>' +
+    '</div>' +
+    '<div style="width:100%;max-width:440px;margin-top:16px">' +
+      '<div style="font-size:12px;color:var(--purple);font-weight:700;margin-bottom:8px">Paso ' + (STATE.setupStep+1) + '</div>' +
+      '<div style="font-family:Syne,sans-serif;font-size:17px;font-weight:700;margin-bottom:4px;line-height:1.4">' + question + '</div>' +
+      '<div style="font-size:12px;color:var(--muted);margin-bottom:16px">Toca para seleccionar. Puedes elegir todos los que quieras.</div>' +
+      '<div id="chips-container" style="max-height:52vh;overflow-y:auto;padding-bottom:8px"></div>' +
+      '<div style="margin-top:12px;font-size:12px;color:var(--muted);text-align:center" id="selected-count">' + selCount + '</div>' +
+      '<button class="btn btn-purple" id="btn-next-food" style="margin-top:12px">' + (STATE.setupStep===STEPS.length-1?'\ud83d\ude80 Generar mi plan':'Continuar \u2192') + '</button>' +
+      '<button class="btn btn-ghost" id="btn-back-food" style="margin-top:6px">\u2190 Atr\u00e1s</button>' +
+    '</div>';
+
+  const container = wrap.querySelector('#chips-container');
+  const countEl = wrap.querySelector('#selected-count');
+
+  FOOD_PREFS_CATS.forEach(cat => {
+    const catDiv = document.createElement('div');
+    catDiv.style.cssText = 'margin-bottom:14px';
+    catDiv.innerHTML = '<div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px;padding:0 2px">' + cat.cat + '</div>' +
+      '<div style="display:flex;flex-wrap:wrap;gap:7px">' + cat.items.map(item => {
+        const sel = selected.has(item);
+        return '<button class="food-chip' + (sel?' selected':'') + '" data-food="' + item + '" style="padding:7px 13px;border-radius:20px;border:1.5px solid ' + (sel?color:'var(--border)') + ';background:' + (sel?color+'22':'var(--surface2)') + ';color:' + (sel?color:'var(--muted)') + ';font-size:13px;font-weight:' + (sel?'700':'500') + ';cursor:pointer;transition:all 0.15s;font-family:\'DM Sans\',sans-serif">' + item + '</button>';
+      }).join('') + '</div>';
+    container.appendChild(catDiv);
+  });
+
+  container.querySelectorAll('.food-chip').forEach(btn => {
+    btn.onclick = () => {
+      const food = btn.dataset.food;
+      if (selected.has(food)) {
+        selected.delete(food);
+        btn.style.borderColor = 'var(--border)';
+        btn.style.background = 'var(--surface2)';
+        btn.style.color = 'var(--muted)';
+        btn.style.fontWeight = '500';
+      } else {
+        selected.add(food);
+        btn.style.borderColor = color;
+        btn.style.background = color + '22';
+        btn.style.color = color;
+        btn.style.fontWeight = '700';
+      }
+      STATE.setupData[key] = [...selected].join(', ');
+      countEl.textContent = selected.size > 0 ? ('✅ ' + selected.size + ' seleccionado' + (selected.size>1?'s':'')) : 'Ninguno seleccionado aún';
+    };
+  });
+
+  wrap.querySelector('#btn-next-food').onclick = async () => {
+    STATE.setupData[key] = [...selected].join(', ');
+    if (STATE.setupStep < STEPS.length - 1) { STATE.setupStep++; render(); }
+    else { await finalizarSetup(); }
+  };
+  wrap.querySelector('#btn-back-food').onclick = () => { STATE.setupStep--; render(); };
+  return wrap;
+}
+
+async function finalizarSetup() {
+  const p = STATE.setupData;
+  STATE.profile = {...p, setup:true};
+  saveProfileCache(STATE.user?.email, STATE.profile);
+  dbMarkSetupDone(STATE.user?.email, p.goal);
+  if (supa) {
+    await supa.from('users').update({
+      goal:p.goal, age:parseInt(p.age), gender:p.gender,
+      weight_initial:parseFloat(p.weight), weight:parseFloat(p.weight),
+      height:parseFloat(p.height), target_weight:parseFloat(p.targetWeight),
+      weeks_goal:parseInt(p.weeksGoal), activity_level:p.activityLevel,
+      training_place:p.trainingPlace, body_fat:parseFloat(p.bodyFat)||null,
+      muscle_mass:parseFloat(p.muscleMass)||null,
+      setup_done:true, setup_completed:true, last_active:new Date().toISOString()
+    }).eq('email', STATE.user?.email);
+  }
+  save();
+  if (!STATE.user.paid) { STATE.screen='paywall'; render(); return; }
+  STATE.aiLoading = true; render();
+  const {desc, prefs} = getNutritionPrompt(p);
+  const withTimeout = (promise, ms) => Promise.race([promise, new Promise((_,reject)=>setTimeout(()=>reject(new Error('timeout')),ms))]);
+  try {
+    STATE.plan = await withTimeout(claude([{role:'user',content:`Plan entrenamiento semanal para ${desc}, lugar: ${p.trainingPlace||'gimnasio'}. ${getTrainingPrompt(p.trainingPlace)}\n\nFORMATO OBLIGATORIO (NO uses tablas markdown):\n## DÍA 1 - LUNES: Nombre del grupo\n- Nombre del ejercicio (X series x Y reps - Z min descanso)\netc.\n\nMáx 250 palabras. Incluye series, reps y descanso entre paréntesis.`}]), 25000);
+    STATE.nutrition = await withTimeout(claude([{role:'user',content:`Plan alimentación diario para ${desc}. ${prefs} Formato ESTRICTO:\n## 🌅 Desayuno\n## 🍎 Colación AM\n## ☀️ Almuerzo\n## 🥤 Merienda PM\n## 🌙 Cena\nSolo alimentos con cantidades. Usa ÚNICAMENTE los alimentos que le gustan. Máx 200 palabras.`}]), 25000);
+    STATE.planGeneratedAt = new Date().toISOString();
+    if (!STATE.programStartDate) STATE.programStartDate = STATE.planGeneratedAt;
+    STATE.screen = 'app';
+    dbSavePlanNutrition(STATE.user?.email, STATE.plan, STATE.nutrition);
+  } catch(e) {
+    STATE.plan = '⚠️ Hubo un problema. Toca "🔄 Nueva semana" para generarlo.';
+    STATE.nutrition = '⚠️ Hubo un problema. Toca "🔄 Nuevo menú" para generarlo.';
+    STATE.screen = 'app';
+  }
+  STATE.aiLoading = false; save(); render();
+}
+
+function getNutritionPrompt(p) {
+  const desc = p.name+','+p.age+'años,'+p.gender+','+p.weight+'kg,'+p.height+'cm,objetivo:'+p.goal+',meta:'+p.targetWeight+'kg en '+p.weeksGoal+' semanas,actividad:'+p.activityLevel;
+  const gustos = p.foodLikes ? 'ALIMENTOS QUE LE GUSTAN (úsalos prioritariamente): ' + p.foodLikes + '.' : '';
+  const excluir = p.foodDislikes ? 'ALIMENTOS A EXCLUIR TOTALMENTE (nunca incluir): ' + p.foodDislikes + '.' : '';
+  const prefs = [gustos, excluir].filter(Boolean).join(' ');
+  return { desc, prefs };
+}
 
 function renderSetup() {
   const wrap=document.createElement('div'); wrap.className='setup-wrap';
@@ -1161,6 +1329,11 @@ function renderSetup() {
     return wrap;
   }
   const step=STEPS[STATE.setupStep];
+
+  // Pasos especiales de preferencias alimentarias
+  if (step.type === 'food-prefs')    return renderFoodChips('foodLikes',   step.q, 'var(--green)');
+  if (step.type === 'food-exclude')  return renderFoodChips('foodDislikes', step.q, '#f87171');
+
   let stepQ = step.q, stepPh = step.ph;
   if (step.key === 'targetWeight') {
     const g = (STATE.setupData.goal || '').toLowerCase();
@@ -1203,31 +1376,7 @@ function renderSetup() {
     const val=STATE.setupData[step.key];
     if(!step.optional&&!val){inp.querySelector('input,select')?.focus();return;}
     if(STATE.setupStep<STEPS.length-1){STATE.setupStep++;render();}
-    else {
-      const p=STATE.setupData;
-      STATE.profile={...p,setup:true};
-      saveProfileCache(STATE.user?.email, STATE.profile);
-      dbMarkSetupDone(STATE.user?.email,p.goal);
-      if(supa){await supa.from('users').update({goal:p.goal,age:parseInt(p.age),gender:p.gender,weight_initial:parseFloat(p.weight),weight:parseFloat(p.weight),height:parseFloat(p.height),target_weight:parseFloat(p.targetWeight),weeks_goal:parseInt(p.weeksGoal),activity_level:p.activityLevel,training_place:p.trainingPlace,body_fat:parseFloat(p.bodyFat)||null,muscle_mass:parseFloat(p.muscleMass)||null,setup_done:true,setup_completed:true,last_active:new Date().toISOString()}).eq('email',STATE.user?.email);}
-      save();
-      if(!STATE.user.paid){STATE.screen='paywall';render();return;}
-      STATE.aiLoading=true;render();
-      const desc=`${p.name},${p.age}años,${p.gender},${p.weight}kg,${p.height}cm,objetivo:${p.goal},meta:${p.targetWeight}kg en ${p.weeksGoal} semanas,actividad:${p.activityLevel}`;
-      const withTimeout=(promise,ms)=>Promise.race([promise,new Promise((_,reject)=>setTimeout(()=>reject(new Error('timeout')),ms))]);
-      try {
-        STATE.plan=await withTimeout(claude([{role:'user',content:`Plan entrenamiento semanal para ${desc}, lugar: ${p.trainingPlace||'gimnasio'}. ${getTrainingPrompt(p.trainingPlace)}\n\nFORMATO OBLIGATORIO (NO uses tablas markdown):\n## DÍA 1 - LUNES: Nombre del grupo\n- Nombre del ejercicio (X series x Y reps - Z min descanso)\n- Nombre del ejercicio (X series x Y reps - Z min descanso)\netc.\n\nMáx 250 palabras. Incluye series, reps y descanso entre paréntesis.`}]),25000);
-        STATE.nutrition=await withTimeout(claude([{role:'user',content:`Plan alimentación diario para ${desc}. Formato: ## Desayuno, ## Colación AM, ## Almuerzo, ## Merienda PM, ## Cena. Solo alimentos con cantidades. Máx 200 palabras.`}]),25000);
-        STATE.planGeneratedAt=new Date().toISOString();
-        if (!STATE.programStartDate) STATE.programStartDate = STATE.planGeneratedAt;
-        STATE.screen='app';
-        dbSavePlanNutrition(STATE.user?.email,STATE.plan,STATE.nutrition);
-      } catch(e) {
-        STATE.plan='⚠️ Hubo un problema. Toca "🔄 Nueva semana" para generarlo.';
-        STATE.nutrition='⚠️ Hubo un problema. Toca "🔄 Nuevo menú" para generarlo.';
-        STATE.screen='app';
-      }
-      STATE.aiLoading=false;save();render();
-    }
+    else { await finalizarSetup(); }
   };
   wrap.querySelector('#btn-back')?.addEventListener('click',()=>{STATE.setupStep--;render();});
   return wrap;
@@ -1450,7 +1599,7 @@ function renderNutrition(){
   STATE.chat.slice(-2).forEach(m=>{const el=document.createElement('div');el.className='chat-msg '+(m.role==='user'?'chat-user':'chat-ai');el.style.color=m.role==='assistant'?'#6ee7b7':'';el.innerHTML=`<strong>${m.role==='user'?'Tú:':'🤖 '}</strong> ${m.content}`;div.querySelector('#chat-n').appendChild(el);});
   div.querySelector('#btn-newnut').onclick=async()=>{
     if(!profileIsComplete(STATE.profile)){STATE.aiMsg='⚠️ Tu perfil está incompleto. Ve a ⚙️ Reiniciar programa (menú 👤) para completar tu configuración.';render();return;}
-    STATE.aiLoading=true;render();const p=STATE.profile;const r=await claude([{role:'user',content:`Plan alimentación VARIADO para ${p.name},${p.goal},${calcProgress().lw}kg,${p.height}cm,${p.gender},${p.age}años. Formato ESTRICTO:\n## 📊 Calorías y Macros\n- Calorías: X kcal\n- Proteína: Xg\n- Carbohidratos: Xg\n- Grasas: Xg\n## 🌅 Desayuno\n- alimento (cantidad)\n## 🍎 Colación AM\n- alimento (cantidad)\n## ☀️ Almuerzo\n- alimento (cantidad)\n## 🥤 Merienda PM\n- alimento (cantidad)\n## 🌙 Cena\n- alimento (cantidad)\nNO incluir recetas ni preparación. Solo alimentos con cantidades. Máx 300 palabras.`}]);STATE.nutrition=r;STATE.aiLoading=false;save();dbSavePlanNutrition(STATE.user?.email,STATE.plan,STATE.nutrition);render();
+    STATE.aiLoading=true;render();const p=STATE.profile;const {desc:_d,prefs:_pr}=getNutritionPrompt(p);const r=await claude([{role:'user',content:`Plan alimentación VARIADO para ${p.name},${p.goal},${calcProgress().lw}kg,${p.height}cm,${p.gender},${p.age}años. ${_pr} Formato ESTRICTO:\n## 📊 Calorías y Macros\n- Calorías: X kcal\n- Proteína: Xg\n- Carbohidratos: Xg\n- Grasas: Xg\n## 🌅 Desayuno\n- alimento (cantidad)\n## 🍎 Colación AM\n- alimento (cantidad)\n## ☀️ Almuerzo\n- alimento (cantidad)\n## 🥤 Merienda PM\n- alimento (cantidad)\n## 🌙 Cena\n- alimento (cantidad)\nUsa ÚNICAMENTE los alimentos que le gustan. NO incluir recetas. Solo alimentos con cantidades. Máx 300 palabras.`}]);STATE.nutrition=r;STATE.aiLoading=false;save();dbSavePlanNutrition(STATE.user?.email,STATE.plan,STATE.nutrition);render();
   };
   const send=async()=>{const inp=div.querySelector('#ci-n');const txt=inp?.value.trim();if(!txt)return;STATE.chat.push({role:'user',content:txt});inp.value='';STATE.aiLoading=true;render();const msgs=STATE.chat.slice(-4).map(m=>({role:m.role,content:m.content}));msgs[0]={...msgs[0],content:`${STATE.profile.name},${STATE.profile.goal}\n${msgs[0].content}`};const r=await claude(msgs);STATE.chat.push({role:'assistant',content:r});STATE.qaHistory.push({date:new Date().toLocaleDateString('es-CL'),q:txt,a:r});STATE.qaHistory=STATE.qaHistory.slice(-100);STATE.aiLoading=false;save();dbSaveQAHistory(STATE.user?.email,STATE.qaHistory);render();};
   div.querySelector('#cs-n').onclick=send;div.querySelector('#ci-n').onkeydown=e=>{if(e.key==='Enter')send();};
