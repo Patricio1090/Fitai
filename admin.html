@@ -177,22 +177,24 @@ function avatarColor(i){ return PALETTE[i%PALETTE.length]; }
 function displayName(u){ return u.name||u.full_name||u.email?.split('@')[0]||'(sin nombre)'; }
 function initials(u){ const s=displayName(u); return s.slice(0,2).toUpperCase(); }
 
-let DB = { users:[], payments:[], couponUses:[], coupons:[] };
+let DB = { users:[], payments:[], couponUses:[], coupons:[], feedback:[] };
 
 async function loadAll() {
   try {
-    const [users, payments, couponUses, coupons] = await Promise.all([
+    const [users, payments, couponUses, coupons, feedback] = await Promise.all([
       sb('users', {select:'*', order:'created_at.asc'}),
       sb('payments', {select:'*', order:'created_at.desc'}),
       sb('coupon_uses', {select:'*', order:'created_at.desc'}).catch(()=>[]),
       sb('coupons', {select:'*', order:'created_at.desc'}).catch(()=>[]),
+      sb('feedback', {select:'*', order:'created_at.desc'}).catch(()=>[]),
     ]);
-    DB = { users, payments, couponUses, coupons };
+    DB = { users, payments, couponUses, coupons, feedback };
     renderDashboard();
     renderClientes();
     renderCupones();
     renderPagos();
     renderEmailPush();
+    renderFeedback();
   } catch(e) {
     document.body.insertAdjacentHTML('afterbegin',`<div class="err-box" style="margin:12px">⚠️ Error: ${e.message}</div>`);
   }
@@ -209,6 +211,7 @@ function paidSet(){ return new Set(DB.payments.filter(p=>(p.status||'').toLowerC
   <div class="tab" data-tab="cupones">🎟️ Cupones</div>
   <div class="tab" data-tab="pagos">💳 Pagos</div>
   <div class="tab" data-tab="emails">📧 Emails</div>
+  <div class="tab" data-tab="feedback">💡 Feedback</div>
 </div>
 
 <!-- DASHBOARD -->
@@ -388,6 +391,24 @@ function paidSet(){ return new Set(DB.payments.filter(p=>(p.status||'').toLowerC
     </div>
     <div id="list-tx"></div>
   </div>
+</div>
+
+<!-- FEEDBACK -->
+<div id="tab-feedback" class="section">
+  <div class="kpi-grid" style="margin-top:14px">
+    <div class="kpi c1 span2">
+      <div class="kv" id="k-feedback"><span class="skel" style="width:40px;height:32px"></span></div>
+      <div class="kl">💡 Comentarios recibidos de usuarios</div>
+    </div>
+  </div>
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+    <div>
+      <div class="ct">Opiniones de usuarios</div>
+      <div class="cs">¿Cómo podríamos mejorar aún más nuestra App?</div>
+    </div>
+    <button onclick="reloadFeedback()" style="background:var(--border);border:none;color:var(--muted);border-radius:8px;padding:6px 12px;font-size:.75rem;cursor:pointer">🔄 Actualizar</button>
+  </div>
+  <div id="list-feedback"><div class="spin-wrap"><div class="spinner"></div></div></div>
 </div>
 
 <!-- EMAILS -->
@@ -1021,6 +1042,14 @@ async function toggleCoupon(code, currentActive, idx) {
   }
 }
 
+// ── Reload feedback
+async function reloadFeedback() {
+  const el = document.getElementById('list-feedback');
+  if (el) el.innerHTML = '<div class="spin-wrap"><div class="spinner"></div></div>';
+  DB.feedback = await sb('feedback', {select:'*', order:'created_at.desc'}).catch(()=>[]);
+  renderFeedback();
+}
+
 // ── Reload cupones
 async function reloadCoupons() {
   document.getElementById('list-cupones').innerHTML='<div class="spin-wrap"><div class="spinner"></div></div>';
@@ -1137,6 +1166,38 @@ function renderTxFiltradas(mes,anio){
     if(st==='rejected'||st==='cancelled'){bc='rechazado';bt='❌ Rechazado';}
     const email=emailMap[p.user_id]||p.payer_email||p.user_email||'—';
     return `<div class="tx-row"><div><div class="tx-email">${email}</div><div class="tx-date">${fmtDate(p.created_at)}</div></div><div class="tx-amt">${fmtClp(Number(p.amount||0))}</div><div class="txb ${bc}">${bt}</div></div>`;
+  }).join('');
+}
+
+// ── Feedback
+function renderFeedback() {
+  const el = document.getElementById('list-feedback');
+  if (!el) return;
+  const fb = DB.feedback || [];
+  if (!fb.length) {
+    el.innerHTML = '<div class="empty">📭 Aún no hay comentarios de usuarios</div>';
+    document.getElementById('k-feedback').textContent = '0';
+    return;
+  }
+  document.getElementById('k-feedback').textContent = fb.length;
+  el.innerHTML = fb.map(f => {
+    const name = f.user_name || f.user_email?.split('@')[0] || 'Anónimo';
+    const email = f.user_email || '—';
+    const date = f.created_at ? new Date(f.created_at).toLocaleString('es-CL',{day:'2-digit',month:'short',year:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—';
+    const initial = name.slice(0,2).toUpperCase();
+    const colors = ['#a78bfa','#00e676','#38bdf8','#fb923c','#f43f5e','#facc15'];
+    const col = colors[Math.abs(email.charCodeAt(0) + email.charCodeAt(1)) % colors.length];
+    return `<div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px 16px;margin-bottom:10px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <div style="width:36px;height:36px;border-radius:50%;background:${col}22;color:${col};display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.85rem;flex-shrink:0">${initial}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:.85rem;font-weight:600;color:#fff">${name}</div>
+          <div style="font-size:.7rem;color:var(--muted)">${email}</div>
+        </div>
+        <div style="font-size:.65rem;color:#444;text-align:right;flex-shrink:0">${date}</div>
+      </div>
+      <div style="background:#0d0d1e;border-radius:10px;padding:12px;font-size:.83rem;color:#c8c8e0;line-height:1.6;border-left:3px solid ${col}">${f.comment}</div>
+    </div>`;
   }).join('');
 }
 
