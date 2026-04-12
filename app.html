@@ -441,7 +441,7 @@ async function claude(messages,max=1000){const today=new Date().toLocaleDateStri
 async function claudeVision(content,max=1000){try{const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':['sk-ant-api03-EneV_RhMnIgQ0Cld0vq2-eGUDOozaDlRxRFpPljFOoTAJbSUfu-G0hhMTl5IdrVPG97uUlE0z881_Z-','tHnI74A-h3O5eQAA'].join(''),'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:max,system:getSYS(),messages:[{role:'user',content}]})});const d=await res.json();if(d.error)throw new Error(d.error.message);return d.content?.map(b=>b.text||'').join('')||'⚠️ Sin respuesta';}catch(e){return'⚠️ Error: '+e.message;}}
 async function authRegister(email,password,name,phone=''){if(email==='admin@fitai.cl')throw new Error('Email reservado.');initSupabase();if(!supa)throw new Error('Error de conexión.');const{data:ex}=await supa.from('users').select('email').eq('email',email).single();if(ex)throw new Error('Este email ya está registrado.');const{error}=await supa.from('users').insert({email,name,password_hash:btoa(password),paid:false,setup_done:false,created_at:new Date().toISOString()});if(error)throw new Error('Error al registrar: '+error.message);const{data:nr}=await supa.from('users').select('id').eq('email',email).single();const user={id:nr?.id||null,email,name,paid:false,token:btoa(email+':'+Date.now())};const users=JSON.parse(localStorage.getItem('fitai_users')||'{}');users[email]={...user,passwordHash:btoa(password)};localStorage.setItem('fitai_users',JSON.stringify(users));return user;}
 async function authLogin(email,password){if(email==='admin@fitai.cl'&&password==='fitai2024admin')return{id:null,email:'admin@fitai.cl',name:'Admin',paid:true,token:'admin-token'};const TU={'test1@fitai.cl':{name:'Test 1',pass:'fitai_test_1'},'test2@fitai.cl':{name:'Test 2',pass:'fitai_test_2'},'test3@fitai.cl':{name:'Test 3',pass:'fitai_test_3'},'test4@fitai.cl':{name:'Test 4',pass:'fitai_test_4'},'test5@fitai.cl':{name:'Test 5',pass:'fitai_test_5'},'test6@fitai.cl':{name:'Test 6',pass:'fitai_test_6'},'test7@fitai.cl':{name:'Test 7',pass:'fitai_test_7'},'test8@fitai.cl':{name:'Test 8',pass:'fitai_test_8'},'test9@fitai.cl':{name:'Test 9',pass:'fitai_test_9'},'test10@fitai.cl':{name:'Test 10',pass:'fitai_test_10'},'test11@fitai.cl':{name:'Test 11',pass:'fitai_test_11'},'test12@fitai.cl':{name:'Test 12',pass:'fitai_test_12'},'test13@fitai.cl':{name:'Test 13',pass:'fitai_test_13'},'test14@fitai.cl':{name:'Test 14',pass:'fitai_test_14'},'test15@fitai.cl':{name:'Test 15',pass:'fitai_test_15'}};if(TU[email]&&TU[email].pass===password)return{id:null,email,name:TU[email].name,paid:true,token:'test-token-'+email};initSupabase();if(!supa){const users=JSON.parse(localStorage.getItem('fitai_users')||'{}');const u=users[email];if(!u)throw new Error('Email no encontrado.');if(u.passwordHash!==btoa(password))throw new Error('Contraseña incorrecta.');return{id:u.id||null,email:u.email,name:u.name,paid:u.paid,token:u.token};}const{data:u,error}=await supa.from('users').select('*').eq('email',email).single();if(error||!u)throw new Error('Email no encontrado.');if(u.password_hash!==btoa(password))throw new Error('Contraseña incorrecta.');const users=JSON.parse(localStorage.getItem('fitai_users')||'{}');users[email]={id:u.id,email:u.email,name:u.name,paid:u.paid,passwordHash:u.password_hash,token:btoa(email+':'+Date.now())};localStorage.setItem('fitai_users',JSON.stringify(users));return{id:u.id,email:u.email,name:u.name,paid:u.paid,token:btoa(email+':'+Date.now())};}
-async function loadProfileFromSupabase(email){initSupabase();if(!supa)return;try{const{data:u}=await supa.from('users').select('*').eq('email',email).single();if(u){const ex=STATE.profile||loadProfileCache(email)||{};const ts=u.setup_done||u.setup_completed||(u.goal&&u.height&&u.weight)||ex.goal;if(ts){const p={name:u.name||u.full_name||STATE.user?.name||ex.name||'',goal:u.goal||ex.goal||'',age:u.age||ex.age,gender:u.gender||ex.gender,weight:u.weight_initial||u.weight||ex.weight,height:u.height||ex.height,targetWeight:u.target_weight||ex.targetWeight,weeksGoal:u.weeks_goal||ex.weeksGoal,activityLevel:u.activity_level||ex.activityLevel,trainingPlace:u.training_place||ex.trainingPlace,mealsPerDay:u.meals_per_day||ex.mealsPerDay||'Desayuno,Almuerzo,Cena',foodLikes:u.food_likes||ex.foodLikes||'',foodDislikes:u.food_dislikes||ex.foodDislikes||'',referralSource:u.referral_source||ex.referralSource||'',setup:true};STATE.profile=p;saveProfileCache(email,p);}if(u.paid)STATE.user.paid=true;if(u.id&&STATE.user)STATE.user.id=u.id;if(u.current_plan)STATE.plan=u.current_plan;if(u.current_nutrition)STATE.nutrition=u.current_nutrition;if(u.plan_generated_at)STATE.planGeneratedAt=u.plan_generated_at;if(u.qa_history?.length&&u.qa_history.length>=(STATE.qaHistory?.length||0))STATE.qaHistory=u.qa_history;}const{data:logs}=await supa.from('daily_logs').select('*').eq('user_email',email).order('date',{ascending:false}).limit(90);if(logs?.length>0){STATE.dailyLogs=logs.map(l=>({date:l.date,weight:l.weight,calories:l.calories,protein:l.protein,sleep:l.sleep,water:l.water,training:l.training,energy:l.energy,notes:l.notes}));}save();}catch(e){console.log('loadProfile error:',e);}}
+async function loadProfileFromSupabase(email){initSupabase();if(!supa)return;try{const{data:u}=await supa.from('users').select('*').eq('email',email).single();if(u){const ex=STATE.profile||loadProfileCache(email)||{};const ts=u.setup_done||u.setup_completed||(u.goal&&u.height&&u.weight)||ex.goal;if(ts){const p={name:u.name||u.full_name||STATE.user?.name||ex.name||'',goal:u.goal||ex.goal||'',age:u.age||ex.age,gender:u.gender||ex.gender,weight:u.weight_initial||u.weight||ex.weight,height:u.height||ex.height,targetWeight:u.target_weight||ex.targetWeight,weeksGoal:u.weeks_goal||ex.weeksGoal,activityLevel:u.activity_level||ex.activityLevel,trainingPlace:u.training_place||ex.trainingPlace,mealsPerDay:u.meals_per_day||ex.mealsPerDay||'Desayuno,Almuerzo,Cena',foodLikes:u.food_likes||ex.foodLikes||'',foodDislikes:u.food_dislikes||ex.foodDislikes||'',referralSource:u.referral_source||ex.referralSource||'',setup:true};STATE.profile=p;saveProfileCache(email,p);}if(u.paid)STATE.user.paid=true;if(u.id&&STATE.user)STATE.user.id=u.id;if(u.current_plan)STATE.plan=u.current_plan;if(u.current_nutrition)STATE.nutrition=u.current_nutrition;if(u.plan_generated_at)STATE.planGeneratedAt=u.plan_generated_at;if(u.qa_history?.length&&u.qa_history.length>=(STATE.qaHistory?.length||0))STATE.qaHistory=u.qa_history;}const{data:logs}=await supa.from('daily_logs').select('*').eq('user_email',email).order('date',{ascending:false}).limit(90);if(logs?.length>0){STATE.dailyLogs=logs.map(l=>({date:l.date,weight:l.weight,calories:l.calories,protein:l.protein,carbs:l.carbs||null,fats:l.fats||null,sleep:l.sleep,water:l.water,training:l.training,energy:l.energy,notes:l.notes}));}save();}catch(e){console.log('loadProfile error:',e);}}
 function markAsPaid(email){const users=JSON.parse(localStorage.getItem('fitai_users')||'{}');if(users[email]){users[email].paid=true;localStorage.setItem('fitai_users',JSON.stringify(users));}if(STATE.user)STATE.user.paid=true;save();dbMarkPaid(email);}
 async function processPayment(){STATE.payLoading=true;STATE.payError='';render();try{if(!CONFIG.MP_PUBLIC_KEY||CONFIG.MP_PUBLIC_KEY==='APP_USR-TU-PUBLIC-KEY-AQUI'){await new Promise(r=>setTimeout(r,1800));markAsPaid(STATE.user.email);STATE.screen='setup';STATE.payLoading=false;render();return;}const res=await fetch(CONFIG.PAYMENT_ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user_id:STATE.user.id||STATE.user.email,user_email:STATE.user.email,coupon_code:STATE.couponApplied?STATE.couponCode:''})});const data=await res.json();if(!data.init_point&&!data.initPoint&&!data.sandboxInitPoint)throw new Error('No se pudo crear el pago.');localStorage.setItem('fitai_pending_email',STATE.user.email);localStorage.setItem('fitai_pending_user',JSON.stringify(STATE.user));window.location.href=data.init_point||data.initPoint||data.sandboxInitPoint;}catch(e){STATE.payError=e.message||'Error al conectar con MercadoPago.';STATE.payLoading=false;render();}}
 function profileIsComplete(p){return p&&p.weight&&p.height&&p.age&&p.activityLevel&&p.goal;}
@@ -884,33 +884,40 @@ function parseNutritionGoals(){
 
   return{calGoal,protGoal,carbsGoal,fatsGoal,fromPlan};
 }
-function buildRingChart(pct,color,size,stroke,label,sublabel){
-  const r=size/2-stroke/2;const circ=2*Math.PI*r;const off=circ*(1-Math.min(1,Math.max(0,pct/100)));
-  const uid='r'+Math.random().toString(36).slice(2,6);
-  return`<div class="ring-chart-wrap" style="width:${size}px">
-    <svg class="ring-svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
-      <defs><linearGradient id="rg${uid}" x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0%" stop-color="${color}"/><stop offset="100%" stop-color="${color}99"/>
-      </linearGradient></defs>
-      <circle class="ring-bg" cx="${size/2}" cy="${size/2}" r="${r}" stroke-width="${stroke}"/>
-      <circle class="ring-fill ring-animate" cx="${size/2}" cy="${size/2}" r="${r}"
-        stroke="url(#rg${uid})" stroke-width="${stroke}"
-        stroke-dasharray="${circ}" stroke-dashoffset="${circ}"
-        style="--full:${circ};--offset:${off};filter:drop-shadow(0 0 6px ${color}80)"/>
-    </svg>
-    <div class="cal-ring-center">
-      <div class="cal-ring-val" style="color:${color}">${label}</div>
-      <div class="cal-ring-sub">${sublabel}</div>
-    </div>
-  </div>`;
+function buildRingChart(pct,_c,size,stroke,label,sublabel){
+  var p=Math.min(100,Math.max(0,pct||0));
+  var tk=16,r=size/2-tk/2-2,circ=2*Math.PI*r,off=circ*(1-p/100);
+  var col=p>=100?'#2eef9a':p>=75?'#b8ff57':p>=50?'#ffcc44':p>=25?'#fb923c':'#f87171';
+  var glow=p>=100?'rgba(46,239,154,.7)':p>=75?'rgba(184,255,87,.65)':p>=50?'rgba(255,204,68,.6)':p>=25?'rgba(251,146,60,.55)':'rgba(248,113,113,.5)';
+  var fs=size>=110?'22px':'17px',fs2=size>=110?'10px':'9px',fsp=size>=110?'11px':'10px';
+  var cx=size/2,cy=size/2,fc=p>0?col:'var(--muted)';
+  var h='<div class="ring-chart-wrap" style="width:'+size+'px;height:'+size+'px">';
+  h+='<svg width="'+size+'" height="'+size+'" viewBox="0 0 '+size+' '+size+'" style="overflow:visible;display:block">';
+  h+='<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="'+tk+'" stroke-linecap="round"/>';
+  if(p>0){
+    h+='<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="none" stroke="'+col+'" stroke-width="'+(tk+6)+'" stroke-linecap="round" stroke-dasharray="'+circ+'" stroke-dashoffset="'+off+'" transform="rotate(-90 '+cx+' '+cy+')" opacity=".18"/>';
+    h+='<circle cx="'+cx+'" cy="'+cy+'" r="'+r+'" fill="none" stroke="'+col+'" stroke-width="'+tk+'" stroke-linecap="round" stroke-dasharray="'+circ+'" stroke-dashoffset="'+circ+'" transform="rotate(-90 '+cx+' '+cy+')" class="ring-animate" style="--full:'+circ+';--offset:'+off+';filter:drop-shadow(0 0 8px '+glow+')"/>';
+  }
+  h+='</svg><div class="cal-ring-center">';
+  h+='<div style="font-family:Syne,sans-serif;font-size:'+fs+';font-weight:900;color:'+fc+';line-height:1;animation:countUp .6s ease both .4s">'+label+'</div>';
+  h+='<div style="font-size:'+fs2+';color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.4px;margin-top:3px">'+sublabel+'</div>';
+  if(p>0)h+='<div style="font-size:'+fsp+';color:'+col+';font-weight:800;margin-top:5px;background:'+col+'18;padding:2px 8px;border-radius:999px">'+Math.round(p)+'%</div>';
+  h+='</div></div>';
+  return h;
 }
-function buildMacroBar(label,val,max,color){
-  const pct=max>0?Math.min(100,(val/max)*100):0;
-  return`<div class="macro-bar-wrap">
-    <div class="macro-bar-label"><span style="color:${color}">${label}</span><span style="color:var(--muted)">${val}g</span></div>
-    <div class="macro-bar-track"><div class="macro-bar-fill" style="background:linear-gradient(90deg,${color},${color}99);--tw:${pct}%"></div></div>
-  </div>`;
+function buildMacroBar(label,val,max,_color){
+  var pct=max>0?Math.min(100,Math.round((val/max)*100)):0;
+  var col=pct>=100?'#2eef9a':pct>=75?'#b8ff57':pct>=50?'#ffcc44':pct>=25?'#fb923c':'#f87171';
+  var h='<div class="macro-bar-wrap">';
+  h+='<div class="macro-bar-label">';
+  h+='<span style="color:'+col+';font-weight:700">'+label+'</span>';
+  h+='<span style="color:'+(pct>=100?col:'var(--muted)')+';font-weight:'+(pct>=100?'700':'500')+'">'+val+'g <span style="font-size:10px;opacity:.7">/'+max+'g</span></span>';
+  h+='</div>';
+  h+='<div class="macro-bar-track"><div class="macro-bar-fill" style="background:'+col+';box-shadow:0 0 8px '+col+'60;--tw:'+pct+'%"></div></div>';
+  h+='</div>';
+  return h;
 }
+
 function buildWaterBar(liters,goal){
   const pct=Math.min(100,(liters/goal)*100);
   const drops=Math.round((liters/goal)*8);
