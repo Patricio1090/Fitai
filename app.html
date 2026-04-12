@@ -382,8 +382,8 @@ function saveProfileCache(e,p){try{localStorage.setItem('fitai_profile_'+btoa(e)
 function loadProfileCache(e){try{const d=localStorage.getItem('fitai_profile_'+btoa(e));return d?JSON.parse(d):null;}catch(x){return null;}}
 function saveUserCache(e,d){try{localStorage.setItem('fitai_ucache_'+btoa(e),JSON.stringify(d));}catch(x){}}
 function loadUserCache(e){try{const d=localStorage.getItem('fitai_ucache_'+btoa(e));return d?JSON.parse(d):null;}catch(x){return null;}}
-let STATE={lang:'es',authMode:'login',user:null,authLoading:false,authError:'',screen:'auth',payLoading:false,payError:'',profile:null,dailyLogs:[],plan:null,nutrition:null,chat:[],setupStep:0,setupData:{},tab:0,aiLoading:false,aiMsg:'',todayLog:{weight:'',calories:'',protein:'',carbs:'',fats:'',sleep:'',water:'',training:'no',energy:'3',notes:'',mealPhotos:{},photoAnalysis:''},showUserMenu:false,showSideMenu:false,showModeMenu:false,showPlaceMenu:false,sideSection:null,qaHistory:[],couponApplied:false,couponCode:'',couponData:null,couponDiscount:0,couponFinalAmount:CONFIG.AMOUNT,needsAIPlan:false,planGeneratedAt:null,programStartDate:null};
-function clearUserState(){STATE.profile=null;STATE.dailyLogs=[];STATE.plan=null;STATE.nutrition=null;STATE.chat=[];STATE.qaHistory=[];STATE.aiMsg='';STATE.todayLog={weight:'',calories:'',protein:'',carbs:'',fats:'',sleep:'',water:'',training:'no',energy:'3',notes:'',mealPhotos:{},photoAnalysis:''};STATE.planGeneratedAt=null;STATE.programStartDate=null;STATE.setupStep=0;STATE.setupData={};STATE.tab=0;STATE.needsAIPlan=false;STATE.couponApplied=false;STATE.couponCode='';STATE.couponData=null;STATE.couponDiscount=0;STATE.couponFinalAmount=CONFIG.AMOUNT;localStorage.removeItem(STORAGE_KEY);}
+let STATE={lang:'es',authMode:'login',user:null,authLoading:false,authError:'',screen:'auth',payLoading:false,payError:'',profile:null,dailyLogs:[],plan:null,nutrition:null,chat:[],setupStep:0,setupData:{},tab:0,aiLoading:false,aiMsg:'',todayLog:{weight:'',calories:'',protein:'',carbs:'',fats:'',sleep:'',water:'',training:'no',energy:'3',notes:'',mealPhotos:{},mealMacros:{},mealAnalyzing:{},photoAnalysis:''},showUserMenu:false,showSideMenu:false,showModeMenu:false,showPlaceMenu:false,sideSection:null,qaHistory:[],couponApplied:false,couponCode:'',couponData:null,couponDiscount:0,couponFinalAmount:CONFIG.AMOUNT,needsAIPlan:false,planGeneratedAt:null,programStartDate:null};
+function clearUserState(){STATE.profile=null;STATE.dailyLogs=[];STATE.plan=null;STATE.nutrition=null;STATE.chat=[];STATE.qaHistory=[];STATE.aiMsg='';STATE.todayLog={weight:'',calories:'',protein:'',carbs:'',fats:'',sleep:'',water:'',training:'no',energy:'3',notes:'',mealPhotos:{},mealMacros:{},mealAnalyzing:{},photoAnalysis:''};STATE.planGeneratedAt=null;STATE.programStartDate=null;STATE.setupStep=0;STATE.setupData={};STATE.tab=0;STATE.needsAIPlan=false;STATE.couponApplied=false;STATE.couponCode='';STATE.couponData=null;STATE.couponDiscount=0;STATE.couponFinalAmount=CONFIG.AMOUNT;localStorage.removeItem(STORAGE_KEY);}
 function save(){try{localStorage.setItem(STORAGE_KEY,JSON.stringify({user:STATE.user,profile:STATE.profile,dailyLogs:STATE.dailyLogs,plan:STATE.plan,nutrition:STATE.nutrition,chat:STATE.chat,qaHistory:STATE.qaHistory,planGeneratedAt:STATE.planGeneratedAt,programStartDate:STATE.programStartDate}));if(STATE.user?.email){saveUserCache(STATE.user.email,{plan:STATE.plan,nutrition:STATE.nutrition,qaHistory:STATE.qaHistory,planGeneratedAt:STATE.planGeneratedAt,programStartDate:STATE.programStartDate,dailyLogs:STATE.dailyLogs});}}catch(e){}}
 function loadSaved(){try{const d=JSON.parse(localStorage.getItem(STORAGE_KEY)||'{}');if(d.user)STATE.user=d.user;if(d.profile)STATE.profile=d.profile;if(d.dailyLogs)STATE.dailyLogs=d.dailyLogs;if(d.plan)STATE.plan=d.plan;if(d.nutrition)STATE.nutrition=d.nutrition;if(d.chat)STATE.chat=d.chat;if(d.qaHistory)STATE.qaHistory=d.qaHistory;if(d.planGeneratedAt)STATE.planGeneratedAt=d.planGeneratedAt;if(d.programStartDate)STATE.programStartDate=d.programStartDate;}catch(e){}}
 loadSaved();
@@ -1025,6 +1025,57 @@ function renderNutrition(){
   div.querySelector('#cs-n').onclick=send;div.querySelector('#ci-n').onkeydown=e=>{if(e.key==='Enter')send();};
   return div;
 }
+
+// ── Real-time meal analysis ───────────────────────────────────────
+const MEAL_LABELS={desayuno:'Desayuno',colacion_am:'Colación AM',almuerzo:'Almuerzo',merienda:'Merienda PM',cena:'Cena'};
+function recalcTotals(){
+  const macros=STATE.todayLog.mealMacros||{};
+  const meals=Object.values(macros).filter(m=>m&&m.cal>=0);
+  if(!meals.length)return;
+  STATE.todayLog.calories=String(meals.reduce((s,m)=>s+(m.cal||0),0));
+  STATE.todayLog.protein=String(meals.reduce((s,m)=>s+(m.prot||0),0));
+  STATE.todayLog.carbs=String(meals.reduce((s,m)=>s+(m.carbs||0),0));
+  STATE.todayLog.fats=String(meals.reduce((s,m)=>s+(m.fats||0),0));
+}
+async function analyzeSingleMeal(mealKey,dataUrl){
+  if(!STATE.todayLog.mealAnalyzing)STATE.todayLog.mealAnalyzing={};
+  STATE.todayLog.mealAnalyzing[mealKey]=true;
+  render();
+  try{
+    const b64=dataUrl.split(',')[1];const mt=dataUrl.split(';')[0].split(':')[1];
+    const label=MEAL_LABELS[mealKey]||mealKey;
+    const result=await claudeVision([
+      {type:'image',source:{type:'base64',media_type:mt,data:b64}},
+      {type:'text',text:`Analiza esta foto de ${label}. Responde SOLO con este formato exacto (sin texto adicional):
+Calorías: XXX
+Proteína: XXg
+Carbohidratos: XXg
+Grasas: XXg
+Descripción: (10 palabras máx)`}
+    ],300);
+    const cM=result.match(/[Cc]alorías:\s*~?\s*(\d+)/);
+    const pM=result.match(/[Pp]roteína:\s*~?\s*(\d+)/);
+    const crM=result.match(/[Cc]arbohidratos:\s*~?\s*(\d+)/);
+    const fM=result.match(/[Gg]rasas:\s*~?\s*(\d+)/);
+    const dM=result.match(/[Dd]escripción:\s*(.+)/);
+    if(!STATE.todayLog.mealMacros)STATE.todayLog.mealMacros={};
+    STATE.todayLog.mealMacros[mealKey]={
+      cal:cM?parseInt(cM[1]):0,
+      prot:pM?parseInt(pM[1]):0,
+      carbs:crM?parseInt(crM[1]):0,
+      fats:fM?parseInt(fM[1]):0,
+      desc:dM?dM[1].trim():'',
+      ok:!!(cM&&pM)
+    };
+    recalcTotals();
+  }catch(e){
+    if(!STATE.todayLog.mealMacros)STATE.todayLog.mealMacros={};
+    STATE.todayLog.mealMacros[mealKey]={cal:0,prot:0,carbs:0,fats:0,desc:'Error',ok:false};
+  }
+  delete STATE.todayLog.mealAnalyzing[mealKey];
+  save();render();
+}
+
 function renderLog(){
   const div=document.createElement('div');
   const today=new Date().toLocaleDateString('es-CL',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
@@ -1032,16 +1083,47 @@ function renderLog(){
   if(!log.mealPhotos)log.mealPhotos={};
   const SLOTS=[{key:'desayuno',label:'🌅 Desayuno',color:'#fbbf24'},{key:'colacion_am',label:'🍎 Colación AM',color:'#34d399'},{key:'almuerzo',label:'☀️ Almuerzo',color:'#fb923c'},{key:'merienda',label:'🥤 Merienda PM',color:'#a78bfa'},{key:'cena',label:'🌙 Cena',color:'#60a5fa'}];
   const pc=Object.keys(log.mealPhotos).length;
-  const mealsH=SLOTS.map(m=>{const hp=!!log.mealPhotos[m.key];return`<div style="background:var(--surface2);border:2px solid ${hp?m.color+'50':'var(--border)'};border-radius:14px;padding:12px 14px;margin-bottom:10px"><div style="display:flex;align-items:center;justify-content:space-between;${hp?'margin-bottom:10px':''}"><span style="font-size:14px;font-weight:700;color:${m.color}">${m.label}</span><label for="photo-${m.key}" style="background:${hp?m.color+'22':'var(--surface)'};border:1.5px solid ${m.color}50;color:${m.color};border-radius:20px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer">${hp?'✓ Cambiar':'📷 Foto'}</label><input type="file" id="photo-${m.key}" accept="image/*" capture="environment" style="display:none" data-meal="${m.key}"/></div>${hp?`<img src="${log.mealPhotos[m.key]}" style="width:100%;border-radius:10px;max-height:170px;object-fit:cover;border:1px solid ${m.color}30"/>`:`<div style="border:2px dashed ${m.color}20;border-radius:10px;padding:10px;text-align:center;color:var(--muted);font-size:12px;margin-top:8px">Sin foto</div>`}</div>`;}).join('');
+  if(!log.mealMacros)log.mealMacros={};if(!log.mealAnalyzing)log.mealAnalyzing={};
+  const mealsH=SLOTS.map(m=>{
+    const hp=!!log.mealPhotos[m.key];
+    const mac=log.mealMacros[m.key];
+    const analyzing=!!log.mealAnalyzing[m.key];
+    const macroTag=mac&&mac.ok?`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">
+      <span style="background:rgba(248,113,113,.15);color:#f87171;border-radius:8px;padding:3px 9px;font-size:11px;font-weight:700">🔥${mac.cal}kcal</span>
+      <span style="background:rgba(77,184,255,.15);color:#4db8ff;border-radius:8px;padding:3px 9px;font-size:11px;font-weight:700">🥩${mac.prot}g</span>
+      <span style="background:rgba(255,204,68,.15);color:#ffcc44;border-radius:8px;padding:3px 9px;font-size:11px;font-weight:700">🍚${mac.carbs}g</span>
+      <span style="background:rgba(157,113,255,.15);color:#9d71ff;border-radius:8px;padding:3px 9px;font-size:11px;font-weight:700">🥑${mac.fats}g</span>
+    </div>${mac.desc?`<div style="font-size:11px;color:var(--muted);margin-top:5px;font-style:italic">${mac.desc}</div>`:''}`:
+    analyzing?`<div style="display:flex;align-items:center;gap:8px;margin-top:8px;font-size:12px;color:var(--purple)"><div class="dot"></div><div class="dot"></div><div class="dot"></div> Analizando…</div>`:'';
+    return`<div style="background:var(--surface2);border:2px solid ${hp?(mac&&mac.ok?m.color+'80':analyzing?'rgba(157,113,255,.5)':m.color+'50'):'var(--border)'};border-radius:14px;padding:12px 14px;margin-bottom:10px;transition:border-color .3s">
+      <div style="display:flex;align-items:center;justify-content:space-between;${hp?'margin-bottom:10px':''}">
+        <span style="font-size:14px;font-weight:700;color:${m.color}">${m.label}</span>
+        <label for="photo-${m.key}" style="background:${hp?m.color+'22':'var(--surface)'};border:1.5px solid ${m.color}50;color:${m.color};border-radius:20px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer">${hp?'✓ Cambiar':'📷 Foto'}</label>
+        <input type="file" id="photo-${m.key}" accept="image/*" capture="environment" style="display:none" data-meal="${m.key}"/>
+      </div>
+      ${hp?`<img src="${log.mealPhotos[m.key]}" style="width:100%;border-radius:10px;max-height:160px;object-fit:cover;border:1px solid ${m.color}30"/>`:
+      `<div style="border:2px dashed ${m.color}20;border-radius:10px;padding:10px;text-align:center;color:var(--muted);font-size:12px;margin-top:8px">Sin foto</div>`}
+      ${macroTag}
+    </div>`;
+  }).join('');
   div.innerHTML=`<div class="card card-amber" style="margin-bottom:12px"><div class="card-h">📝 Registro de Hoy</div><div style="font-size:12px;color:var(--amber)">${today}</div></div>
   <div class="card" style="margin-bottom:12px;border-color:#a78bfa30;background:linear-gradient(135deg,#a78bfa06,var(--surface))">
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px"><div style="background:#a78bfa20;border-radius:10px;padding:8px;font-size:20px">📸</div><div><div style="font-family:Syne,sans-serif;font-size:16px;font-weight:700;color:var(--purple)">Fotos de tus comidas</div><div style="font-size:11px;color:var(--muted)">${pc>0?pc+' foto'+(pc>1?'s':'')+' agregada'+(pc>1?'s':''):'Fotografía cada comida del día'}</div></div></div>
     <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:10px 14px;margin-bottom:14px"><div style="font-size:12px;color:var(--muted);line-height:1.7">💡 Saca una foto de <strong style="color:var(--purple)">cada comida</strong> durante el día.<br>Al <strong style="color:var(--amber)">final del día</strong>, presiona analizar para calcular calorías, proteína, carbos y grasas automáticamente.</div></div>
     ${mealsH}
-    <button class="btn btn-purple" id="btn-analyze-photos" ${STATE.aiLoading?'disabled':''} style="margin-top:4px">${STATE.aiLoading?'⏳ Analizando…':`🔍 Analizar con IA${pc>0?' · '+pc+' foto'+(pc>1?'s':''):''}`}</button>
+    <button class="btn btn-purple" id="btn-analyze-photos" ${STATE.aiLoading?'disabled':''} style="margin-top:4px">${STATE.aiLoading?'⏳ Analizando…':`🔄 Re-analizar todas las fotos`}</button>
     ${log.photoAnalysis?`<div style="background:#34d39912;border:1px solid #34d39930;border-radius:12px;padding:14px;margin-top:12px"><div style="font-size:12px;font-weight:700;color:var(--green);margin-bottom:8px">✅ Análisis de tus comidas</div><div style="font-size:13px;color:#c0f0d8;line-height:1.85;white-space:pre-wrap">${log.photoAnalysis}</div></div>`:''}
   </div>
   <div class="card" style="margin-bottom:12px"><div class="card-h">📊 Datos del día</div>
+    ${(parseInt(log.calories)||0)>0?`<div style="background:linear-gradient(135deg,rgba(248,113,113,.1),rgba(10,10,28,.95));border:1px solid rgba(248,113,113,.2);border-radius:14px;padding:12px 14px;margin-bottom:14px">
+      <div style="font-size:11px;color:rgba(248,113,113,.8);font-weight:700;text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px">🔥 Total acumulado hoy</div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;text-align:center">
+        <div><div style="font-family:Syne,sans-serif;font-size:17px;font-weight:900;color:#f87171">${log.calories}</div><div style="font-size:9px;color:var(--muted);font-weight:600;text-transform:uppercase">kcal</div></div>
+        <div><div style="font-family:Syne,sans-serif;font-size:17px;font-weight:900;color:#4db8ff">${log.protein}g</div><div style="font-size:9px;color:var(--muted);font-weight:600;text-transform:uppercase">prot</div></div>
+        <div><div style="font-family:Syne,sans-serif;font-size:17px;font-weight:900;color:#ffcc44">${log.carbs}g</div><div style="font-size:9px;color:var(--muted);font-weight:600;text-transform:uppercase">carbos</div></div>
+        <div><div style="font-family:Syne,sans-serif;font-size:17px;font-weight:900;color:#9d71ff">${log.fats}g</div><div style="font-size:9px;color:var(--muted);font-weight:600;text-transform:uppercase">grasas</div></div>
+      </div>
+    </div>`:''}
     <div class="field"><label>⚖️ Peso actual (kg)</label><input type="number" placeholder="Ej: 79.5" data-key="weight" value="${log.weight||''}" step="0.1"/></div>
     <div style="background:${log.photoAnalysis?'rgba(46,239,154,.06)':'rgba(255,255,255,.02)'};border:1px solid ${log.photoAnalysis?'rgba(46,239,154,.2)':'var(--border)'};border-radius:14px;padding:14px;margin-bottom:12px">
       <div style="font-size:11px;color:${log.photoAnalysis?'var(--green)':'var(--muted)'};font-weight:700;text-transform:uppercase;letter-spacing:.6px;margin-bottom:12px">${log.photoAnalysis?'✅ Auto-completado por IA':'📊 Macronutrientes del día'}</div>
@@ -1061,23 +1143,13 @@ function renderLog(){
   <button class="btn btn-amber" id="btn-save">${STATE.aiLoading?'⏳ Analizando…':'✅ Guardar y analizar mi día'}</button>
   ${STATE.aiMsg?`<div class="card card-green" style="margin-top:12px"><div class="card-sh">🧠 Análisis personalizado</div><div class="ai-text">${STATE.aiMsg}</div></div>`:''}`;
 
-  SLOTS.forEach(m=>{div.querySelector(`#photo-${m.key}`).addEventListener('change',e=>{const file=e.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=ev=>{if(!STATE.todayLog.mealPhotos)STATE.todayLog.mealPhotos={};STATE.todayLog.mealPhotos[m.key]=ev.target.result;render();};reader.readAsDataURL(file);});});
+  SLOTS.forEach(m=>{div.querySelector(`#photo-${m.key}`).addEventListener('change',e=>{const file=e.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=ev=>{if(!STATE.todayLog.mealPhotos)STATE.todayLog.mealPhotos={};STATE.todayLog.mealPhotos[m.key]=ev.target.result;analyzeSingleMeal(m.key,ev.target.result);};reader.readAsDataURL(file);});});
 
   div.querySelector('#btn-analyze-photos').onclick=async()=>{
-    const photos=STATE.todayLog.mealPhotos||{};const entries=Object.entries(photos);if(!entries.length){alert('📷 Agrega al menos una foto para analizar.');return;}
-    STATE.aiLoading=true;render();
-    try{const mL={desayuno:'Desayuno',colacion_am:'Colación AM',almuerzo:'Almuerzo',merienda:'Merienda PM',cena:'Cena'};const content=[];for(const[key,dataUrl]of entries){const b64=dataUrl.split(',')[1];const mt=dataUrl.split(';')[0].split(':')[1];content.push({type:'text',text:`📍 ${mL[key]||key}`});content.push({type:'image',source:{type:'base64',media_type:mt,data:b64}});}content.push({type:'text',text:`Analiza CADA foto y estima los macronutrientes.\n\nFormato por comida:\n[emoji] [Comida]: ~XXX kcal · Prot: ~XXg · Carbos: ~XXg · Grasas: ~XXg\n(Descripción breve de lo que ves)\n\n---\n📊 TOTALES DEL DÍA:\n🔥 Calorías totales: XXXX kcal\n🥩 Proteína total: XXg\n🍚 Carbohidratos totales: XXg\n🥑 Grasas totales: XXg\n\nSé específico con los números. Máx 300 palabras.`});
-    const result=await claudeVision(content,1000);STATE.todayLog.photoAnalysis=result;
-    const cM=result.match(/[Cc]alorías\s+totales[:\s]+~?\s*(\d+)/);
-    const pM=result.match(/[Pp]roteína\s+total[:\s]+~?\s*(\d+)/);
-    const carbM=result.match(/[Cc]arbohidratos\s+totales[:\s]+~?\s*(\d+)/);
-    const fatM=result.match(/[Gg]rasas\s+totales[:\s]+~?\s*(\d+)/);
-    if(cM)STATE.todayLog.calories=cM[1];
-    if(pM)STATE.todayLog.protein=pM[1];
-    if(carbM)STATE.todayLog.carbs=carbM[1];
-    if(fatM)STATE.todayLog.fats=fatM[1];
-    }catch(e){STATE.todayLog.photoAnalysis='⚠️ Error: '+e.message;}
-    STATE.aiLoading=false;render();
+    const photos=STATE.todayLog.mealPhotos||{};const entries=Object.entries(photos);
+    if(!entries.length){alert('📷 Agrega al menos una foto para analizar.');return;}
+    // Re-analyze all meals sequentially
+    for(const[key,dataUrl]of entries){await analyzeSingleMeal(key,dataUrl);}
   };
 
   div.querySelectorAll('input[data-key],select[data-key]').forEach(el=>el.addEventListener('input',e=>{STATE.todayLog[e.target.dataset.key]=e.target.value;}));
