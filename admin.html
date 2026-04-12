@@ -240,7 +240,7 @@ function paidSet(){ return new Set(DB.payments.filter(p=>(p.status||'').toLowerC
 </div>
 
 <!-- CUPONES -->
-<div id="tab-cupones" class="section">
+<div id="tab-cupones" class="section"><div style="display:contents">
   <div class="form-card">
     <div class="ct" style="margin-bottom:12px">➕ Crear nuevo cupón</div>
     <div class="field"><label>Código del cupón</label><input type="text" id="new-code" placeholder="Ej: LISSFIT20" maxlength="20" oninput="this.value=this.value.toUpperCase()"></div>
