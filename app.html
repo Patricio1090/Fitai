@@ -414,8 +414,10 @@ function loadSaved(){
   try{var pl=JSON.parse(localStorage.getItem('fitai_plan')||'{}');if(pl.plan)STATE.plan=pl.plan;if(pl.nutrition)STATE.nutrition=pl.nutrition;if(pl.chat)STATE.chat=pl.chat;if(pl.qaHistory)STATE.qaHistory=pl.qaHistory;}catch(e){}
   // 3. Today log (only if same day)
   try{var td=JSON.parse(localStorage.getItem('fitai_today')||'{}');if(td.log&&td.date===getTodayStr()){STATE.todayLog=Object.assign({},td.log,{mealPhotos:{},mealAnalyzing:{}});STATE.todayLog.mealPhotos=loadTodayPhotos();if(!STATE.todayLog.mealMacros)STATE.todayLog.mealMacros={};}}catch(e){}
-  // 4. Legacy fallback: old fitai_v3 key
-  try{if(!STATE.user||!STATE.profile){var d=JSON.parse(localStorage.getItem(STORAGE_KEY)||'{}');if(d.user&&!STATE.user)STATE.user=d.user;if(d.profile&&!STATE.profile)STATE.profile=d.profile;if(d.dailyLogs&&!STATE.dailyLogs.length)STATE.dailyLogs=d.dailyLogs;if(d.plan&&!STATE.plan)STATE.plan=d.plan;if(d.nutrition&&!STATE.nutrition)STATE.nutrition=d.nutrition;if(d.planGeneratedAt&&!STATE.planGeneratedAt)STATE.planGeneratedAt=d.planGeneratedAt;if(d.programStartDate&&!STATE.programStartDate)STATE.programStartDate=d.programStartDate;if(d.qaHistory&&!STATE.qaHistory.length)STATE.qaHistory=d.qaHistory;}}catch(e){}
+  // 4. Legacy fallback: old fitai_v3 — ALWAYS try to fill gaps
+  try{var d=JSON.parse(localStorage.getItem(STORAGE_KEY)||'{}');if(d.user&&!STATE.user)STATE.user=d.user;if(d.profile&&!STATE.profile)STATE.profile=d.profile;if(d.dailyLogs&&d.dailyLogs.length>STATE.dailyLogs.length)STATE.dailyLogs=d.dailyLogs;if(d.plan&&!STATE.plan)STATE.plan=d.plan;if(d.nutrition&&!STATE.nutrition)STATE.nutrition=d.nutrition;if(d.planGeneratedAt&&!STATE.planGeneratedAt)STATE.planGeneratedAt=d.planGeneratedAt;if(d.programStartDate&&!STATE.programStartDate)STATE.programStartDate=d.programStartDate;if(d.qaHistory&&d.qaHistory.length>(STATE.qaHistory||[]).length)STATE.qaHistory=d.qaHistory;}catch(e){}
+  // 5. Also try userCache as last resort for dailyLogs
+  try{if(STATE.user&&STATE.user.email&&!STATE.dailyLogs.length){var uc=loadUserCache(STATE.user.email);if(uc&&uc.dailyLogs&&uc.dailyLogs.length)STATE.dailyLogs=uc.dailyLogs;if(uc&&uc.plan&&!STATE.plan)STATE.plan=uc.plan;if(uc&&uc.nutrition&&!STATE.nutrition)STATE.nutrition=uc.nutrition;if(uc&&uc.planGeneratedAt&&!STATE.planGeneratedAt)STATE.planGeneratedAt=uc.planGeneratedAt;if(uc&&uc.programStartDate&&!STATE.programStartDate)STATE.programStartDate=uc.programStartDate;}}catch(e){}
   cleanOldPhotos();
 }
 loadSaved();
@@ -951,7 +953,7 @@ function renderDashboard(){
       <div style="text-align:right"><div class="streak-num" style="font-size:22px">${streak}🔥</div><div style="font-size:10px;color:var(--muted);font-weight:600">RACHA</div></div>
     </div>
     <div style="display:flex;gap:14px;align-items:center;justify-content:space-around">
-      <div style="position:relative">${buildRingChart(calPct,'#f87171',120,16,calToday>0?calToday+'':calGoal+'','kcal'+(fromPlan?' / '+calGoal:' meta'))}</div>
+      <div style="position:relative">${buildRingChart(calPct,'#f87171',120,16,calToday>0?calToday+'':'--','kcal meta '+calGoal)}</div>
       <div style="flex:1">
         ${buildMacroBar('Proteína · meta '+protGoal+'g',protToday,protGoal,'#60a5fa')}
         ${buildMacroBar('Carbos · meta '+carbsGoal+'g',carbsToday,carbsGoal,'#fbbf24')}
