@@ -384,48 +384,38 @@ let STATE={lang:'es',authMode:'login',user:null,authLoading:false,authError:'',s
 function clearUserState(){STATE.profile=null;STATE.dailyLogs=[];STATE.plan=null;STATE.nutrition=null;STATE.chat=[];STATE.qaHistory=[];STATE.aiMsg='';STATE.todayLog={weight:'',calories:'',protein:'',carbs:'',fats:'',sleep:'',water:'',training:'no',energy:'3',notes:'',mealPhotos:{},mealMacros:{},mealAnalyzing:{},photoAnalysis:''};STATE.planGeneratedAt=null;STATE.programStartDate=null;STATE.setupStep=0;STATE.setupData={};STATE.tab=0;STATE.needsAIPlan=false;STATE.couponApplied=false;STATE.couponCode='';STATE.couponData=null;STATE.couponDiscount=0;STATE.couponFinalAmount=CONFIG.AMOUNT;localStorage.removeItem(STORAGE_KEY);}
 function getTodayStr(){return new Date().toLocaleDateString('es-CL');}
 function saveTodayPhotos(){
-  // Photos stored separately (can be large). Keyed by user+date
-  const key='fitai_photos_'+(STATE.user?.email||'anon')+'_'+getTodayStr();
-  try{localStorage.setItem(key,JSON.stringify(STATE.todayLog.mealPhotos||{}));}catch(e){/* too large, skip */}
+  var key='fitai_photos_'+(STATE.user&&STATE.user.email?STATE.user.email:'anon')+'_'+getTodayStr();
+  try{localStorage.setItem(key,JSON.stringify(STATE.todayLog.mealPhotos||{}));}catch(e){}
 }
 function loadTodayPhotos(){
-  const key='fitai_photos_'+(STATE.user?.email||'anon')+'_'+getTodayStr();
-  try{const d=localStorage.getItem(key);return d?JSON.parse(d):{};}catch(e){return{};}
+  var key='fitai_photos_'+(STATE.user&&STATE.user.email?STATE.user.email:'anon')+'_'+getTodayStr();
+  try{var d=localStorage.getItem(key);return d?JSON.parse(d):{};}catch(e){return{};}
 }
 function cleanOldPhotos(){
-  // Remove photo keys older than today to free localStorage
-  const today=getTodayStr();const prefix='fitai_photos_';
-  Object.keys(localStorage).forEach(k=>{if(k.startsWith(prefix)&&!k.endsWith('_'+today))localStorage.removeItem(k);});
+  var today=getTodayStr(),prefix='fitai_photos_';
+  try{Object.keys(localStorage).forEach(function(k){if(k.startsWith(prefix)&&k.indexOf('_'+today)<0)localStorage.removeItem(k);});}catch(e){}
 }
 function save(){
-  try{
-    // Save todayLog WITHOUT mealPhotos (too heavy for main key)
-    const tl={...STATE.todayLog,mealPhotos:{},mealAnalyzing:{}};
-    localStorage.setItem(STORAGE_KEY,JSON.stringify({user:STATE.user,profile:STATE.profile,dailyLogs:STATE.dailyLogs,plan:STATE.plan,nutrition:STATE.nutrition,chat:STATE.chat,qaHistory:STATE.qaHistory,planGeneratedAt:STATE.planGeneratedAt,programStartDate:STATE.programStartDate,todayLog:tl,todayLogDate:getTodayStr()}));
-    if(STATE.user?.email){saveUserCache(STATE.user.email,{plan:STATE.plan,nutrition:STATE.nutrition,qaHistory:STATE.qaHistory,planGeneratedAt:STATE.planGeneratedAt,programStartDate:STATE.programStartDate,dailyLogs:STATE.dailyLogs});}
-    saveTodayPhotos();
-  }catch(e){}
+  // CRITICAL: profile+user+logs saved first in protected key
+  try{localStorage.setItem('fitai_core',JSON.stringify({user:STATE.user,profile:STATE.profile,dailyLogs:STATE.dailyLogs,planGeneratedAt:STATE.planGeneratedAt,programStartDate:STATE.programStartDate}));}catch(e){}
+  // SECONDARY: plan+nutrition can fail without breaking app
+  try{localStorage.setItem('fitai_plan',JSON.stringify({plan:STATE.plan,nutrition:STATE.nutrition,chat:STATE.chat,qaHistory:STATE.qaHistory}));}catch(e){}
+  // TODAY LOG: macros only, no photos
+  try{var tl=Object.assign({},STATE.todayLog,{mealPhotos:{},mealAnalyzing:{}});localStorage.setItem('fitai_today',JSON.stringify({log:tl,date:getTodayStr()}));}catch(e){}
+  // PHOTOS: separate, can fail
+  saveTodayPhotos();
+  // UserCache for compatibility
+  try{if(STATE.user&&STATE.user.email){saveUserCache(STATE.user.email,{plan:STATE.plan,nutrition:STATE.nutrition,qaHistory:STATE.qaHistory,planGeneratedAt:STATE.planGeneratedAt,programStartDate:STATE.programStartDate,dailyLogs:STATE.dailyLogs});}}catch(e){}
 }
 function loadSaved(){
-  try{
-    const d=JSON.parse(localStorage.getItem(STORAGE_KEY)||'{}');
-    if(d.user)STATE.user=d.user;
-    if(d.profile)STATE.profile=d.profile;
-    if(d.dailyLogs)STATE.dailyLogs=d.dailyLogs;
-    if(d.plan)STATE.plan=d.plan;
-    if(d.nutrition)STATE.nutrition=d.nutrition;
-    if(d.chat)STATE.chat=d.chat;
-    if(d.qaHistory)STATE.qaHistory=d.qaHistory;
-    if(d.planGeneratedAt)STATE.planGeneratedAt=d.planGeneratedAt;
-    if(d.programStartDate)STATE.programStartDate=d.programStartDate;
-    // Restore todayLog only if it's from today (auto-resets at midnight)
-    if(d.todayLog&&d.todayLogDate===getTodayStr()){
-      STATE.todayLog={...d.todayLog,mealPhotos:{},mealAnalyzing:{}};
-      // Restore photos from separate key
-      STATE.todayLog.mealPhotos=loadTodayPhotos();
-      if(!STATE.todayLog.mealMacros)STATE.todayLog.mealMacros={};
-    }
-  }catch(e){}
+  // 1. Critical data
+  try{var core=JSON.parse(localStorage.getItem('fitai_core')||'{}');if(core.user)STATE.user=core.user;if(core.profile)STATE.profile=core.profile;if(core.dailyLogs)STATE.dailyLogs=core.dailyLogs;if(core.planGeneratedAt)STATE.planGeneratedAt=core.planGeneratedAt;if(core.programStartDate)STATE.programStartDate=core.programStartDate;}catch(e){}
+  // 2. Plan data
+  try{var pl=JSON.parse(localStorage.getItem('fitai_plan')||'{}');if(pl.plan)STATE.plan=pl.plan;if(pl.nutrition)STATE.nutrition=pl.nutrition;if(pl.chat)STATE.chat=pl.chat;if(pl.qaHistory)STATE.qaHistory=pl.qaHistory;}catch(e){}
+  // 3. Today log (only if same day)
+  try{var td=JSON.parse(localStorage.getItem('fitai_today')||'{}');if(td.log&&td.date===getTodayStr()){STATE.todayLog=Object.assign({},td.log,{mealPhotos:{},mealAnalyzing:{}});STATE.todayLog.mealPhotos=loadTodayPhotos();if(!STATE.todayLog.mealMacros)STATE.todayLog.mealMacros={};}}catch(e){}
+  // 4. Legacy fallback: old fitai_v3 key
+  try{if(!STATE.user||!STATE.profile){var d=JSON.parse(localStorage.getItem(STORAGE_KEY)||'{}');if(d.user&&!STATE.user)STATE.user=d.user;if(d.profile&&!STATE.profile)STATE.profile=d.profile;if(d.dailyLogs&&!STATE.dailyLogs.length)STATE.dailyLogs=d.dailyLogs;if(d.plan&&!STATE.plan)STATE.plan=d.plan;if(d.nutrition&&!STATE.nutrition)STATE.nutrition=d.nutrition;if(d.planGeneratedAt&&!STATE.planGeneratedAt)STATE.planGeneratedAt=d.planGeneratedAt;if(d.programStartDate&&!STATE.programStartDate)STATE.programStartDate=d.programStartDate;if(d.qaHistory&&!STATE.qaHistory.length)STATE.qaHistory=d.qaHistory;}}catch(e){}
   cleanOldPhotos();
 }
 loadSaved();
