@@ -362,6 +362,76 @@ textarea{resize:none;height:80px;}
 <body>
 <div id="app"></div>
 <script>
+
+// ══════════════════════════════════════════
+// OFFLINE SYNC QUEUE
+// Guarda operaciones pendientes y las reenvía al reconectar
+// ══════════════════════════════════════════
+function queueSync(type, data){
+  try{
+    var q=JSON.parse(localStorage.getItem('fitai_sync_q')||'[]');
+    // Dedup: replace existing entry of same type+key
+    var key=type+':'+(data.date||data.email||'');
+    q=q.filter(function(i){return(i.type+':'+(i.data.date||i.data.email||''))!==key;});
+    q.push({type:type,data:data,ts:Date.now()});
+    // Keep max 200 entries
+    if(q.length>200)q=q.slice(-200);
+    localStorage.setItem('fitai_sync_q',JSON.stringify(q));
+  }catch(e){}
+}
+function dequeueSync(type, key){
+  try{
+    var q=JSON.parse(localStorage.getItem('fitai_sync_q')||'[]');
+    var k=type+':'+key;
+    q=q.filter(function(i){return(i.type+':'+(i.data.date||i.data.email||''))!==k;});
+    localStorage.setItem('fitai_sync_q',JSON.stringify(q));
+  }catch(e){}
+}
+async function flushSyncQueue(){
+  if(!navigator.onLine)return;
+  initSupabase();if(!supa)return;
+  var q=[];
+  try{q=JSON.parse(localStorage.getItem('fitai_sync_q')||'[]');}catch(e){return;}
+  if(!q.length)return;
+  var failed=[];
+  for(var i=0;i<q.length;i++){
+    var item=q[i];
+    try{
+      if(item.type==='daily_log'){
+        var l=item.data;
+        await supa.from('daily_logs').upsert({
+          user_email:l.user_email,date:l.date,
+          weight:parseFloat(l.weight)||null,calories:parseInt(l.calories)||null,
+          protein:parseInt(l.protein)||null,carbs:parseInt(l.carbs)||null,
+          fats:parseInt(l.fats)||null,sleep:parseFloat(l.sleep)||null,
+          water:parseFloat(l.water)||null,training:l.training,
+          energy:parseInt(l.energy)||null,notes:l.notes||null
+        },{onConflict:'user_email,date'});
+      } else if(item.type==='program_start'){
+        await supa.from('users').update({program_start_date:item.data.date}).eq('email',item.data.email);
+      } else if(item.type==='today_log'){
+        await supa.from('users').update({today_log_data:item.data.log,today_log_date:item.data.date}).eq('email',item.data.email);
+      } else if(item.type==='chat_history'){
+        await supa.from('users').update({chat_history:item.data.chat}).eq('email',item.data.email);
+      } else if(item.type==='plan'){
+        await supa.from('users').update({
+          current_plan:item.data.plan||null,
+          current_nutrition:item.data.nutrition||null,
+          plan_generated_at:item.data.planGeneratedAt||null,
+          program_start_date:item.data.programStartDate||null
+        }).eq('email',item.data.email);
+      }
+    }catch(e){failed.push(item);}
+  }
+  // Keep only failed items
+  try{localStorage.setItem('fitai_sync_q',JSON.stringify(failed));}catch(e){}
+  if(q.length-failed.length>0)console.log('[Sync] Flushed '+(q.length-failed.length)+' pending ops');
+}
+// Auto-flush on reconnect
+window.addEventListener('online',function(){setTimeout(flushSyncQueue,1500);});
+// Flush on startup if online
+setTimeout(function(){if(navigator.onLine)flushSyncQueue();},3000);
+
 const CONFIG={MP_PUBLIC_KEY:'APP_USR-ade94a33-3e1d-416d-9241-1f744a93bc6f',PAYMENT_ENDPOINT:'https://mysuperfitness.netlify.app/.netlify/functions/create-preference',VALIDATE_COUPON_ENDPOINT:'https://mysuperfitness.netlify.app/.netlify/functions/validate-coupon',AMOUNT:29990,CURRENCY:'CLP',PRICE_DISPLAY:'$29.990'};
 async function initConfig(){try{const res=await fetch('/.netlify/functions/get-config');if(!res.ok)return;const cfg=await res.json();if(cfg.price_clp)CONFIG.AMOUNT=cfg.price_clp;if(cfg.price_display)CONFIG.PRICE_DISPLAY=cfg.price_display;if(!STATE.couponApplied)STATE.couponFinalAmount=CONFIG.AMOUNT;}catch(e){console.warn('get-config error',e);}}
 const SUPA_URL='https://wnuehkewxbpahfbemliz.supabase.co';
@@ -371,10 +441,47 @@ function initSupabase(){if(!supa&&SUPA_URL!=='https://TU-PROYECTO.supabase.co'){
 async function dbSaveUser(u){initSupabase();if(!supa)return;try{await supa.from('users').upsert({email:u.email,name:u.name,password_hash:u.passwordHash,paid:u.paid||false,setup_done:false,created_at:new Date().toISOString()},{onConflict:'email'});}catch(e){}}
 async function dbMarkPaid(email){initSupabase();if(!supa)return;try{await supa.from('users').update({paid:true,paid_at:new Date().toISOString()}).eq('email',email);await supa.from('payments').insert({user_email:email,amount:CONFIG.AMOUNT,currency:CONFIG.CURRENCY,status:'approved',created_at:new Date().toISOString()});}catch(e){}}
 async function dbMarkSetupDone(email,goal){initSupabase();if(!supa)return;try{await supa.from('users').update({setup_done:true,goal:goal,last_active:new Date().toISOString()}).eq('email',email);}catch(e){}}
-async function dbSaveDailyLog(email,log){initSupabase();if(!supa)return;try{await supa.from('daily_logs').upsert({user_email:email,date:log.date,weight:parseFloat(log.weight)||null,calories:parseInt(log.calories)||null,protein:parseInt(log.protein)||null,sleep:parseFloat(log.sleep)||null,water:parseFloat(log.water)||null,training:log.training,energy:parseInt(log.energy)||null,carbs:parseInt(log.carbs)||null,fats:parseInt(log.fats)||null,notes:log.notes||null},{onConflict:'user_email,date'});}catch(e){}}
+async function dbSaveDailyLog(email,log){
+  // Always queue first (offline safety net)
+  queueSync('daily_log',Object.assign({},log,{user_email:email}));
+  initSupabase();if(!supa)return;
+  try{
+    await supa.from('daily_logs').upsert({user_email:email,date:log.date,weight:parseFloat(log.weight)||null,calories:parseInt(log.calories)||null,protein:parseInt(log.protein)||null,sleep:parseFloat(log.sleep)||null,water:parseFloat(log.water)||null,training:log.training,energy:parseInt(log.energy)||null,carbs:parseInt(log.carbs)||null,fats:parseInt(log.fats)||null,notes:log.notes||null},{onConflict:'user_email,date'});
+    // Success — remove from queue
+    dequeueSync('daily_log',log.date);
+  }catch(e){
+    // Keep in queue — will retry when online
+    console.warn('[Sync] daily_log queued for retry:',log.date);
+  }
+}
 async function dbSaveQAHistory(email,qa){initSupabase();if(!supa||!email||!qa?.length)return;try{await supa.from('users').update({qa_history:qa}).eq('email',email);}catch(e){}}
-async function dbSavePlanNutrition(email,plan,nutrition){initSupabase();if(!supa)return;try{await supa.from('users').update({current_plan:plan||null,current_nutrition:nutrition||null,plan_generated_at:new Date().toISOString(),program_start_date:STATE.programStartDate||null}).eq('email',email);}catch(e){}}
-async function dbSaveProgramStartDate(email,date){initSupabase();if(!supa||!email||!date)return;try{await supa.from('users').update({program_start_date:date}).eq('email',email);}catch(e){}}
+async function dbSavePlanNutrition(email,plan,nutrition){
+  queueSync('plan',{email:email,plan:plan,nutrition:nutrition,planGeneratedAt:new Date().toISOString(),programStartDate:STATE.programStartDate||null});
+  initSupabase();if(!supa)return;
+  try{await supa.from('users').update({current_plan:plan||null,current_nutrition:nutrition||null,plan_generated_at:new Date().toISOString(),program_start_date:STATE.programStartDate||null}).eq('email',email);dequeueSync('plan',email);}catch(e){}
+}
+async function dbSaveProgramStartDate(email,date){
+  if(!email||!date)return;
+  queueSync('program_start',{email:email,date:date});
+  initSupabase();if(!supa)return;
+  try{await supa.from('users').update({program_start_date:date}).eq('email',email);dequeueSync('program_start',email);}catch(e){}
+}
+
+async function dbSaveTodayLog(email){
+  // Saves the partial day log (including mealMacros) to Supabase users table
+  // Recovered on login so no partial day is ever lost
+  if(!email||!STATE.todayLog)return;
+  queueSync('today_log',{email:email,date:getTodayStr(),log:JSON.stringify({...STATE.todayLog,mealPhotos:{},mealAnalyzing:{}})});
+  initSupabase();if(!supa)return;
+  try{
+    await supa.from('users').update({
+      today_log_data:JSON.stringify({...STATE.todayLog,mealPhotos:{},mealAnalyzing:{}}),
+      today_log_date:getTodayStr()
+    }).eq('email',email);
+    dequeueSync('today_log',email);
+  }catch(e){}
+}
+
 async function dbSaveFeedback(email,name,comment){initSupabase();if(!supa)return;try{await supa.from('feedback').insert({user_email:email,user_name:name||email,comment:comment,created_at:new Date().toISOString()});}catch(e){}}
 const STORAGE_KEY='fitai_v3';let mp=null;
 function saveProfileCache(e,p){try{localStorage.setItem('fitai_profile_'+btoa(e),JSON.stringify(p));}catch(x){}}
@@ -437,7 +544,12 @@ async function authLogin(email,password){if(email==='admin@fitai.cl'&&password==
 async function loadProfileFromSupabase(email){initSupabase();if(!supa)return;try{const{data:u}=await supa.from('users').select('*').eq('email',email).single();if(u){const ex=STATE.profile||loadProfileCache(email)||{};const ts=u.setup_done||u.setup_completed||(u.goal&&u.height&&u.weight)||ex.goal;if(ts){const p={name:u.name||u.full_name||STATE.user?.name||ex.name||'',goal:u.goal||ex.goal||'',age:u.age||ex.age,gender:u.gender||ex.gender,weight:u.weight_initial||u.weight||ex.weight,height:u.height||ex.height,targetWeight:u.target_weight||ex.targetWeight,weeksGoal:u.weeks_goal||ex.weeksGoal,activityLevel:u.activity_level||ex.activityLevel,trainingPlace:u.training_place||ex.trainingPlace,mealsPerDay:u.meals_per_day||ex.mealsPerDay||'Desayuno,Almuerzo,Cena',foodLikes:u.food_likes||ex.foodLikes||'',foodDislikes:u.food_dislikes||ex.foodDislikes||'',referralSource:u.referral_source||ex.referralSource||'',setup:true};STATE.profile=p;saveProfileCache(email,p);}if(u.paid)STATE.user.paid=true;if(u.id&&STATE.user)STATE.user.id=u.id;if(u.current_plan)STATE.plan=u.current_plan;if(u.current_nutrition)STATE.nutrition=u.current_nutrition;if(u.plan_generated_at)STATE.planGeneratedAt=u.plan_generated_at;
       // Load programStartDate from Supabase — never lost even if localStorage clears
       if(u.program_start_date&&!STATE.programStartDate)STATE.programStartDate=u.program_start_date;
-      if(u.qa_history?.length&&u.qa_history.length>=(STATE.qaHistory?.length||0))STATE.qaHistory=u.qa_history;}const{data:logs}=await supa.from('daily_logs').select('*').eq('user_email',email).order('date',{ascending:false}).limit(90);if(logs?.length>0){
+      if(u.qa_history?.length&&u.qa_history.length>=(STATE.qaHistory?.length||0))STATE.qaHistory=u.qa_history;
+      // Restore today's partial log from Supabase
+      if(u.today_log_data&&u.today_log_date===getTodayStr()){try{const tl=JSON.parse(u.today_log_data);if(tl){const curCal=parseInt(STATE.todayLog&&STATE.todayLog.calories)||0;const supaCal=parseInt(tl.calories)||0;if(supaCal>=curCal){STATE.todayLog=Object.assign({},tl,{mealPhotos:STATE.todayLog&&STATE.todayLog.mealPhotos||{},mealAnalyzing:{}});if(!STATE.todayLog.mealMacros)STATE.todayLog.mealMacros={}}}}catch(e){}}
+      // Restore chat history from Supabase
+      if(u.chat_history){try{const ch=JSON.parse(u.chat_history);if(Array.isArray(ch)&&ch.length>STATE.chat.length)STATE.chat=ch;}catch(e){}}
+      }const{data:logs}=await supa.from('daily_logs').select('*').eq('user_email',email).order('date',{ascending:false}).limit(90);if(logs?.length>0){
       STATE.dailyLogs=logs.map(l=>({date:l.date,weight:l.weight,calories:l.calories,protein:l.protein,carbs:l.carbs||null,fats:l.fats||null,sleep:l.sleep,water:l.water,training:l.training,energy:l.energy,notes:l.notes}));
       // Derive programStartDate from earliest log if still missing
       if(!STATE.programStartDate&&logs.length>0){
@@ -1030,7 +1142,7 @@ function renderWorkout(){
   <div class="card" style="margin-top:12px"><div class="card-h">💬 Coach de entrenamiento</div><div id="chat-w" style="max-height:400px;overflow-y:auto"></div><div class="chat-row"><input type="text" id="ci-w" placeholder="Preguntame lo que quieras para entrenar mejor"/><button id="cs-w">→</button></div></div>`;
   STATE.chat.slice(-4).forEach(m=>{const el=document.createElement('div');el.className='chat-msg '+(m.role==='user'?'chat-user':'chat-ai');el.innerHTML=`<strong>${m.role==='user'?'Tú:':'🤖 '}</strong> ${m.content}`;div.querySelector('#chat-w').appendChild(el);});
   div.querySelector('#btn-newplan').onclick=async()=>{STATE.aiLoading=true;render();const p=STATE.profile;const r=await claude([{role:'user',content:`Plan entrenamiento semanal para ${p.name}, objetivo:${p.goal}, nivel:${p.activityLevel}, lugar:${p.trainingPlace||'gimnasio'}, semana ${wn}. ${getTrainingPrompt(p.trainingPlace)}\nFORMATO:\n## DÍA 1 - LUNES: Grupo\n- Ejercicio (series x reps - descanso)\nMáx 700 palabras.`}]);STATE.plan=r;STATE.planGeneratedAt=new Date().toISOString();STATE.aiLoading=false;save();dbSavePlanNutrition(STATE.user?.email,STATE.plan,STATE.nutrition);render();};
-  const send=async()=>{const inp=div.querySelector('#ci-w');const txt=inp?.value.trim();if(!txt)return;STATE.chat.push({role:'user',content:txt});inp.value='';STATE.aiLoading=true;render();const msgs=STATE.chat.slice(-6).map(m=>({role:m.role,content:m.content}));msgs[0]={...msgs[0],content:`${STATE.profile.name},${STATE.profile.goal}\n${msgs[0].content}`};const r=await claude(msgs);STATE.chat.push({role:'assistant',content:r});STATE.qaHistory.push({date:new Date().toLocaleDateString('es-CL'),q:txt,a:r});STATE.qaHistory=STATE.qaHistory.slice(-100);STATE.aiLoading=false;save();dbSaveQAHistory(STATE.user?.email,STATE.qaHistory);render();};
+  const send=async()=>{const inp=div.querySelector('#ci-w');const txt=inp?.value.trim();if(!txt)return;STATE.chat.push({role:'user',content:txt});inp.value='';STATE.aiLoading=true;render();const msgs=STATE.chat.slice(-6).map(m=>({role:m.role,content:m.content}));msgs[0]={...msgs[0],content:`${STATE.profile.name},${STATE.profile.goal}\n${msgs[0].content}`};const r=await claude(msgs);STATE.chat.push({role:'assistant',content:r});STATE.qaHistory.push({date:new Date().toLocaleDateString('es-CL'),q:txt,a:r});STATE.qaHistory=STATE.qaHistory.slice(-100);STATE.aiLoading=false;save();dbSaveQAHistory(STATE.user?.email,STATE.qaHistory);queueSync('chat_history',{email:STATE.user?.email,chat:STATE.chat});render();};
   div.querySelector('#cs-w').onclick=send;div.querySelector('#ci-w').onkeydown=e=>{if(e.key==='Enter')send();};
   return div;
 }
@@ -1074,13 +1186,22 @@ function renderNutrition(){
   <div class="card" style="margin-top:12px"><div class="card-h">💬 Consulta nutricional</div><div id="chat-n" style="max-height:400px;overflow-y:auto"></div><div class="chat-row"><input type="text" id="ci-n" placeholder="Preguntame lo que quieras para mejorar tu dieta"/><button id="cs-n" style="background:var(--green)">→</button></div></div>`;
   STATE.chat.slice(-2).forEach(m=>{const el=document.createElement('div');el.className='chat-msg '+(m.role==='user'?'chat-user':'chat-ai');el.style.color=m.role==='assistant'?'#6ee7b7':'';el.innerHTML=`<strong>${m.role==='user'?'Tú:':'🤖 '}</strong> ${m.content}`;div.querySelector('#chat-n').appendChild(el);});
   div.querySelector('#btn-newnut').onclick=async()=>{STATE.aiLoading=true;render();const p=STATE.profile;const{desc,prefs}=getNutritionPrompt(p);const r=await claude([{role:'user',content:`Plan alimentación VARIADO para ${p.name},${p.goal},${calcProgress().lw}kg,${p.height}cm,${p.gender},${p.age}años. ${prefs} FORMATO OBLIGATORIO (respeta exactamente):\n## 📊 Calorías y Macros\nCalorías: XXXX kcal | Proteína: XXXg | Carbohidratos: XXXg | Grasas: XXg\n## 🌅 Desayuno\n- alimento (cantidad)\n## 🍎 Colación AM\n- alimento (cantidad)\n## ☀️ Almuerzo\n- alimento (cantidad)\n## 🥤 Merienda PM\n- alimento (cantidad)\n## 🌙 Cena\n- alimento (cantidad)\nSolo alimentos con cantidades. Máx 300 palabras.`}]);STATE.nutrition=r;STATE.aiLoading=false;save();dbSavePlanNutrition(STATE.user?.email,STATE.plan,STATE.nutrition);render();};
-  const send=async()=>{const inp=div.querySelector('#ci-n');const txt=inp?.value.trim();if(!txt)return;STATE.chat.push({role:'user',content:txt});inp.value='';STATE.aiLoading=true;render();const msgs=STATE.chat.slice(-4).map(m=>({role:m.role,content:m.content}));msgs[0]={...msgs[0],content:`${STATE.profile.name},${STATE.profile.goal}\n${msgs[0].content}`};const r=await claude(msgs);STATE.chat.push({role:'assistant',content:r});STATE.qaHistory.push({date:new Date().toLocaleDateString('es-CL'),q:txt,a:r});STATE.qaHistory=STATE.qaHistory.slice(-100);STATE.aiLoading=false;save();dbSaveQAHistory(STATE.user?.email,STATE.qaHistory);render();};
+  const send=async()=>{const inp=div.querySelector('#ci-n');const txt=inp?.value.trim();if(!txt)return;STATE.chat.push({role:'user',content:txt});inp.value='';STATE.aiLoading=true;render();const msgs=STATE.chat.slice(-4).map(m=>({role:m.role,content:m.content}));msgs[0]={...msgs[0],content:`${STATE.profile.name},${STATE.profile.goal}\n${msgs[0].content}`};const r=await claude(msgs);STATE.chat.push({role:'assistant',content:r});STATE.qaHistory.push({date:new Date().toLocaleDateString('es-CL'),q:txt,a:r});STATE.qaHistory=STATE.qaHistory.slice(-100);STATE.aiLoading=false;save();dbSaveQAHistory(STATE.user?.email,STATE.qaHistory);queueSync('chat_history',{email:STATE.user?.email,chat:STATE.chat});render();};
   div.querySelector('#cs-n').onclick=send;div.querySelector('#ci-n').onkeydown=e=>{if(e.key==='Enter')send();};
   return div;
 }
 
 // ── Real-time meal analysis ───────────────────────────────────────
 const MEAL_LABELS={desayuno:'Desayuno',colacion_am:'Colación AM',almuerzo:'Almuerzo',merienda:'Merienda PM',cena:'Cena'};
+
+var _todaySaveTimer=null;
+function autoSaveTodayLog(){
+  clearTimeout(_todaySaveTimer);
+  _todaySaveTimer=setTimeout(function(){
+    if(STATE.user&&STATE.user.email)dbSaveTodayLog(STATE.user.email);
+  },2000);
+}
+
 function recalcTotals(){
   const macros=STATE.todayLog.mealMacros||{};
   const meals=Object.values(macros).filter(m=>m&&m.cal>=0);
@@ -1089,6 +1210,7 @@ function recalcTotals(){
   STATE.todayLog.protein=String(meals.reduce((s,m)=>s+(m.prot||0),0));
   STATE.todayLog.carbs=String(meals.reduce((s,m)=>s+(m.carbs||0),0));
   STATE.todayLog.fats=String(meals.reduce((s,m)=>s+(m.fats||0),0));
+  autoSaveTodayLog();
 }
 async function analyzeSingleMeal(mealKey,dataUrl){
   if(!STATE.todayLog.mealAnalyzing)STATE.todayLog.mealAnalyzing={};
@@ -1213,11 +1335,11 @@ function renderLog(){
     for(const[key,dataUrl]of entries){await analyzeSingleMeal(key,dataUrl);}
   };
 
-  div.querySelectorAll('input[data-key],select[data-key]').forEach(el=>el.addEventListener('input',e=>{STATE.todayLog[e.target.dataset.key]=e.target.value;}));
+  div.querySelectorAll('input[data-key],select[data-key]').forEach(el=>el.addEventListener('input',e=>{STATE.todayLog[e.target.dataset.key]=e.target.value;autoSaveTodayLog();}));
   div.querySelectorAll('textarea').forEach(el=>el.addEventListener('input',e=>{STATE.todayLog.notes=e.target.value;}));
-  div.querySelectorAll('.energy-btn').forEach(b=>b.addEventListener('click',()=>{STATE.todayLog.energy=b.dataset.e;render();}));
+  div.querySelectorAll('.energy-btn').forEach(b=>b.addEventListener('click',()=>{STATE.todayLog.energy=b.dataset.e;autoSaveTodayLog();render();}));
 
-  div.querySelector('#btn-save').onclick=async()=>{const ts=new Date().toLocaleDateString('es-CL');const nl={date:ts,...STATE.todayLog};const lDB={...nl};delete lDB.mealPhotos;delete lDB.photoAnalysis;STATE.dailyLogs=[nl,...STATE.dailyLogs.filter(l=>l.date!==ts)].slice(0,90);save();dbSaveDailyLog(STATE.user?.email,lDB);STATE.aiLoading=true;render();const prog=calcProgress();const p=STATE.profile;const ctx=prog.retroceso?`⚠️ ALERTA: subió ${Math.abs(prog.lost)}kg desde inicio.`:'';const r=await claude([{role:'user',content:`Análisis de hoy de ${p.name} (máx 200 palabras):\n${ctx}\nPeso ${nl.weight||'-'}kg, cal ${nl.calories||'-'}kcal, proteína ${nl.protein||'-'}g, carbos ${nl.carbs||'-'}g, grasas ${nl.fats||'-'}g, sueño ${nl.sleep||'-'}h, agua ${nl.water||'-'}L, energía ${nl.energy||'-'}/5, entrenamiento: ${nl.training}.\nProgreso: ${prog.lost}kg en ${prog.days} días. Objetivo: ${p.goal}, meta ${p.targetWeight}kg.`}]);STATE.aiMsg=r;STATE.aiLoading=false;render();};
+  div.querySelector('#btn-save').onclick=async()=>{const ts=new Date().toLocaleDateString('es-CL');const nl={date:ts,...STATE.todayLog};const lDB={...nl};delete lDB.mealPhotos;delete lDB.photoAnalysis;STATE.dailyLogs=[nl,...STATE.dailyLogs.filter(l=>l.date!==ts)].slice(0,90);save();dbSaveDailyLog(STATE.user?.email,lDB);if(STATE.user?.email)dbSaveTodayLog(STATE.user.email);STATE.aiLoading=true;render();const prog=calcProgress();const p=STATE.profile;const ctx=prog.retroceso?`⚠️ ALERTA: subió ${Math.abs(prog.lost)}kg desde inicio.`:'';const r=await claude([{role:'user',content:`Análisis de hoy de ${p.name} (máx 200 palabras):\n${ctx}\nPeso ${nl.weight||'-'}kg, cal ${nl.calories||'-'}kcal, proteína ${nl.protein||'-'}g, carbos ${nl.carbs||'-'}g, grasas ${nl.fats||'-'}g, sueño ${nl.sleep||'-'}h, agua ${nl.water||'-'}L, energía ${nl.energy||'-'}/5, entrenamiento: ${nl.training}.\nProgreso: ${prog.lost}kg en ${prog.days} días. Objetivo: ${p.goal}, meta ${p.targetWeight}kg.`}]);STATE.aiMsg=r;STATE.aiLoading=false;render();};
   return div;
 }
 function parseDateLog(d){if(!d)return new Date(0);if(d.includes('/')){const[dy,mo,yr]=d.split('/');return new Date(+yr,+mo-1,+dy);}if(d.includes('-')){const p=d.split('-');return +p[0]>31?new Date(+p[0],+p[1]-1,+p[2]):new Date(+p[2],+p[1]-1,+p[0]);}return new Date(d);}
