@@ -299,9 +299,7 @@ textarea{resize:none;height:80px;}
 @keyframes dropBounce{0%{transform:scale(.5)}60%{transform:scale(1.25)}100%{transform:scale(1)}}
 
 /* ─── CALORIE RING CENTER TEXT ─── */
-.cal-ring-center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none;}
-.cal-ring-val{font-family:'Syne',sans-serif;font-size:22px;font-weight:900;line-height:1;}
-.cal-ring-sub{font-size:10px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-top:2px;}
+.cal-ring-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;pointer-events:none;}
 
 /* ─── CHECK-IN SUCCESS ─── */
 @keyframes checkPop{0%{transform:scale(0) rotate(-20deg);opacity:0}60%{transform:scale(1.2) rotate(5deg)}100%{transform:scale(1) rotate(0);opacity:1}}
@@ -956,7 +954,7 @@ function renderDashboard(){
       <div style="text-align:right"><div class="streak-num" style="font-size:22px">${streak}🔥</div><div style="font-size:10px;color:var(--muted);font-weight:600">RACHA</div></div>
     </div>
     <div style="display:flex;gap:14px;align-items:center;justify-content:space-around">
-      <div style="position:relative">${buildRingChart(calPct,'#f87171',110,10,calToday>0?calToday+' / '+calGoal:calGoal+'','kcal'+(fromPlan?' plan':' est.'))}</div>
+      <div style="position:relative">${buildRingChart(calPct,'#f87171',120,16,calToday>0?calToday+'':calGoal+'','kcal'+(fromPlan?' / '+calGoal:' meta'))}</div>
       <div style="flex:1">
         ${buildMacroBar('Proteína · meta '+protGoal+'g',protToday,protGoal,'#60a5fa')}
         ${buildMacroBar('Carbos · meta '+carbsGoal+'g',carbsToday,carbsGoal,'#fbbf24')}
@@ -1253,7 +1251,10 @@ function renderProgress(){
     <div style="display:flex;justify-content:space-between;margin-top:6px"><span style="font-size:11px;color:var(--muted)">Inicio: ${STATE.profile.weight}kg</span><span style="font-size:11px;color:var(--muted)">Meta: ${STATE.profile.targetWeight}kg</span></div>
   </div>
   <div class="card"><div class="card-h">📉 Evolución de Peso</div>${buildWeightChart(al)}</div>
-  ${(()=>{const {calGoal,protGoal,carbsGoal,fatsGoal}=parseNutritionGoals();const recent=al.filter(l=>l.calories).slice(0,7);if(!recent.length)return'';const avgCal=Math.round(recent.reduce((s,l)=>s+(parseInt(l.calories)||0),0)/recent.length);const avgProt=Math.round(recent.reduce((s,l)=>s+(parseInt(l.protein)||0),0)/recent.length);const avgCarbs=Math.round(recent.reduce((s,l)=>s+(parseInt(l.carbs)||0),0)/recent.length);const avgFats=Math.round(recent.reduce((s,l)=>s+(parseInt(l.fats)||0),0)/recent.length);return`<div class="card"><div class="card-h">📊 Macros promedio (7 días)</div><div style="display:flex;gap:16px;align-items:center;justify-content:space-around"><div style="position:relative">${buildRingChart(Math.round((avgCal/calGoal)*100),'#f87171',100,9,avgCal+'','kcal/día')}</div><div style="flex:1">${buildMacroBar('Proteína',avgProt,protGoal,'#60a5fa')}${buildMacroBar('Carbos',avgCarbs,carbsGoal,'#fbbf24')}${buildMacroBar('Grasas',avgFats,fatsGoal,'#a78bfa')}</div></div></div>`;})()}
+  ${(()=>{const {calGoal,protGoal,carbsGoal,fatsGoal}=parseNutritionGoals();const recent=al.filter(l=>l.calories).slice(0,7);if(!recent.length)return'';
+    // Average only days that have actual data for each macro (avoid false zeros)
+    const avg=(logs,key)=>{const valid=logs.filter(l=>parseInt(l[key])>0);return valid.length?Math.round(valid.reduce((s,l)=>s+(parseInt(l[key])||0),0)/valid.length):0;};
+    const avgCal=avg(recent,'calories');const avgProt=avg(recent,'protein');const avgCarbs=avg(recent,'carbs');const avgFats=avg(recent,'fats');return`<div class="card"><div class="card-h">📊 Macros promedio (7 días)</div><div style="display:flex;gap:16px;align-items:center;justify-content:space-around"><div style="position:relative">${buildRingChart(Math.round((avgCal/calGoal)*100),'#f87171',110,16,avgCal+'','kcal/día')}</div><div style="flex:1">${buildMacroBar('Proteína',avgProt,protGoal,'#60a5fa')}${buildMacroBar('Carbos',avgCarbs,carbsGoal,'#fbbf24')}${buildMacroBar('Grasas',avgFats,fatsGoal,'#a78bfa')}</div></div></div>`;})()}
   <div class="card"><div class="card-h">📋 Historial reciente</div>${!al.length?'<div style="color:var(--muted);font-size:13px;text-align:center;padding:20px">Sin registros aún 💪</div>':sortedLogs(al).slice(0,10).map(l=>`<div class="log-item"><div class="log-row"><span class="log-date">${l.date}</span><span class="badge" style="background:${l.training==='si'?'#34d39920':'#1e1e3a'};color:${l.training==='si'?'var(--green)':'var(--muted)'}">${l.training==='si'?'💪 Entrenó':l.training==='activo'?'🚶 Activo':'😴 Descanso'}</span></div><div class="tags">${l.weight?`<span class="tag">⚖️ ${l.weight}kg</span>`:''} ${l.calories?`<span class="tag">🔥 ${l.calories}kcal</span>`:''} ${l.protein?`<span class="tag">🥩 ${l.protein}g</span>`:''} ${l.carbs?`<span class="tag">🍚 ${l.carbs}g</span>`:''} ${l.fats?`<span class="tag">🥑 ${l.fats}g</span>`:''} ${l.sleep?`<span class="tag">😴 ${l.sleep}h</span>`:''} ${l.energy?`<span class="tag">⚡ ${l.energy}/5</span>`:''}</div></div>`).join('')}</div>
   <button class="btn btn-blue" id="btn-weekly">${STATE.aiLoading?'⏳ Analizando…':'🧠 Análisis semanal con IA'}</button>
   ${STATE.aiMsg?`<div class="card card-blue" style="margin-top:12px"><div class="card-sh">📊 Informe de progreso</div><div class="ai-text">${STATE.aiMsg}</div></div>`:''}`;
