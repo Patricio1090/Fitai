@@ -24,7 +24,7 @@ exports.handler = async (event) => {
     const couponCode  = (body.coupon_code || "").trim().toUpperCase();
 
     // ── Precio base configurable ─────────────────────────────────────
-    const basePrice = parseInt(process.env.PRICE_CLP || "9990", 10);
+    const basePrice = parseInt(process.env.PRICE_CLP || "29990", 10);
 
     // ── Si hay cupón: buscar datos en Supabase ───────────────────────
     let finalPrice      = basePrice;
