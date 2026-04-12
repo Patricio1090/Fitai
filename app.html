@@ -260,6 +260,105 @@ textarea{resize:none;height:80px;}
 @keyframes pulse{0%,100%{opacity:.15;transform:scale(.8)}50%{opacity:1;transform:scale(1)}}
 .fade-in{animation:fadeIn .38s cubic-bezier(.16,1,.3,1);}
 *{-webkit-tap-highlight-color:transparent;}
+
+/* ══════════════════════════════════════════
+   FITIA-STYLE CHARTS & ANIMATIONS
+══════════════════════════════════════════ */
+
+/* ─── DONUT / RING CHART ─── */
+.ring-chart-wrap{display:flex;flex-direction:column;align-items:center;position:relative;}
+.ring-svg{overflow:visible;}
+.ring-bg{fill:none;stroke:rgba(255,255,255,.07);}
+.ring-fill{fill:none;stroke-linecap:round;transform:rotate(-90deg);transform-origin:50% 50%;transition:stroke-dashoffset 1.4s cubic-bezier(.4,0,.2,1);}
+.ring-label{text-anchor:middle;dominant-baseline:middle;}
+@keyframes ringDraw{from{stroke-dashoffset:var(--full)}to{stroke-dashoffset:var(--offset)}}
+.ring-animate{animation:ringDraw 1.4s cubic-bezier(.4,0,.2,1) forwards .15s;}
+
+/* ─── MACRO BARS ─── */
+.macro-bar-wrap{margin-bottom:10px;}
+.macro-bar-label{display:flex;justify-content:space-between;font-size:11px;font-weight:600;margin-bottom:5px;}
+.macro-bar-track{height:7px;background:rgba(255,255,255,.07);border-radius:999px;overflow:hidden;}
+.macro-bar-fill{height:100%;border-radius:999px;transition:width 1.2s cubic-bezier(.4,0,.2,1);}
+@keyframes macroFill{from{width:0}to{width:var(--tw)}}
+.macro-bar-fill{animation:macroFill 1.2s cubic-bezier(.4,0,.2,1) forwards .2s;width:0;}
+
+/* ─── STREAK ─── */
+.streak-wrap{display:flex;align-items:center;gap:8px;}
+.streak-fire{font-size:26px;animation:fireFlicker 1.5s ease-in-out infinite;}
+@keyframes fireFlicker{0%,100%{transform:scale(1) rotate(-3deg);filter:drop-shadow(0 0 6px rgba(255,140,0,.6))}50%{transform:scale(1.08) rotate(3deg);filter:drop-shadow(0 0 14px rgba(255,80,0,.9));}}
+.streak-num{font-family:'Syne',sans-serif;font-size:28px;font-weight:900;color:var(--amber);line-height:1;}
+.streak-lbl{font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px;}
+
+/* ─── WATER BAR ─── */
+.water-track{height:14px;background:rgba(77,184,255,.1);border:1px solid rgba(77,184,255,.2);border-radius:999px;overflow:hidden;position:relative;}
+.water-fill{height:100%;background:linear-gradient(90deg,#4db8ff,#22d3ee);border-radius:999px;position:relative;transition:width 1.2s cubic-bezier(.4,0,.2,1);}
+.water-fill::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.3),transparent);background-size:200% 100%;animation:shimmer 1.8s infinite;}
+.water-drops{display:flex;gap:4px;margin-top:6px;}
+.drop{font-size:14px;transition:transform .2s,opacity .2s;}
+.drop.filled{animation:dropBounce .4s cubic-bezier(.34,1.56,.64,1);}
+@keyframes dropBounce{0%{transform:scale(.5)}60%{transform:scale(1.25)}100%{transform:scale(1)}}
+
+/* ─── CALORIE RING CENTER TEXT ─── */
+.cal-ring-center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none;}
+.cal-ring-val{font-family:'Syne',sans-serif;font-size:22px;font-weight:900;line-height:1;}
+.cal-ring-sub{font-size:10px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-top:2px;}
+
+/* ─── CHECK-IN SUCCESS ─── */
+@keyframes checkPop{0%{transform:scale(0) rotate(-20deg);opacity:0}60%{transform:scale(1.2) rotate(5deg)}100%{transform:scale(1) rotate(0);opacity:1}}
+.check-success{animation:checkPop .5s cubic-bezier(.34,1.56,.64,1) forwards;}
+@keyframes confettiDrop{0%{opacity:1;transform:translateY(0) rotate(0)}100%{opacity:0;transform:translateY(60px) rotate(360deg)}}
+.confetti-piece{position:absolute;width:6px;height:6px;border-radius:2px;animation:confettiDrop .8s ease forwards;}
+
+/* ─── DASHBOARD SECTIONS ─── */
+.dash-section-title{font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin:16px 0 10px;}
+.macro-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px;}
+.macro-pill{border-radius:14px;padding:12px 8px;text-align:center;position:relative;overflow:hidden;}
+.macro-pill::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.05),transparent);pointer-events:none;}
+.macro-pill-val{font-family:'Syne',sans-serif;font-size:18px;font-weight:800;display:block;line-height:1.2;}
+.macro-pill-lbl{font-size:9px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.5px;display:block;margin-top:3px;}
+
+@keyframes shimmer{0%{background-position:-200% center}100%{background-position:200% center}}
+
+
+/* ─── NUTRITION MACRO HERO CARD ─── */
+.macro-hero{
+  background:linear-gradient(135deg,rgba(46,239,154,.12),rgba(9,9,28,.98));
+  border:1px solid rgba(46,239,154,.28);
+  border-radius:22px;padding:20px 18px;margin-bottom:16px;
+  position:relative;overflow:hidden;
+}
+.macro-hero::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,transparent,rgba(46,239,154,.7),transparent);
+}
+.macro-hero-title{
+  font-family:'Syne',sans-serif;font-size:11px;font-weight:800;
+  color:rgba(46,239,154,.7);text-transform:uppercase;letter-spacing:2px;
+  margin-bottom:16px;display:flex;align-items:center;gap:6px;
+}
+.macro-hero-row{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
+.macro-hero-cell{
+  background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);
+  border-radius:14px;padding:12px 6px;text-align:center;
+  position:relative;overflow:hidden;
+  transition:transform .15s,border-color .15s;
+}
+.macro-hero-cell:active{transform:scale(.96);}
+.macro-hero-icon{font-size:18px;margin-bottom:5px;display:block;}
+.macro-hero-val{
+  font-family:'Syne',sans-serif;font-size:16px;font-weight:900;
+  display:block;line-height:1.1;
+  animation:countUp .6s cubic-bezier(.16,1,.3,1) both;
+}
+.macro-hero-lbl{
+  font-size:9px;font-weight:700;text-transform:uppercase;
+  letter-spacing:.5px;color:var(--muted);display:block;margin-top:4px;
+}
+.macro-hero-cell::after{
+  content:'';position:absolute;bottom:0;left:0;right:0;height:3px;
+  border-radius:0 0 14px 14px;
+}
+
 </style>
 </head>
 <body>
@@ -274,7 +373,7 @@ function initSupabase(){if(!supa&&SUPA_URL!=='https://TU-PROYECTO.supabase.co'){
 async function dbSaveUser(u){initSupabase();if(!supa)return;try{await supa.from('users').upsert({email:u.email,name:u.name,password_hash:u.passwordHash,paid:u.paid||false,setup_done:false,created_at:new Date().toISOString()},{onConflict:'email'});}catch(e){}}
 async function dbMarkPaid(email){initSupabase();if(!supa)return;try{await supa.from('users').update({paid:true,paid_at:new Date().toISOString()}).eq('email',email);await supa.from('payments').insert({user_email:email,amount:CONFIG.AMOUNT,currency:CONFIG.CURRENCY,status:'approved',created_at:new Date().toISOString()});}catch(e){}}
 async function dbMarkSetupDone(email,goal){initSupabase();if(!supa)return;try{await supa.from('users').update({setup_done:true,goal:goal,last_active:new Date().toISOString()}).eq('email',email);}catch(e){}}
-async function dbSaveDailyLog(email,log){initSupabase();if(!supa)return;try{await supa.from('daily_logs').upsert({user_email:email,date:log.date,weight:parseFloat(log.weight)||null,calories:parseInt(log.calories)||null,protein:parseInt(log.protein)||null,sleep:parseFloat(log.sleep)||null,water:parseFloat(log.water)||null,training:log.training,energy:parseInt(log.energy)||null,notes:log.notes||null},{onConflict:'user_email,date'});}catch(e){}}
+async function dbSaveDailyLog(email,log){initSupabase();if(!supa)return;try{await supa.from('daily_logs').upsert({user_email:email,date:log.date,weight:parseFloat(log.weight)||null,calories:parseInt(log.calories)||null,protein:parseInt(log.protein)||null,sleep:parseFloat(log.sleep)||null,water:parseFloat(log.water)||null,training:log.training,energy:parseInt(log.energy)||null,carbs:parseInt(log.carbs)||null,fats:parseInt(log.fats)||null,notes:log.notes||null},{onConflict:'user_email,date'});}catch(e){}}
 async function dbSaveQAHistory(email,qa){initSupabase();if(!supa||!email||!qa?.length)return;try{await supa.from('users').update({qa_history:qa}).eq('email',email);}catch(e){}}
 async function dbSavePlanNutrition(email,plan,nutrition){initSupabase();if(!supa)return;try{await supa.from('users').update({current_plan:plan||null,current_nutrition:nutrition||null,plan_generated_at:new Date().toISOString()}).eq('email',email);}catch(e){}}
 async function dbSaveFeedback(email,name,comment){initSupabase();if(!supa)return;try{await supa.from('feedback').insert({user_email:email,user_name:name||email,comment:comment,created_at:new Date().toISOString()});}catch(e){}}
@@ -283,10 +382,10 @@ function saveProfileCache(e,p){try{localStorage.setItem('fitai_profile_'+btoa(e)
 function loadProfileCache(e){try{const d=localStorage.getItem('fitai_profile_'+btoa(e));return d?JSON.parse(d):null;}catch(x){return null;}}
 function saveUserCache(e,d){try{localStorage.setItem('fitai_ucache_'+btoa(e),JSON.stringify(d));}catch(x){}}
 function loadUserCache(e){try{const d=localStorage.getItem('fitai_ucache_'+btoa(e));return d?JSON.parse(d):null;}catch(x){return null;}}
-let STATE={lang:'es',authMode:'login',user:null,authLoading:false,authError:'',screen:'auth',payLoading:false,payError:'',profile:null,dailyLogs:[],plan:null,nutrition:null,chat:[],setupStep:0,setupData:{},tab:0,aiLoading:false,aiMsg:'',todayLog:{weight:'',calories:'',protein:'',sleep:'',water:'',training:'no',energy:'3',notes:'',mealPhotos:{},photoAnalysis:''},showUserMenu:false,showSideMenu:false,showModeMenu:false,showPlaceMenu:false,sideSection:null,qaHistory:[],couponApplied:false,couponCode:'',couponData:null,couponDiscount:0,couponFinalAmount:CONFIG.AMOUNT,needsAIPlan:false,planGeneratedAt:null,programStartDate:null};
-function clearUserState(){STATE.profile=null;STATE.dailyLogs=[];STATE.plan=null;STATE.nutrition=null;STATE.chat=[];STATE.qaHistory=[];STATE.aiMsg='';STATE.todayLog={weight:'',calories:'',protein:'',sleep:'',water:'',training:'no',energy:'3',notes:'',mealPhotos:{},photoAnalysis:''};STATE.planGeneratedAt=null;STATE.programStartDate=null;STATE.setupStep=0;STATE.setupData={};STATE.tab=0;STATE.needsAIPlan=false;STATE.couponApplied=false;STATE.couponCode='';STATE.couponData=null;STATE.couponDiscount=0;STATE.couponFinalAmount=CONFIG.AMOUNT;localStorage.removeItem(STORAGE_KEY);}
-function save(){try{localStorage.setItem(STORAGE_KEY,JSON.stringify({user:STATE.user,profile:STATE.profile,dailyLogs:STATE.dailyLogs,plan:STATE.plan,nutrition:STATE.nutrition,chat:STATE.chat,qaHistory:STATE.qaHistory,planGeneratedAt:STATE.planGeneratedAt,programStartDate:STATE.programStartDate}));if(STATE.user?.email){saveUserCache(STATE.user.email,{plan:STATE.plan,nutrition:STATE.nutrition,qaHistory:STATE.qaHistory,planGeneratedAt:STATE.planGeneratedAt,programStartDate:STATE.programStartDate,dailyLogs:STATE.dailyLogs});}}catch(e){}}
-function loadSaved(){try{const d=JSON.parse(localStorage.getItem(STORAGE_KEY)||'{}');if(d.user)STATE.user=d.user;if(d.profile)STATE.profile=d.profile;if(d.dailyLogs)STATE.dailyLogs=d.dailyLogs;if(d.plan)STATE.plan=d.plan;if(d.nutrition)STATE.nutrition=d.nutrition;if(d.chat)STATE.chat=d.chat;if(d.qaHistory)STATE.qaHistory=d.qaHistory;if(d.planGeneratedAt)STATE.planGeneratedAt=d.planGeneratedAt;if(d.programStartDate)STATE.programStartDate=d.programStartDate;}catch(e){}}
+let STATE={lang:'es',authMode:'login',user:null,authLoading:false,authError:'',screen:'auth',payLoading:false,payError:'',profile:null,dailyLogs:[],plan:null,nutrition:null,chat:[],setupStep:0,setupData:{},tab:0,aiLoading:false,aiMsg:'',todayLog:{weight:'',calories:'',protein:'',carbs:'',fats:'',sleep:'',water:'',training:'no',energy:'3',notes:'',mealPhotos:{},photoAnalysis:''},showUserMenu:false,showSideMenu:false,showModeMenu:false,showPlaceMenu:false,sideSection:null,qaHistory:[],couponApplied:false,couponCode:'',couponData:null,couponDiscount:0,couponFinalAmount:CONFIG.AMOUNT,needsAIPlan:false,planGeneratedAt:null,programStartDate:null,nutritionGoals:null};
+function clearUserState(){STATE.profile=null;STATE.dailyLogs=[];STATE.plan=null;STATE.nutrition=null;STATE.chat=[];STATE.qaHistory=[];STATE.aiMsg='';STATE.todayLog={weight:'',calories:'',protein:'',carbs:'',fats:'',sleep:'',water:'',training:'no',energy:'3',notes:'',mealPhotos:{},photoAnalysis:''};STATE.planGeneratedAt=null;STATE.programStartDate=null;STATE.setupStep=0;STATE.setupData={};STATE.tab=0;STATE.needsAIPlan=false;STATE.couponApplied=false;STATE.couponCode='';STATE.couponData=null;STATE.couponDiscount=0;STATE.couponFinalAmount=CONFIG.AMOUNT;localStorage.removeItem(STORAGE_KEY);}
+function save(){try{localStorage.setItem(STORAGE_KEY,JSON.stringify({user:STATE.user,profile:STATE.profile,dailyLogs:STATE.dailyLogs,plan:STATE.plan,nutrition:STATE.nutrition,chat:STATE.chat,qaHistory:STATE.qaHistory,planGeneratedAt:STATE.planGeneratedAt,programStartDate:STATE.programStartDate,nutritionGoals:STATE.nutritionGoals}));if(STATE.user?.email){saveUserCache(STATE.user.email,{plan:STATE.plan,nutrition:STATE.nutrition,qaHistory:STATE.qaHistory,planGeneratedAt:STATE.planGeneratedAt,programStartDate:STATE.programStartDate,dailyLogs:STATE.dailyLogs});}}catch(e){}}
+function loadSaved(){try{const d=JSON.parse(localStorage.getItem(STORAGE_KEY)||'{}');if(d.user)STATE.user=d.user;if(d.profile)STATE.profile=d.profile;if(d.dailyLogs)STATE.dailyLogs=d.dailyLogs;if(d.plan)STATE.plan=d.plan;if(d.nutrition)STATE.nutrition=d.nutrition;if(d.chat)STATE.chat=d.chat;if(d.qaHistory)STATE.qaHistory=d.qaHistory;if(d.planGeneratedAt)STATE.planGeneratedAt=d.planGeneratedAt;if(d.programStartDate)STATE.programStartDate=d.programStartDate;if(d.nutritionGoals)STATE.nutritionGoals=d.nutritionGoals;}catch(e){}}
 loadSaved();
 const _urlParams=new URLSearchParams(window.location.search);
 const _paymentStatus=_urlParams.get('payment');
@@ -676,19 +775,171 @@ function renderTabBar(){
   icons.forEach((ic,i)=>{const b=document.createElement('button');b.className='tab-btn'+(STATE.tab===i?' active':'');b.innerHTML=`${STATE.tab===i?'<span class="tab-active-dot"></span>':''}<span class="icon">${ic}</span><span>${labels[i]}</span>`;b.onclick=()=>{STATE.tab=i;STATE.aiMsg='';STATE.showUserMenu=false;STATE.sideSection=null;render();};tb.appendChild(b);});
   return tb;
 }
+
+// ── Extract calorie & macro goals from the AI nutrition plan ──────
+function parseNutNum(str){
+  // Handle Spanish thousand separator: "1.900" -> 1900, "1,900" -> 1900
+  if(!str)return null;
+  const clean=str.replace(/\./g,'').replace(/,/g,'');
+  const n=parseInt(clean);
+  return(!isNaN(n)&&n>0)?n:null;
+}
+function parseNutritionGoals(){
+  const nut=STATE.nutrition||'';
+  // Flexible patterns: handle "objetivo:", "totales:", "~1.900", "1,850", etc.
+  // Calories: match "calorías" + optional words + colon + optional ~ + number (with . or ,)
+  const calPatterns=[
+    /[Cc]alorías?\s*(?:objetivo|totales|diarias?|meta)?\s*[:\-]\s*~?\s*([\d.,]+)/,
+    /~?\s*([\d.,]+)\s*kcal\/día/i,
+    /([\d.,]+)\s*kcal\/d/i,
+  ];
+  const protPatterns=[
+    /[Pp]roteína\s*(?:total|diaria|:\s*)?~?\s*([\d.,]+)\s*g/,
+    /[Pp]rot(?:eína)?[:\s]+~?\s*([\d.,]+)/,
+  ];
+  const carbPatterns=[
+    /[Cc]arbohidratos?\s*(?:totales|diarios|:\s*)?~?\s*([\d.,]+)\s*g/,
+    /[Cc]arbos?[:\s]+~?\s*([\d.,]+)/,
+  ];
+  const fatPatterns=[
+    /[Gg]rasas?\s*(?:totales|diarias|:\s*)?~?\s*([\d.,]+)\s*g/,
+    /[Gg]rasas?[:\s]+~?\s*([\d.,]+)/,
+  ];
+  const findVal=(patterns)=>{
+    for(const re of patterns){const m=nut.match(re);if(m){const v=parseNutNum(m[1]);if(v&&v>0)return v;}}
+    return null;
+  };
+  const calRaw=findVal(calPatterns);
+  const protRaw=findVal(protPatterns);
+  const carbRaw=findVal(carbPatterns);
+  const fatRaw=findVal(fatPatterns);
+  // TDEE fallback
+  const _p=STATE.profile||{};
+  const _w=parseFloat(_p.weight)||75;
+  const _h=parseFloat(_p.height)||170;
+  const _a=parseInt(_p.age)||30;
+  const _male=(_p.gender||'').toLowerCase().includes('masc');
+  const _bmr=_male?(10*_w+6.25*_h-5*_a+5):(10*_w+6.25*_h-5*_a-161);
+  const _mult={sedentario:1.2,ligero:1.375,moderado:1.55,activo:1.725,atleta:1.9};
+  const _mk=Object.keys(_mult).find(k=>(_p.activityLevel||'').toLowerCase().includes(k))||'moderado';
+  const _tdee=Math.round(_bmr*_mult[_mk]);
+  const _gl=(_p.goal||'').toLowerCase();
+  const _fb=_gl.includes('bajar')||_gl.includes('grasa')?Math.max(_tdee-500,1200):_gl.includes('aumento')||_gl.includes('masa')?_tdee+300:_tdee;
+  const calGoal=calRaw||_fb;
+  const protGoal=protRaw||(Math.round(_w*2));
+  const fatsGoal=fatRaw||(Math.round(calGoal*.25/9));
+  const carbsGoal=carbRaw||(Math.round((calGoal-protGoal*4-fatsGoal*9)/4));
+  const fromPlan=!!(calRaw||protRaw);
+  // Cache goals when found from the plan — persist across menu refreshes
+  if(fromPlan){
+    STATE.nutritionGoals={calGoal,protGoal,carbsGoal,fatsGoal};
+    save();
+  }
+  // Use cached goals if current parse fails (e.g. new menu without macro line)
+  if(!fromPlan&&STATE.nutritionGoals){
+    const g=STATE.nutritionGoals;
+    return{calGoal:g.calGoal,protGoal:g.protGoal,carbsGoal:g.carbsGoal,fatsGoal:g.fatsGoal,fromPlan:true};
+  }
+  return{calGoal,protGoal,carbsGoal,fatsGoal,fromPlan};
+}
+
+function buildRingChart(pct,color,size,stroke,label,sublabel){
+  const r=size/2-stroke/2;const circ=2*Math.PI*r;const off=circ*(1-Math.min(1,Math.max(0,pct/100)));
+  const uid='r'+Math.random().toString(36).slice(2,6);
+  return`<div class="ring-chart-wrap" style="width:${size}px">
+    <svg class="ring-svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+      <defs><linearGradient id="rg${uid}" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stop-color="${color}"/><stop offset="100%" stop-color="${color}99"/>
+      </linearGradient></defs>
+      <circle class="ring-bg" cx="${size/2}" cy="${size/2}" r="${r}" stroke-width="${stroke}"/>
+      <circle class="ring-fill ring-animate" cx="${size/2}" cy="${size/2}" r="${r}"
+        stroke="url(#rg${uid})" stroke-width="${stroke}"
+        stroke-dasharray="${circ}" stroke-dashoffset="${circ}"
+        style="--full:${circ};--offset:${off};filter:drop-shadow(0 0 6px ${color}80)"/>
+    </svg>
+    <div class="cal-ring-center">
+      <div class="cal-ring-val" style="color:${color}">${label}</div>
+      <div class="cal-ring-sub">${sublabel}</div>
+    </div>
+  </div>`;
+}
+function buildMacroBar(label,val,max,color){
+  const pct=max>0?Math.min(100,(val/max)*100):0;
+  return`<div class="macro-bar-wrap">
+    <div class="macro-bar-label"><span style="color:${color}">${label}</span><span style="color:var(--muted)">${val}g</span></div>
+    <div class="macro-bar-track"><div class="macro-bar-fill" style="background:linear-gradient(90deg,${color},${color}99);--tw:${pct}%"></div></div>
+  </div>`;
+}
+function buildWaterBar(liters,goal){
+  const pct=Math.min(100,(liters/goal)*100);
+  const drops=Math.round((liters/goal)*8);
+  const allDrops=Array.from({length:8},(_,i)=>i<drops?'💧':'○');
+  return`<div>
+    <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px">
+      <span style="color:var(--blue);font-weight:700">💧 ${liters}L</span>
+      <span style="color:var(--muted)">Meta: ${goal}L</span>
+    </div>
+    <div class="water-track"><div class="water-fill" style="width:${pct}%"></div></div>
+    <div class="water-drops">${allDrops.map((d,i)=>`<span class="drop${i<drops?' filled':''}" style="font-size:13px;opacity:${i<drops?1:.2}">${i<drops?'💧':'·'}</span>`).join('')}</div>
+  </div>`;
+}
+function getStreak(){
+  const logs=STATE.dailyLogs;if(!logs.length)return 0;
+  const sorted=[...logs].sort((a,b)=>parseDateLog(b.date)-parseDateLog(a.date));
+  let streak=0;let prev=new Date();prev.setHours(0,0,0,0);
+  for(const l of sorted){const d=parseDateLog(l.date);d.setHours(0,0,0,0);const diff=(prev-d)/864e5;if(diff<=1.5){streak++;prev=d;}else break;}
+  return streak;
+}
 function renderDashboard(){
   const prog=calcProgress();const div=document.createElement('div');
   const pctColor=prog.retroceso?'#f87171':parseInt(prog.pct)>=50?'var(--green)':'var(--purple)';
   const kgVal=prog.gtype==='gain'?(parseFloat(prog.lost)>=0?'+'+prog.lost+'kg':prog.lost+'kg'):(prog.retroceso?'+'+Math.abs(prog.lost)+'kg':Math.max(0,prog.lost)+'kg');
   const pbw=Math.max(0,Math.min(100,Math.abs(parseInt(prog.pct))));
-  div.innerHTML=`${prog.retroceso?`<div style="background:linear-gradient(135deg,#f8717115,#ef444408);border:1px solid #f8717140;border-radius:16px;padding:14px 16px;margin-bottom:14px;display:flex;align-items:center;gap:12px"><div style="font-size:28px">⚠️</div><div><div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:800;color:#f87171">Retroceso detectado</div><div style="font-size:12px;color:var(--muted)">Subiste ${Math.abs(prog.lost)}kg. ¡Revisa tu plan con la IA!</div></div></div>`:''}
-  <div class="stats-grid"><div class="stat-box" style="background:#60a5fa12;border:1px solid #60a5fa25"><div class="stat-icon">🗓️</div><div class="stat-val" style="color:var(--blue)">${prog.days}</div><div class="stat-lbl">Días activo</div></div><div class="stat-box" style="background:${prog.kgColor}18;border:1px solid ${prog.kgColor}30"><div class="stat-icon">${prog.kgIcon}</div><div class="stat-val" style="color:${prog.kgColor}">${kgVal}</div><div class="stat-lbl">${prog.kgLabel}</div></div><div class="stat-box" style="background:${pctColor}18;border:1px solid ${pctColor}30"><div class="stat-icon">${prog.retroceso?'📉':'🎯'}</div><div class="stat-val" style="color:${pctColor}">${prog.pct}%</div><div class="stat-lbl">${prog.retroceso?'Retroceso':'Progreso'}</div></div></div>
-  <div class="card" style="background:linear-gradient(135deg,${pctColor}10,var(--surface));border:1px solid ${pctColor}28;"><div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:14px;font-weight:700">🎯 Meta: ${STATE.profile.targetWeight}kg</span><span style="color:${pctColor};font-weight:800">${prog.pct}%</span></div><div class="prog-wrap"><div class="prog-fill" style="width:${pbw}%;background:linear-gradient(90deg,${pctColor},${pctColor}80)"></div></div><div style="font-size:11px;color:var(--muted);margin-top:6px">🏁 Inicio: ${prog.pesoInicial}kg · Actual: ${prog.lw}kg · Meta: ${STATE.profile.targetWeight}kg</div></div>
+  const streak=getStreak();
+  const log=STATE.todayLog;
+  // ── Goals from AI nutrition plan ──
+  const {calGoal,protGoal,carbsGoal,fatsGoal,fromPlan}=parseNutritionGoals();
+  const calToday=parseInt(log.calories)||0;
+  const calPct=Math.min(100,Math.round((calToday/calGoal)*100));
+  const protToday=parseInt(log.protein)||0;
+  const carbsToday=parseInt(log.carbs)||0;
+  const fatsToday=parseInt(log.fats)||0;
+  div.innerHTML=`
+  ${prog.retroceso?`<div style="background:linear-gradient(135deg,#f8717115,#ef444408);border:1px solid #f8717140;border-radius:16px;padding:14px 16px;margin-bottom:14px;display:flex;align-items:center;gap:12px"><div style="font-size:28px">⚠️</div><div><div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:800;color:#f87171">Retroceso detectado</div><div style="font-size:12px;color:var(--muted)">Subiste ${Math.abs(prog.lost)}kg. ¡Revisa tu plan con la IA!</div></div></div>`:''}
+
+  <div class="card" style="margin-bottom:14px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <div><div class="card-h" style="margin-bottom:2px">Hoy</div><div style="font-size:11px;color:var(--muted)">${new Date().toLocaleDateString('es-CL',{weekday:'long',day:'numeric',month:'long'})}</div></div>
+      <div style="text-align:right"><div class="streak-num" style="font-size:22px">${streak}🔥</div><div style="font-size:10px;color:var(--muted);font-weight:600">RACHA</div></div>
+    </div>
+    <div style="display:flex;gap:14px;align-items:center;justify-content:space-around">
+      <div style="position:relative">${buildRingChart(calPct,'#f87171',110,10,calToday>0?calToday+' / '+calGoal:calGoal+'','kcal'+(fromPlan?' plan':' est.'))}</div>
+      <div style="flex:1">
+        ${buildMacroBar('Proteína · meta '+protGoal+'g',protToday,protGoal,'#60a5fa')}
+        ${buildMacroBar('Carbos · meta '+carbsGoal+'g',carbsToday,carbsGoal,'#fbbf24')}
+        ${buildMacroBar('Grasas · meta '+fatsGoal+'g',fatsToday,fatsGoal,'#a78bfa')}
+      </div>
+    </div>
+    ${calToday===0?`<div style="text-align:center;margin-top:12px;font-size:12px;color:var(--muted)">📝 <button id="go-log-link" style="background:none;border:none;color:var(--purple);font-size:12px;font-weight:600;cursor:pointer;text-decoration:underline">Registra tu día</button> para ver tus macros aquí</div>`:''}
+  </div>
+
+  <div class="stats-grid">
+    <div class="stat-box" style="background:#60a5fa12;border:1px solid #60a5fa25"><div class="stat-icon">🗓️</div><div class="stat-val" style="color:var(--blue)">${prog.days}</div><div class="stat-lbl">Días activo</div></div>
+    <div class="stat-box" style="background:${prog.kgColor}18;border:1px solid ${prog.kgColor}30"><div class="stat-icon">${prog.kgIcon}</div><div class="stat-val" style="color:${prog.kgColor}">${kgVal}</div><div class="stat-lbl">${prog.kgLabel}</div></div>
+    <div class="stat-box" style="background:${pctColor}18;border:1px solid ${pctColor}30"><div class="stat-icon">${prog.retroceso?'📉':'🎯'}</div><div class="stat-val" style="color:${pctColor}">${prog.pct}%</div><div class="stat-lbl">${prog.retroceso?'Retroceso':'Progreso'}</div></div>
+  </div>
+
+  <div class="card" style="background:linear-gradient(135deg,${pctColor}10,var(--surface));border:1px solid ${pctColor}28;">
+    <div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:14px;font-weight:700">🎯 Meta: ${STATE.profile.targetWeight}kg</span><span style="color:${pctColor};font-weight:800">${prog.pct}%</span></div>
+    <div class="prog-wrap"><div class="prog-fill" style="width:${pbw}%;background:linear-gradient(90deg,${pctColor},${pctColor}80)"></div></div>
+    <div style="font-size:11px;color:var(--muted);margin-top:6px">🏁 Inicio: ${prog.pesoInicial}kg · Actual: ${prog.lw}kg · Meta: ${STATE.profile.targetWeight}kg</div>
+  </div>
+
   ${prog.trend.length>1?`<div class="card"><div class="card-sh">📉 Tendencia de peso</div><div class="mini-chart">${prog.trend.map(t=>{const weights=prog.trend.map(x=>x.w);const mn=Math.min(...weights)-1,mx=Math.max(...weights)+1;const h=Math.round(((t.w-mn)/(mx-mn))*40+8);return`<div class="bar-wrap"><div class="bar" style="height:${h}px"></div><div class="bar-lbl">${(t.date||'').slice(0,5)}</div></div>`;}).join('')}</div></div>`:''}
   ${STATE.aiMsg?`<div class="card card-green"><div class="card-sh">🧠 Análisis de hoy</div><div class="ai-text">${STATE.aiMsg}</div></div>`:''}
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><button class="btn btn-blue" id="to-log">📝 Registrar hoy</button><button class="btn" style="background:linear-gradient(135deg,var(--green),#059669);color:#fff" id="to-nut">🥗 Nutrición</button></div>`;
-  div.querySelector('#to-log').onclick=()=>{STATE.tab=3;render();};
-  div.querySelector('#to-nut').onclick=()=>{STATE.tab=2;render();};
+  `;
+
+  div.querySelector('#go-log-link')?.addEventListener('click',()=>{STATE.tab=3;render();});
   return div;
 }
 const EX_IMG={press_pecho:{m:"Pecho",c:"#f87171",i:["Dumbbell_Bench_Press","Barbell_Bench_Press_-_Medium_Grip"]},flexiones:{m:"Pecho",c:"#f87171",i:["Pushups"]},remo:{m:"Espalda",c:"#60a5fa",i:["Bent_Over_Barbell_Row"]},dominadas:{m:"Espalda",c:"#60a5fa",i:["Pullups","Chin-Up"]},jalon:{m:"Espalda",c:"#60a5fa",i:["Wide-Grip_Lat_Pulldown"]},face_pull:{m:"Espalda/Hombros",c:"#60a5fa",i:["Face_Pull"]},press_hombros:{m:"Hombros",c:"#fbbf24",i:["Dumbbell_Shoulder_Press","Standing_Military_Press"]},elevaciones_laterales:{m:"Hombros",c:"#fbbf24",i:["Side_Lateral_Raise"]},curl_biceps:{m:"Bíceps",c:"#a78bfa",i:["Barbell_Curl","Dumbbell_Bicep_Curl"]},extension_triceps:{m:"Tríceps",c:"#c084fc",i:["Triceps_Pushdown"]},fondos_dips:{m:"Tríceps/Pecho",c:"#c084fc",i:["Dips_-_Chest_Version"]},abdominales:{m:"Abdominales",c:"#34d399",i:["Crunches"]},plancha:{m:"Core",c:"#34d399",i:["Plank"]},russian_twist:{m:"Oblicuos",c:"#34d399",i:["Russian_Twist"]},mountain_climbers:{m:"Core/Cardio",c:"#34d399",i:["Mountain_Climbers"]},sentadillas:{m:"Cuádriceps/Glúteos",c:"#fb923c",i:["Barbell_Full_Squat"]},peso_muerto:{m:"Espalda/Isquios",c:"#f472b6",i:["Barbell_Deadlift"]},estocadas:{m:"Cuádriceps/Glúteos",c:"#fb923c",i:["Dumbbell_Lunges"]},hip_thrust:{m:"Glúteos",c:"#e879f9",i:["Barbell_Hip_Thrust"]},pantorrillas:{m:"Pantorrillas",c:"#2dd4bf",i:["Standing_Calf_Raises"]},prensa_piernas:{m:"Cuádriceps",c:"#fb923c",i:["Leg_Press"]},extension_cuadriceps:{m:"Cuádriceps",c:"#fb923c",i:["Leg_Extensions"]},curl_femoral:{m:"Isquiotibiales",c:"#f472b6",i:["Lying_Leg_Curls"]},bulgarian:{m:"Cuádriceps/Glúteos",c:"#fb923c",i:["Single_Leg_Squat"]},peso_muerto_rumano:{m:"Isquiotibiales",c:"#f472b6",i:["Romanian_Deadlift_With_Dumbbells"]},burpees:{m:"Full Body",c:"#f43f5e",i:["Burpee"]},aperturas:{m:"Pecho",c:"#f87171",i:["Dumbbell_Flyes"]},encogimientos:{m:"Trapecios",c:"#fbbf24",i:["Barbell_Shrug"]}};
@@ -733,12 +984,44 @@ function renderWorkout(){
 }
 function renderNutrition(){
   const div=document.createElement('div');
+  const {calGoal:nCal,protGoal:nProt,carbsGoal:nCarbs,fatsGoal:nFat,fromPlan:nFP}=parseNutritionGoals();
+  const macroHeroHTML=nFP?`
+  <div class="macro-hero">
+    <div class="macro-hero-title">📊 Objetivos del plan</div>
+    <div class="macro-hero-row">
+      <div class="macro-hero-cell" style="border-color:rgba(248,113,113,.25)">
+        <span class="macro-hero-icon">🔥</span>
+        <span class="macro-hero-val" style="color:#f87171">${nCal.toLocaleString('es-CL')}</span>
+        <span class="macro-hero-lbl">kcal</span>
+        <span style="position:absolute;bottom:0;left:0;right:0;height:3px;background:#f87171;border-radius:0 0 14px 14px"></span>
+      </div>
+      <div class="macro-hero-cell" style="border-color:rgba(77,184,255,.25)">
+        <span class="macro-hero-icon">🥩</span>
+        <span class="macro-hero-val" style="color:#4db8ff">${nProt}g</span>
+        <span class="macro-hero-lbl">Proteína</span>
+        <span style="position:absolute;bottom:0;left:0;right:0;height:3px;background:#4db8ff;border-radius:0 0 14px 14px"></span>
+      </div>
+      <div class="macro-hero-cell" style="border-color:rgba(255,204,68,.25)">
+        <span class="macro-hero-icon">🍚</span>
+        <span class="macro-hero-val" style="color:#ffcc44">${nCarbs}g</span>
+        <span class="macro-hero-lbl">Carbos</span>
+        <span style="position:absolute;bottom:0;left:0;right:0;height:3px;background:#ffcc44;border-radius:0 0 14px 14px"></span>
+      </div>
+      <div class="macro-hero-cell" style="border-color:rgba(157,113,255,.25)">
+        <span class="macro-hero-icon">🥑</span>
+        <span class="macro-hero-val" style="color:#9d71ff">${nFat}g</span>
+        <span class="macro-hero-lbl">Grasas</span>
+        <span style="position:absolute;bottom:0;left:0;right:0;height:3px;background:#9d71ff;border-radius:0 0 14px 14px"></span>
+      </div>
+    </div>
+  </div>`:'';
   div.innerHTML=`<div style="background:linear-gradient(135deg,#34d39918,#05966908);border:1px solid #34d39928;border-radius:16px;padding:14px 16px;margin-bottom:14px;display:flex;align-items:center;gap:12px"><div style="font-size:28px">🥗</div><div><div style="font-family:Syne,sans-serif;font-size:15px;font-weight:700;color:var(--green)">Plan de Alimentación</div><div style="font-size:11px;color:var(--muted)">${STATE.profile?.goal||''} · Día ${calcProgress().days+1}</div></div></div>
+  ${macroHeroHTML}
   <div class="card" style="padding:0;overflow:hidden;margin-bottom:14px"><div style="padding:16px"><div id="nut-fmt">${formatNut(STATE.nutrition||'')}</div></div></div>
   <button class="btn btn-green" id="btn-newnut">${STATE.aiLoading?'⏳ Generando…':'🔄 Nuevo menú del día'}</button>
   <div class="card" style="margin-top:12px"><div class="card-h">💬 Consulta nutricional</div><div id="chat-n" style="max-height:400px;overflow-y:auto"></div><div class="chat-row"><input type="text" id="ci-n" placeholder="Preguntame lo que quieras para mejorar tu dieta"/><button id="cs-n" style="background:var(--green)">→</button></div></div>`;
   STATE.chat.slice(-2).forEach(m=>{const el=document.createElement('div');el.className='chat-msg '+(m.role==='user'?'chat-user':'chat-ai');el.style.color=m.role==='assistant'?'#6ee7b7':'';el.innerHTML=`<strong>${m.role==='user'?'Tú:':'🤖 '}</strong> ${m.content}`;div.querySelector('#chat-n').appendChild(el);});
-  div.querySelector('#btn-newnut').onclick=async()=>{STATE.aiLoading=true;render();const p=STATE.profile;const{desc,prefs}=getNutritionPrompt(p);const r=await claude([{role:'user',content:`Plan alimentación VARIADO para ${p.name},${p.goal},${calcProgress().lw}kg,${p.height}cm,${p.gender},${p.age}años. ${prefs} Formato:\n## 📊 Calorías y Macros\n- Calorías: X kcal - Proteína: Xg - Carbohidratos: Xg - Grasas: Xg\n## 🌅 Desayuno\n- alimento (cantidad)\n## 🍎 Colación AM\n## ☀️ Almuerzo\n## 🥤 Merienda PM\n## 🌙 Cena\nSolo alimentos con cantidades. Máx 300 palabras.`}]);STATE.nutrition=r;STATE.aiLoading=false;save();dbSavePlanNutrition(STATE.user?.email,STATE.plan,STATE.nutrition);render();};
+  div.querySelector('#btn-newnut').onclick=async()=>{STATE.aiLoading=true;render();const p=STATE.profile;const{desc,prefs}=getNutritionPrompt(p);const r=await claude([{role:'user',content:`Plan alimentación VARIADO para ${p.name},${p.goal},${calcProgress().lw}kg,${p.height}cm,${p.gender},${p.age}años. ${prefs} FORMATO OBLIGATORIO (respeta exactamente):\n## 📊 Calorías y Macros\nCalorías: XXXX kcal | Proteína: XXXg | Carbohidratos: XXXg | Grasas: XXg\n## 🌅 Desayuno\n- alimento (cantidad)\n## 🍎 Colación AM\n- alimento (cantidad)\n## ☀️ Almuerzo\n- alimento (cantidad)\n## 🥤 Merienda PM\n- alimento (cantidad)\n## 🌙 Cena\n- alimento (cantidad)\nSolo alimentos con cantidades. Máx 300 palabras.`}]);STATE.nutrition=r;STATE.aiLoading=false;save();dbSavePlanNutrition(STATE.user?.email,STATE.plan,STATE.nutrition);render();};
   const send=async()=>{const inp=div.querySelector('#ci-n');const txt=inp?.value.trim();if(!txt)return;STATE.chat.push({role:'user',content:txt});inp.value='';STATE.aiLoading=true;render();const msgs=STATE.chat.slice(-4).map(m=>({role:m.role,content:m.content}));msgs[0]={...msgs[0],content:`${STATE.profile.name},${STATE.profile.goal}\n${msgs[0].content}`};const r=await claude(msgs);STATE.chat.push({role:'assistant',content:r});STATE.qaHistory.push({date:new Date().toLocaleDateString('es-CL'),q:txt,a:r});STATE.qaHistory=STATE.qaHistory.slice(-100);STATE.aiLoading=false;save();dbSaveQAHistory(STATE.user?.email,STATE.qaHistory);render();};
   div.querySelector('#cs-n').onclick=send;div.querySelector('#ci-n').onkeydown=e=>{if(e.key==='Enter')send();};
   return div;
@@ -754,15 +1037,22 @@ function renderLog(){
   div.innerHTML=`<div class="card card-amber" style="margin-bottom:12px"><div class="card-h">📝 Registro de Hoy</div><div style="font-size:12px;color:var(--amber)">${today}</div></div>
   <div class="card" style="margin-bottom:12px;border-color:#a78bfa30;background:linear-gradient(135deg,#a78bfa06,var(--surface))">
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px"><div style="background:#a78bfa20;border-radius:10px;padding:8px;font-size:20px">📸</div><div><div style="font-family:Syne,sans-serif;font-size:16px;font-weight:700;color:var(--purple)">Fotos de tus comidas</div><div style="font-size:11px;color:var(--muted)">${pc>0?pc+' foto'+(pc>1?'s':'')+' agregada'+(pc>1?'s':''):'Fotografía cada comida del día'}</div></div></div>
-    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:10px 14px;margin-bottom:14px"><div style="font-size:12px;color:var(--muted);line-height:1.7">💡 Saca una foto de <strong style="color:var(--purple)">cada comida</strong> durante el día.<br>Al <strong style="color:var(--amber)">final del día</strong>, presiona analizar para calcular calorías y proteínas automáticamente.</div></div>
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:10px 14px;margin-bottom:14px"><div style="font-size:12px;color:var(--muted);line-height:1.7">💡 Saca una foto de <strong style="color:var(--purple)">cada comida</strong> durante el día.<br>Al <strong style="color:var(--amber)">final del día</strong>, presiona analizar para calcular calorías, proteína, carbos y grasas automáticamente.</div></div>
     ${mealsH}
-    <button class="btn btn-purple" id="btn-analyze-photos" ${STATE.aiLoading?'disabled':''} style="margin-top:4px">${STATE.aiLoading?'⏳ Analizando…':`🔍 Analizar con IA${pc>0?' · '+pc+' foto'+(pc>1?'s':''):''} — hazlo al final del día`}</button>
+    <button class="btn btn-purple" id="btn-analyze-photos" ${STATE.aiLoading?'disabled':''} style="margin-top:4px">${STATE.aiLoading?'⏳ Analizando…':`🔍 Analizar con IA${pc>0?' · '+pc+' foto'+(pc>1?'s':''):''}`}</button>
     ${log.photoAnalysis?`<div style="background:#34d39912;border:1px solid #34d39930;border-radius:12px;padding:14px;margin-top:12px"><div style="font-size:12px;font-weight:700;color:var(--green);margin-bottom:8px">✅ Análisis de tus comidas</div><div style="font-size:13px;color:#c0f0d8;line-height:1.85;white-space:pre-wrap">${log.photoAnalysis}</div></div>`:''}
   </div>
   <div class="card" style="margin-bottom:12px"><div class="card-h">📊 Datos del día</div>
     <div class="field"><label>⚖️ Peso actual (kg)</label><input type="number" placeholder="Ej: 79.5" data-key="weight" value="${log.weight||''}" step="0.1"/></div>
-    <div class="field"><label>🔥 Calorías consumidas</label><input type="number" placeholder="${log.photoAnalysis?'Auto-completado por IA':'Se completa con el análisis de fotos'}" data-key="calories" value="${log.calories||''}"/></div>
-    <div class="field"><label>🥩 Proteína (g)</label><input type="number" placeholder="${log.photoAnalysis?'Auto-completado por IA':'Se completa con el análisis de fotos'}" data-key="protein" value="${log.protein||''}"/></div>
+    <div style="background:${log.photoAnalysis?'rgba(46,239,154,.06)':'rgba(255,255,255,.02)'};border:1px solid ${log.photoAnalysis?'rgba(46,239,154,.2)':'var(--border)'};border-radius:14px;padding:14px;margin-bottom:12px">
+      <div style="font-size:11px;color:${log.photoAnalysis?'var(--green)':'var(--muted)'};font-weight:700;text-transform:uppercase;letter-spacing:.6px;margin-bottom:12px">${log.photoAnalysis?'✅ Auto-completado por IA':'📊 Macronutrientes del día'}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="field" style="margin-bottom:0"><label>🔥 Calorías</label><input type="number" placeholder="kcal" data-key="calories" value="${log.calories||''}"/></div>
+        <div class="field" style="margin-bottom:0"><label>🥩 Proteína (g)</label><input type="number" placeholder="g" data-key="protein" value="${log.protein||''}"/></div>
+        <div class="field" style="margin-bottom:0"><label>🍚 Carbohidratos (g)</label><input type="number" placeholder="g" data-key="carbs" value="${log.carbs||''}"/></div>
+        <div class="field" style="margin-bottom:0"><label>🥑 Grasas (g)</label><input type="number" placeholder="g" data-key="fats" value="${log.fats||''}"/></div>
+      </div>
+    </div>
     <div class="field"><label>😴 Horas de sueño</label><input type="number" placeholder="Ej: 7.5" data-key="sleep" value="${log.sleep||''}" step="0.5"/></div>
     <div class="field"><label>💧 Agua (litros)</label><input type="number" placeholder="Ej: 2.5" data-key="water" value="${log.water||''}" step="0.1"/></div>
     <div class="field"><label>🏋️ ¿Entrenaste hoy?</label><select data-key="training"><option value="no" ${log.training==='no'?'selected':''}>No entrené hoy</option><option value="si" ${log.training==='si'?'selected':''}>Sí, entrené 💪</option><option value="activo" ${log.training==='activo'?'selected':''}>Descanso activo 🚶</option></select></div>
@@ -777,10 +1067,17 @@ function renderLog(){
   div.querySelector('#btn-analyze-photos').onclick=async()=>{
     const photos=STATE.todayLog.mealPhotos||{};const entries=Object.entries(photos);if(!entries.length){alert('📷 Agrega al menos una foto para analizar.');return;}
     STATE.aiLoading=true;render();
-    try{const mL={desayuno:'Desayuno',colacion_am:'Colación AM',almuerzo:'Almuerzo',merienda:'Merienda PM',cena:'Cena'};const content=[];for(const[key,dataUrl]of entries){const b64=dataUrl.split(',')[1];const mt=dataUrl.split(';')[0].split(':')[1];content.push({type:'text',text:`📍 ${mL[key]||key}`});content.push({type:'image',source:{type:'base64',media_type:mt,data:b64}});}content.push({type:'text',text:`Analiza CADA foto y estima calorías y proteínas.\n\nFormato:\n[emoji] [Comida]: ~XXX kcal · ~XXg proteína\n(Descripción breve)\n\n---\n📊 TOTALES DEL DÍA:\n🔥 Calorías totales: XXX kcal\n🥩 Proteína total: XXg\n\nMáx 250 palabras.`});
-    const result=await claudeVision(content,800);STATE.todayLog.photoAnalysis=result;
-    const cM=result.match(/[Cc]alorías\s+totales[:\s]+~?\s*(\d+)/);const pM=result.match(/[Pp]roteína\s+total[:\s]+~?\s*(\d+)/);
-    if(cM&&!STATE.todayLog.calories)STATE.todayLog.calories=cM[1];if(pM&&!STATE.todayLog.protein)STATE.todayLog.protein=pM[1];}catch(e){STATE.todayLog.photoAnalysis='⚠️ Error: '+e.message;}
+    try{const mL={desayuno:'Desayuno',colacion_am:'Colación AM',almuerzo:'Almuerzo',merienda:'Merienda PM',cena:'Cena'};const content=[];for(const[key,dataUrl]of entries){const b64=dataUrl.split(',')[1];const mt=dataUrl.split(';')[0].split(':')[1];content.push({type:'text',text:`📍 ${mL[key]||key}`});content.push({type:'image',source:{type:'base64',media_type:mt,data:b64}});}content.push({type:'text',text:`Analiza CADA foto y estima los macronutrientes.\n\nFormato por comida:\n[emoji] [Comida]: ~XXX kcal · Prot: ~XXg · Carbos: ~XXg · Grasas: ~XXg\n(Descripción breve de lo que ves)\n\n---\n📊 TOTALES DEL DÍA:\n🔥 Calorías totales: XXXX kcal\n🥩 Proteína total: XXg\n🍚 Carbohidratos totales: XXg\n🥑 Grasas totales: XXg\n\nSé específico con los números. Máx 300 palabras.`});
+    const result=await claudeVision(content,1000);STATE.todayLog.photoAnalysis=result;
+    const cM=result.match(/[Cc]alorías\s+totales[:\s]+~?\s*(\d+)/);
+    const pM=result.match(/[Pp]roteína\s+total[:\s]+~?\s*(\d+)/);
+    const carbM=result.match(/[Cc]arbohidratos\s+totales[:\s]+~?\s*(\d+)/);
+    const fatM=result.match(/[Gg]rasas\s+totales[:\s]+~?\s*(\d+)/);
+    if(cM)STATE.todayLog.calories=cM[1];
+    if(pM)STATE.todayLog.protein=pM[1];
+    if(carbM)STATE.todayLog.carbs=carbM[1];
+    if(fatM)STATE.todayLog.fats=fatM[1];
+    }catch(e){STATE.todayLog.photoAnalysis='⚠️ Error: '+e.message;}
     STATE.aiLoading=false;render();
   };
 
@@ -788,7 +1085,7 @@ function renderLog(){
   div.querySelectorAll('textarea').forEach(el=>el.addEventListener('input',e=>{STATE.todayLog.notes=e.target.value;}));
   div.querySelectorAll('.energy-btn').forEach(b=>b.addEventListener('click',()=>{STATE.todayLog.energy=b.dataset.e;render();}));
 
-  div.querySelector('#btn-save').onclick=async()=>{const ts=new Date().toLocaleDateString('es-CL');const nl={date:ts,...STATE.todayLog};const lDB={...nl};delete lDB.mealPhotos;delete lDB.photoAnalysis;STATE.dailyLogs=[nl,...STATE.dailyLogs.filter(l=>l.date!==ts)].slice(0,90);save();dbSaveDailyLog(STATE.user?.email,lDB);STATE.aiLoading=true;render();const prog=calcProgress();const p=STATE.profile;const ctx=prog.retroceso?`⚠️ ALERTA: subió ${Math.abs(prog.lost)}kg desde inicio.`:'';const r=await claude([{role:'user',content:`Análisis de hoy de ${p.name} (máx 200 palabras):\n${ctx}\nPeso ${nl.weight||'-'}kg, cal ${nl.calories||'-'}, proteína ${nl.protein||'-'}g, sueño ${nl.sleep||'-'}h, agua ${nl.water||'-'}L, energía ${nl.energy||'-'}/5, entrenamiento: ${nl.training}.\nProgreso: ${prog.lost}kg en ${prog.days} días. Objetivo: ${p.goal}, meta ${p.targetWeight}kg.`}]);STATE.aiMsg=r;STATE.aiLoading=false;render();};
+  div.querySelector('#btn-save').onclick=async()=>{const ts=new Date().toLocaleDateString('es-CL');const nl={date:ts,...STATE.todayLog};const lDB={...nl};delete lDB.mealPhotos;delete lDB.photoAnalysis;STATE.dailyLogs=[nl,...STATE.dailyLogs.filter(l=>l.date!==ts)].slice(0,90);save();dbSaveDailyLog(STATE.user?.email,lDB);STATE.aiLoading=true;render();const prog=calcProgress();const p=STATE.profile;const ctx=prog.retroceso?`⚠️ ALERTA: subió ${Math.abs(prog.lost)}kg desde inicio.`:'';const r=await claude([{role:'user',content:`Análisis de hoy de ${p.name} (máx 200 palabras):\n${ctx}\nPeso ${nl.weight||'-'}kg, cal ${nl.calories||'-'}kcal, proteína ${nl.protein||'-'}g, carbos ${nl.carbs||'-'}g, grasas ${nl.fats||'-'}g, sueño ${nl.sleep||'-'}h, agua ${nl.water||'-'}L, energía ${nl.energy||'-'}/5, entrenamiento: ${nl.training}.\nProgreso: ${prog.lost}kg en ${prog.days} días. Objetivo: ${p.goal}, meta ${p.targetWeight}kg.`}]);STATE.aiMsg=r;STATE.aiLoading=false;render();};
   return div;
 }
 function parseDateLog(d){if(!d)return new Date(0);if(d.includes('/')){const[dy,mo,yr]=d.split('/');return new Date(+yr,+mo-1,+dy);}if(d.includes('-')){const p=d.split('-');return +p[0]>31?new Date(+p[0],+p[1]-1,+p[2]):new Date(+p[2],+p[1]-1,+p[0]);}return new Date(d);}
@@ -833,7 +1130,8 @@ function renderProgress(){
     <div style="display:flex;justify-content:space-between;margin-top:6px"><span style="font-size:11px;color:var(--muted)">Inicio: ${STATE.profile.weight}kg</span><span style="font-size:11px;color:var(--muted)">Meta: ${STATE.profile.targetWeight}kg</span></div>
   </div>
   <div class="card"><div class="card-h">📉 Evolución de Peso</div>${buildWeightChart(al)}</div>
-  <div class="card"><div class="card-h">📋 Historial reciente</div>${!al.length?'<div style="color:var(--muted);font-size:13px;text-align:center;padding:20px">Sin registros aún 💪</div>':sortedLogs(al).slice(0,10).map(l=>`<div class="log-item"><div class="log-row"><span class="log-date">${l.date}</span><span class="badge" style="background:${l.training==='si'?'#34d39920':'#1e1e3a'};color:${l.training==='si'?'var(--green)':'var(--muted)'}">${l.training==='si'?'💪 Entrenó':l.training==='activo'?'🚶 Activo':'😴 Descanso'}</span></div><div class="tags">${l.weight?`<span class="tag">⚖️ ${l.weight}kg</span>`:''} ${l.calories?`<span class="tag">🔥 ${l.calories}kcal</span>`:''} ${l.protein?`<span class="tag">🥩 ${l.protein}g</span>`:''} ${l.sleep?`<span class="tag">😴 ${l.sleep}h</span>`:''} ${l.energy?`<span class="tag">⚡ ${l.energy}/5</span>`:''}</div></div>`).join('')}</div>
+  ${(()=>{const {calGoal,protGoal,carbsGoal,fatsGoal}=parseNutritionGoals();const recent=al.filter(l=>l.calories).slice(0,7);if(!recent.length)return'';const avgCal=Math.round(recent.reduce((s,l)=>s+(parseInt(l.calories)||0),0)/recent.length);const avgProt=Math.round(recent.reduce((s,l)=>s+(parseInt(l.protein)||0),0)/recent.length);const avgCarbs=Math.round(recent.reduce((s,l)=>s+(parseInt(l.carbs)||0),0)/recent.length);const avgFats=Math.round(recent.reduce((s,l)=>s+(parseInt(l.fats)||0),0)/recent.length);return`<div class="card"><div class="card-h">📊 Macros promedio (7 días)</div><div style="display:flex;gap:16px;align-items:center;justify-content:space-around"><div style="position:relative">${buildRingChart(Math.round((avgCal/calGoal)*100),'#f87171',100,9,avgCal+'','kcal/día')}</div><div style="flex:1">${buildMacroBar('Proteína',avgProt,protGoal,'#60a5fa')}${buildMacroBar('Carbos',avgCarbs,carbsGoal,'#fbbf24')}${buildMacroBar('Grasas',avgFats,fatsGoal,'#a78bfa')}</div></div></div>`;})()}
+  <div class="card"><div class="card-h">📋 Historial reciente</div>${!al.length?'<div style="color:var(--muted);font-size:13px;text-align:center;padding:20px">Sin registros aún 💪</div>':sortedLogs(al).slice(0,10).map(l=>`<div class="log-item"><div class="log-row"><span class="log-date">${l.date}</span><span class="badge" style="background:${l.training==='si'?'#34d39920':'#1e1e3a'};color:${l.training==='si'?'var(--green)':'var(--muted)'}">${l.training==='si'?'💪 Entrenó':l.training==='activo'?'🚶 Activo':'😴 Descanso'}</span></div><div class="tags">${l.weight?`<span class="tag">⚖️ ${l.weight}kg</span>`:''} ${l.calories?`<span class="tag">🔥 ${l.calories}kcal</span>`:''} ${l.protein?`<span class="tag">🥩 ${l.protein}g</span>`:''} ${l.carbs?`<span class="tag">🍚 ${l.carbs}g</span>`:''} ${l.fats?`<span class="tag">🥑 ${l.fats}g</span>`:''} ${l.sleep?`<span class="tag">😴 ${l.sleep}h</span>`:''} ${l.energy?`<span class="tag">⚡ ${l.energy}/5</span>`:''}</div></div>`).join('')}</div>
   <button class="btn btn-blue" id="btn-weekly">${STATE.aiLoading?'⏳ Analizando…':'🧠 Análisis semanal con IA'}</button>
   ${STATE.aiMsg?`<div class="card card-blue" style="margin-top:12px"><div class="card-sh">📊 Informe de progreso</div><div class="ai-text">${STATE.aiMsg}</div></div>`:''}`;
   div.querySelector('#btn-weekly').onclick=async()=>{STATE.aiLoading=true;render();const p=STATE.profile;const prog2=calcProgress();const r=await claude([{role:'user',content:`Análisis de progreso de ${p.name} (300 palabras):\n${prog2.retroceso?`⚠️ ALERTA: subió ${Math.abs(prog2.lost)}kg desde inicio.`:''}\nPerfil: ${JSON.stringify(p)}\nRegistros: ${JSON.stringify(al.slice(0,7))}\nProgreso: ${prog2.lost}kg en ${prog2.days} días.`}]);STATE.aiMsg=r;STATE.aiLoading=false;render();};
@@ -849,7 +1147,7 @@ function renderProgress(){
       STATE.needsAIPlan=false;STATE.aiLoading=true;save();render();
       const p=STATE.profile;const{desc,prefs}=getNutritionPrompt(p);
       const wt=(pr,ms)=>Promise.race([pr,new Promise((_,r)=>setTimeout(()=>r(new Error('timeout')),ms))]);
-      try{STATE.plan=await wt(claude([{role:'user',content:`Plan entrenamiento semanal para ${desc}, lugar:${p.trainingPlace||'gimnasio'}. ${getTrainingPrompt(p.trainingPlace)}\nFORMATO:\n## DÍA 1 - LUNES: Grupo\n- Ejercicio (series x reps)\nMáx 250 palabras.`}]),25000);STATE.nutrition=await wt(claude([{role:'user',content:`Plan alimentación para ${desc}. ${prefs}\nFormato:\n## 🌅 Desayuno\n## ☀️ Almuerzo\n## 🌙 Cena\nMáx 200 palabras.`}]),25000);STATE.planGeneratedAt=new Date().toISOString();if(!STATE.programStartDate)STATE.programStartDate=STATE.planGeneratedAt;dbSavePlanNutrition(STATE.user?.email,STATE.plan,STATE.nutrition);}catch(e){STATE.plan='⚠️ Toca "🔄 Nueva semana" para generar.';STATE.nutrition='⚠️ Toca "🔄 Nuevo menú" para generar.';}
+      try{STATE.plan=await wt(claude([{role:'user',content:`Plan entrenamiento semanal para ${desc}, lugar:${p.trainingPlace||'gimnasio'}. ${getTrainingPrompt(p.trainingPlace)}\nFORMATO:\n## DÍA 1 - LUNES: Grupo\n- Ejercicio (series x reps)\nMáx 250 palabras.`}]),25000);STATE.nutrition=await wt(claude([{role:'user',content:`Plan alimentación para ${desc}. ${prefs}\nFORMATO OBLIGATORIO:\n## 📊 Calorías y Macros\nCalorías: XXXX kcal | Proteína: XXXg | Carbohidratos: XXXg | Grasas: XXg\n## 🌅 Desayuno\n- alimento (cantidad)\n## ☀️ Almuerzo\n- alimento (cantidad)\n## 🌙 Cena\n- alimento (cantidad)\nMáx 250 palabras.`}]),25000);STATE.planGeneratedAt=new Date().toISOString();if(!STATE.programStartDate)STATE.programStartDate=STATE.planGeneratedAt;dbSavePlanNutrition(STATE.user?.email,STATE.plan,STATE.nutrition);}catch(e){STATE.plan='⚠️ Toca "🔄 Nueva semana" para generar.';STATE.nutrition='⚠️ Toca "🔄 Nuevo menú" para generar.';}
       STATE.aiLoading=false;
     }
     save();render();
