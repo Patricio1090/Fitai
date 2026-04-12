@@ -777,42 +777,53 @@ function renderTabBar(){
 }
 
 // ── Extract calorie & macro goals from the AI nutrition plan ──────
-function parseNutNum(str){
-  // Handle Spanish thousand separator: "1.900" -> 1900, "1,900" -> 1900
+function parseNutNum(str,minVal=0){
   if(!str)return null;
-  const clean=str.replace(/\./g,'').replace(/,/g,'');
+  // Remove Spanish/Chilean thousand separators and spaces
+  const clean=str.replace(/[.\s]/g,'').replace(/,/g,'');
   const n=parseInt(clean);
-  return(!isNaN(n)&&n>0)?n:null;
+  return(!isNaN(n)&&n>minVal)?n:null;
 }
 function parseNutritionGoals(){
   const nut=STATE.nutrition||'';
-  // Flexible patterns: handle "objetivo:", "totales:", "~1.900", "1,850", etc.
-  // Calories: match "calorías" + optional words + colon + optional ~ + number (with . or ,)
-  const calPatterns=[
-    /[Cc]alorías?\s*(?:objetivo|totales|diarias?|meta)?\s*[:\-]\s*~?\s*([\d.,]+)/,
-    /~?\s*([\d.,]+)\s*kcal\/día/i,
-    /([\d.,]+)\s*kcal\/d/i,
-  ];
-  const protPatterns=[
-    /[Pp]roteína\s*(?:total|diaria|:\s*)?~?\s*([\d.,]+)\s*g/,
-    /[Pp]rot(?:eína)?[:\s]+~?\s*([\d.,]+)/,
-  ];
-  const carbPatterns=[
-    /[Cc]arbohidratos?\s*(?:totales|diarios|:\s*)?~?\s*([\d.,]+)\s*g/,
-    /[Cc]arbos?[:\s]+~?\s*([\d.,]+)/,
-  ];
-  const fatPatterns=[
-    /[Gg]rasas?\s*(?:totales|diarias|:\s*)?~?\s*([\d.,]+)\s*g/,
-    /[Gg]rasas?[:\s]+~?\s*([\d.,]+)/,
-  ];
-  const findVal=(patterns)=>{
-    for(const re of patterns){const m=nut.match(re);if(m){const v=parseNutNum(m[1]);if(v&&v>0)return v;}}
-    return null;
-  };
-  const calRaw=findVal(calPatterns);
-  const protRaw=findVal(protPatterns);
-  const carbRaw=findVal(carbPatterns);
-  const fatRaw=findVal(fatPatterns);
+
+  // ── STRATEGY: find the macros line specifically ──
+  // 1. Look for inline format: "Calorías: 2.100 kcal | Proteína: 175g | Carbohidratos: 210g | Grasas: 58g"
+  const inlineM=nut.match(/[Cc]alorías[:\s]+([\d.,]+)\s*kcal[^\n]*[Pp]roteína[:\s]+([\d.,]+)\s*g[^\n]*[Cc]arbohidratos?[:\s]+([\d.,]+)\s*g[^\n]*[Gg]rasas?[:\s]+([\d.,]+)\s*g/);
+  if(inlineM){
+    const cg=parseNutNum(inlineM[1],800);
+    const pg=parseNutNum(inlineM[2],10);
+    const crg=parseNutNum(inlineM[3],10);
+    const fg=parseNutNum(inlineM[4],5);
+    if(cg&&pg&&crg&&fg){
+      STATE.nutritionGoals={calGoal:cg,protGoal:pg,carbsGoal:crg,fatsGoal:fg};
+      save();
+      return{calGoal:cg,protGoal:pg,carbsGoal:crg,fatsGoal:fg,fromPlan:true};
+    }
+  }
+
+  // 2. Look line by line — find lines that contain just the macro value
+  //    Ignore lines with "déficit", "estimado", "TDEE", "sobre" (context lines)
+  const lines=nut.split('\n');
+  const ignoreLine=(l)=>/déficit|estimado|TDEE|sobre|semana|dieta|moderado/i.test(l);
+
+  let calRaw=null,protRaw=null,carbRaw=null,fatRaw=null;
+  for(const line of lines){
+    if(ignoreLine(line))continue;
+    const l=line.replace(/^[-•*\s#]+/,''); // strip bullets/headers
+    if(!calRaw){
+      const m=l.match(/[Cc]alorías?(?:\s*(?:objetivo|totales|diarias?|meta))?\s*[:\-]\s*~?\s*([\d.,]+)/);
+      if(m){const v=parseNutNum(m[1],800);if(v)calRaw=v;}
+      // Also try "X kcal/día" format — only if number > 800
+      if(!calRaw){const m2=l.match(/^~?\s*([\d.,]+)\s*kcal/i);if(m2){const v=parseNutNum(m2[1],800);if(v)calRaw=v;}}
+    }
+    if(!protRaw){const m=l.match(/[Pp]roteína\s*[:\-]\s*~?\s*([\d.,]+)\s*g/);if(m){const v=parseNutNum(m[1],10);if(v)protRaw=v;}}
+    if(!carbRaw){const m=l.match(/[Cc]arbohidratos?\s*[:\-]\s*~?\s*([\d.,]+)\s*g/);if(m){const v=parseNutNum(m[1],10);if(v)carbRaw=v;}}
+    if(!fatRaw){const m=l.match(/[Gg]rasas?\s*[:\-]\s*~?\s*([\d.,]+)\s*g/);if(m){const v=parseNutNum(m[1],5);if(v)fatRaw=v;}}
+  }
+
+  const fromPlan=!!(calRaw&&calRaw>800);
+
   // TDEE fallback
   const _p=STATE.profile||{};
   const _w=parseFloat(_p.weight)||75;
@@ -825,24 +836,23 @@ function parseNutritionGoals(){
   const _tdee=Math.round(_bmr*_mult[_mk]);
   const _gl=(_p.goal||'').toLowerCase();
   const _fb=_gl.includes('bajar')||_gl.includes('grasa')?Math.max(_tdee-500,1200):_gl.includes('aumento')||_gl.includes('masa')?_tdee+300:_tdee;
+
   const calGoal=calRaw||_fb;
-  const protGoal=protRaw||(Math.round(_w*2));
-  const fatsGoal=fatRaw||(Math.round(calGoal*.25/9));
-  const carbsGoal=carbRaw||(Math.round((calGoal-protGoal*4-fatsGoal*9)/4));
-  const fromPlan=!!(calRaw||protRaw);
-  // Cache goals when found from the plan — persist across menu refreshes
+  const protGoal=protRaw||Math.round(_w*2);
+  const fatsGoal=fatRaw||Math.round(calGoal*.25/9);
+  const carbsGoal=carbRaw||Math.max(0,Math.round((calGoal-protGoal*4-fatsGoal*9)/4));
+
   if(fromPlan){
     STATE.nutritionGoals={calGoal,protGoal,carbsGoal,fatsGoal};
     save();
   }
-  // Use cached goals if current parse fails (e.g. new menu without macro line)
+  // Use cache if current parse completely fails
   if(!fromPlan&&STATE.nutritionGoals){
     const g=STATE.nutritionGoals;
     return{calGoal:g.calGoal,protGoal:g.protGoal,carbsGoal:g.carbsGoal,fatsGoal:g.fatsGoal,fromPlan:true};
   }
   return{calGoal,protGoal,carbsGoal,fatsGoal,fromPlan};
 }
-
 function buildRingChart(pct,color,size,stroke,label,sublabel){
   const r=size/2-stroke/2;const circ=2*Math.PI*r;const off=circ*(1-Math.min(1,Math.max(0,pct/100)));
   const uid='r'+Math.random().toString(36).slice(2,6);
@@ -1021,7 +1031,7 @@ function renderNutrition(){
   <button class="btn btn-green" id="btn-newnut">${STATE.aiLoading?'⏳ Generando…':'🔄 Nuevo menú del día'}</button>
   <div class="card" style="margin-top:12px"><div class="card-h">💬 Consulta nutricional</div><div id="chat-n" style="max-height:400px;overflow-y:auto"></div><div class="chat-row"><input type="text" id="ci-n" placeholder="Preguntame lo que quieras para mejorar tu dieta"/><button id="cs-n" style="background:var(--green)">→</button></div></div>`;
   STATE.chat.slice(-2).forEach(m=>{const el=document.createElement('div');el.className='chat-msg '+(m.role==='user'?'chat-user':'chat-ai');el.style.color=m.role==='assistant'?'#6ee7b7':'';el.innerHTML=`<strong>${m.role==='user'?'Tú:':'🤖 '}</strong> ${m.content}`;div.querySelector('#chat-n').appendChild(el);});
-  div.querySelector('#btn-newnut').onclick=async()=>{STATE.aiLoading=true;render();const p=STATE.profile;const{desc,prefs}=getNutritionPrompt(p);const r=await claude([{role:'user',content:`Plan alimentación VARIADO para ${p.name},${p.goal},${calcProgress().lw}kg,${p.height}cm,${p.gender},${p.age}años. ${prefs} FORMATO OBLIGATORIO (respeta exactamente):\n## 📊 Calorías y Macros\nCalorías: XXXX kcal | Proteína: XXXg | Carbohidratos: XXXg | Grasas: XXg\n## 🌅 Desayuno\n- alimento (cantidad)\n## 🍎 Colación AM\n- alimento (cantidad)\n## ☀️ Almuerzo\n- alimento (cantidad)\n## 🥤 Merienda PM\n- alimento (cantidad)\n## 🌙 Cena\n- alimento (cantidad)\nSolo alimentos con cantidades. Máx 300 palabras.`}]);STATE.nutrition=r;STATE.aiLoading=false;save();dbSavePlanNutrition(STATE.user?.email,STATE.plan,STATE.nutrition);render();};
+  div.querySelector('#btn-newnut').onclick=async()=>{STATE.aiLoading=true;render();const p=STATE.profile;const{desc,prefs}=getNutritionPrompt(p);const r=await claude([{role:'user',content:`Plan alimentación VARIADO para ${p.name},${p.goal},${calcProgress().lw}kg,${p.height}cm,${p.gender},${p.age}años. ${prefs} FORMATO OBLIGATORIO (respeta exactamente):\n## 📊 Calorías y Macros\nCalorías: XXXX kcal | Proteína: XXXg | Carbohidratos: XXXg | Grasas: XXg\n## 🌅 Desayuno\n- alimento (cantidad)\n## 🍎 Colación AM\n- alimento (cantidad)\n## ☀️ Almuerzo\n- alimento (cantidad)\n## 🥤 Merienda PM\n- alimento (cantidad)\n## 🌙 Cena\n- alimento (cantidad)\nSolo alimentos con cantidades. Máx 300 palabras.`}]);STATE.nutrition=r;STATE.nutritionGoals=null;STATE.aiLoading=false;save();dbSavePlanNutrition(STATE.user?.email,STATE.plan,STATE.nutrition);render();};
   const send=async()=>{const inp=div.querySelector('#ci-n');const txt=inp?.value.trim();if(!txt)return;STATE.chat.push({role:'user',content:txt});inp.value='';STATE.aiLoading=true;render();const msgs=STATE.chat.slice(-4).map(m=>({role:m.role,content:m.content}));msgs[0]={...msgs[0],content:`${STATE.profile.name},${STATE.profile.goal}\n${msgs[0].content}`};const r=await claude(msgs);STATE.chat.push({role:'assistant',content:r});STATE.qaHistory.push({date:new Date().toLocaleDateString('es-CL'),q:txt,a:r});STATE.qaHistory=STATE.qaHistory.slice(-100);STATE.aiLoading=false;save();dbSaveQAHistory(STATE.user?.email,STATE.qaHistory);render();};
   div.querySelector('#cs-n').onclick=send;div.querySelector('#ci-n').onkeydown=e=>{if(e.key==='Enter')send();};
   return div;
