@@ -1107,7 +1107,8 @@ function buildMacroBar(label,val,max,_color){
   // Warning badge when over
   var warn=over?'<span style="background:#f8717120;border:1px solid #f8717150;color:#f87171;border-radius:6px;padding:2px 7px;font-size:10px;font-weight:800;margin-left:4px">⚠️ +'+Math.round(val-max)+'g</span>':'';
   h+='<span style="color:'+col+';font-weight:700">'+label+warn+'</span>';
-  h+='<span style="color:'+(over?'#f87171':'var(--muted)')+';font-weight:'+(over?'700':'500')+'">'+val+'g <span style="font-size:10px;opacity:.7">/'+max+'g</span></span>';
+  var pctTxt='('+rawPct+'%)';
+  h+='<span style="color:'+(over?'#f87171':'var(--muted)')+';font-weight:'+(over?'700':'500')+'">'+val+'g <span style="font-size:10px;opacity:.7">/'+max+'g</span> <span style="font-size:10px;color:'+col+';font-weight:700">'+pctTxt+'</span></span>';
   h+='</div>';
   // Bar: if over, show full red bar with overflow pulse
   var barStyle=over
