@@ -491,17 +491,97 @@ function loadUserCache(e){try{const d=localStorage.getItem('fitai_ucache_'+btoa(
 let STATE={lang:'es',authMode:'login',user:null,authLoading:false,authError:'',screen:'auth',payLoading:false,payError:'',profile:null,dailyLogs:[],plan:null,nutrition:null,chat:[],setupStep:0,setupData:{},tab:0,aiLoading:false,aiMsg:'',todayLog:{weight:'',calories:'',protein:'',carbs:'',fats:'',sleep:'',water:'',training:'no',energy:'3',notes:'',mealPhotos:{},mealMacros:{},mealAnalyzing:{},photoAnalysis:'',extraFood:'',extraMacros:null,extraAnalyzing:false},showUserMenu:false,showSideMenu:false,showModeMenu:false,showPlaceMenu:false,sideSection:null,qaHistory:[],couponApplied:false,couponCode:'',couponData:null,couponDiscount:0,couponFinalAmount:CONFIG.AMOUNT,needsAIPlan:false,planGeneratedAt:null,programStartDate:null};
 function clearUserState(){STATE.profile=null;STATE.dailyLogs=[];STATE.plan=null;STATE.nutrition=null;STATE.chat=[];STATE.qaHistory=[];STATE.aiMsg='';STATE.todayLog={weight:'',calories:'',protein:'',carbs:'',fats:'',sleep:'',water:'',training:'no',energy:'3',notes:'',mealPhotos:{},mealMacros:{},mealAnalyzing:{},photoAnalysis:'',extraFood:'',extraMacros:null,extraAnalyzing:false};STATE.planGeneratedAt=null;STATE.programStartDate=null;STATE.setupStep=0;STATE.setupData={};STATE.tab=0;STATE.needsAIPlan=false;STATE.couponApplied=false;STATE.couponCode='';STATE.couponData=null;STATE.couponDiscount=0;STATE.couponFinalAmount=CONFIG.AMOUNT;localStorage.removeItem(STORAGE_KEY);}
 function getTodayStr(){return new Date().toLocaleDateString('es-CL');}
+function _photoKey(meal){
+  // Each meal photo gets its OWN key — if one fails, others survive
+  var u=(STATE.user&&STATE.user.email?STATE.user.email:'anon');
+  return 'fitai_photo_'+u+'_'+getTodayStr()+'_'+meal;
+}
 function saveTodayPhotos(){
-  var key='fitai_photos_'+(STATE.user&&STATE.user.email?STATE.user.email:'anon')+'_'+getTodayStr();
-  try{localStorage.setItem(key,JSON.stringify(STATE.todayLog.mealPhotos||{}));}catch(e){}
+  var photos=STATE.todayLog.mealPhotos||{};
+  Object.keys(photos).forEach(function(meal){
+    try{
+      if(photos[meal]){
+        localStorage.setItem(_photoKey(meal),photos[meal]);
+      } else {
+        localStorage.removeItem(_photoKey(meal));
+      }
+    }catch(e){
+      // Photo too large for this meal — compress and retry
+      try{
+        var img=new Image();
+        var canvas=document.createElement('canvas');
+        img.onload=function(){
+          canvas.width=Math.min(img.width,800);
+          canvas.height=Math.round(img.height*(canvas.width/img.width));
+          var ctx=canvas.getContext('2d');
+          ctx.drawImage(img,0,0,canvas.width,canvas.height);
+          var compressed=canvas.toDataURL('image/jpeg',0.6);
+          try{localStorage.setItem(_photoKey(meal),compressed);}catch(e2){}
+        };
+        img.src=photos[meal];
+      }catch(e2){}
+    }
+  });
 }
 function loadTodayPhotos(){
-  var key='fitai_photos_'+(STATE.user&&STATE.user.email?STATE.user.email:'anon')+'_'+getTodayStr();
-  try{var d=localStorage.getItem(key);return d?JSON.parse(d):{};}catch(e){return{};}
+  var photos={};
+  var u=(STATE.user&&STATE.user.email?STATE.user.email:'anon');
+  var prefix='fitai_photo_'+u+'_'+getTodayStr()+'_';
+  try{
+    Object.keys(localStorage).forEach(function(k){
+      if(k.startsWith(prefix)){
+        var meal=k.slice(prefix.length);
+        var data=localStorage.getItem(k);
+        if(data)photos[meal]=data;
+      }
+    });
+  }catch(e){}
+  return photos;
 }
 function cleanOldPhotos(){
-  var today=getTodayStr(),prefix='fitai_photos_';
-  try{Object.keys(localStorage).forEach(function(k){if(k.startsWith(prefix)&&k.indexOf('_'+today)<0)localStorage.removeItem(k);});}catch(e){}
+  var today=getTodayStr();
+  var u=(STATE.user&&STATE.user.email?STATE.user.email:'anon');
+  var prefix='fitai_photo_';
+  var keepPrefix='fitai_photo_'+u+'_'+today+'_';
+  try{
+    Object.keys(localStorage).forEach(function(k){
+      if(k.startsWith(prefix)&&!k.startsWith(keepPrefix)){
+        localStorage.removeItem(k);
+      }
+    });
+  }catch(e){}
+}
+function saveOnePhoto(meal,dataUrl){
+  // Save a single photo immediately — more reliable than batch
+  try{
+    // Compress before saving: max 800px wide, 70% quality
+    var img=new Image();
+    img.onload=function(){
+      try{
+        var canvas=document.createElement('canvas');
+        var maxW=800;
+        canvas.width=Math.min(img.width,maxW);
+        canvas.height=Math.round(img.height*(canvas.width/img.width));
+        var ctx=canvas.getContext('2d');
+        ctx.drawImage(img,0,0,canvas.width,canvas.height);
+        var compressed=canvas.toDataURL('image/jpeg',0.7);
+        localStorage.setItem(_photoKey(meal),compressed);
+        // Also update STATE with compressed version
+        if(STATE.todayLog.mealPhotos&&STATE.todayLog.mealPhotos[meal]){
+          STATE.todayLog.mealPhotos[meal]=compressed;
+        }
+      }catch(e){
+        // Compression failed, try saving original
+        try{localStorage.setItem(_photoKey(meal),dataUrl);}catch(e2){}
+      }
+    };
+    img.onerror=function(){
+      try{localStorage.setItem(_photoKey(meal),dataUrl);}catch(e){}
+    };
+    img.src=dataUrl;
+  }catch(e){
+    try{localStorage.setItem(_photoKey(meal),dataUrl);}catch(e2){}
+  }
 }
 function save(){
   // CRITICAL: profile+user+logs saved first in protected key
@@ -510,8 +590,8 @@ function save(){
   try{localStorage.setItem('fitai_plan',JSON.stringify({plan:STATE.plan,nutrition:STATE.nutrition,chat:STATE.chat,qaHistory:STATE.qaHistory}));}catch(e){}
   // TODAY LOG: macros only, no photos
   try{var tl=Object.assign({},STATE.todayLog,{mealPhotos:{},mealAnalyzing:{}});localStorage.setItem('fitai_today',JSON.stringify({log:tl,date:getTodayStr()}));}catch(e){}
-  // PHOTOS: separate, can fail
-  saveTodayPhotos();
+  // PHOTOS: already saved per-meal via saveOnePhoto() — just refresh keys
+  try{saveTodayPhotos();}catch(e){}
   // UserCache for compatibility
   try{if(STATE.user&&STATE.user.email){saveUserCache(STATE.user.email,{plan:STATE.plan,nutrition:STATE.nutrition,qaHistory:STATE.qaHistory,planGeneratedAt:STATE.planGeneratedAt,programStartDate:STATE.programStartDate,dailyLogs:STATE.dailyLogs});}}catch(e){}
 }
@@ -1385,8 +1465,8 @@ function renderLog(){
   SLOTS.forEach(m=>{div.querySelector(`#photo-${m.key}`).addEventListener('change',e=>{const file=e.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=ev=>{
               if(!STATE.todayLog.mealPhotos)STATE.todayLog.mealPhotos={};
               STATE.todayLog.mealPhotos[m.key]=ev.target.result;
-              saveTodayPhotos(); // persist immediately before analysis
-              render();          // show photo right away
+              saveOnePhoto(m.key, ev.target.result); // compress + save immediately
+              render();                               // show photo right away
               analyzeSingleMeal(m.key,ev.target.result);
             };reader.readAsDataURL(file);});});
 
