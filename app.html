@@ -554,36 +554,29 @@ function cleanOldPhotos(){
   }catch(e){}
 }
 function saveOnePhoto(meal,dataUrl){
-  // Save a single photo immediately — more reliable than batch
+  // STEP 1: Save original immediately (synchronous) — never lose the photo
+  try{localStorage.setItem(_photoKey(meal),dataUrl);}catch(e){
+    console.warn('[Photo] Could not save original for',meal,e);
+  }
+  // STEP 2: Compress asynchronously and replace with smaller version
   try{
-    // Compress before saving: max 800px wide, 70% quality
     var img=new Image();
     img.onload=function(){
       try{
         var canvas=document.createElement('canvas');
-        var maxW=800;
-        canvas.width=Math.min(img.width,maxW);
+        canvas.width=Math.min(img.width,800);
         canvas.height=Math.round(img.height*(canvas.width/img.width));
-        var ctx=canvas.getContext('2d');
-        ctx.drawImage(img,0,0,canvas.width,canvas.height);
-        var compressed=canvas.toDataURL('image/jpeg',0.7);
-        localStorage.setItem(_photoKey(meal),compressed);
-        // Also update STATE with compressed version
-        if(STATE.todayLog.mealPhotos&&STATE.todayLog.mealPhotos[meal]){
-          STATE.todayLog.mealPhotos[meal]=compressed;
+        canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);
+        var compressed=canvas.toDataURL('image/jpeg',0.65);
+        // Only replace if compression actually reduced size
+        if(compressed.length<dataUrl.length){
+          localStorage.setItem(_photoKey(meal),compressed);
+          if(STATE.todayLog.mealPhotos)STATE.todayLog.mealPhotos[meal]=compressed;
         }
-      }catch(e){
-        // Compression failed, try saving original
-        try{localStorage.setItem(_photoKey(meal),dataUrl);}catch(e2){}
-      }
-    };
-    img.onerror=function(){
-      try{localStorage.setItem(_photoKey(meal),dataUrl);}catch(e){}
+      }catch(e){}
     };
     img.src=dataUrl;
-  }catch(e){
-    try{localStorage.setItem(_photoKey(meal),dataUrl);}catch(e2){}
-  }
+  }catch(e){}
 }
 function save(){
   // CRITICAL: profile+user+logs saved first in protected key
