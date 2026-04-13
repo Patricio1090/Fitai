@@ -1460,39 +1460,36 @@ function renderLog(){
 
   SLOTS.forEach(m=>{div.querySelector(`#photo-${m.key}`).addEventListener('change',e=>{const file=e.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=ev=>{
               const rawData=ev.target.result;
-              // Compress FIRST before storing anywhere
-              const img=new Image();
-              img.onload=function(){
-                const canvas=document.createElement('canvas');
-                const maxW=800;
-                canvas.width=Math.min(img.width,maxW);
-                canvas.height=Math.round(img.height*(canvas.width/img.width));
-                canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);
-                const compressed=canvas.toDataURL('image/jpeg',0.65);
-                const finalData=compressed.length<rawData.length?compressed:rawData;
-                if(!STATE.todayLog.mealPhotos)STATE.todayLog.mealPhotos={};
-                STATE.todayLog.mealPhotos[m.key]=finalData;
-                // Save compressed version directly — sync, no further compression needed
-                try{localStorage.setItem(_photoKey(m.key),finalData);}catch(err){
-                  // Still too large? Try lower quality
+              // STEP 1: store raw in STATE and localStorage IMMEDIATELY (sync)
+              if(!STATE.todayLog.mealPhotos)STATE.todayLog.mealPhotos={};
+              STATE.todayLog.mealPhotos[m.key]=rawData;
+              try{localStorage.setItem(_photoKey(m.key),rawData);}catch(err){}
+              render(); // show photo right away
+              analyzeSingleMeal(m.key,rawData); // start AI analysis with raw
+              // STEP 2: compress async and replace (smaller = better, but raw is already safe)
+              try{
+                const img=new Image();
+                img.onload=function(){
                   try{
-                    const tiny=canvas.toDataURL('image/jpeg',0.4);
-                    localStorage.setItem(_photoKey(m.key),tiny);
-                    STATE.todayLog.mealPhotos[m.key]=tiny;
-                  }catch(err2){console.warn('[Photo] Could not save',m.key);}
-                }
-                render();
-                analyzeSingleMeal(m.key,STATE.todayLog.mealPhotos[m.key]);
-              };
-              img.onerror=function(){
-                // Fallback: save raw
-                if(!STATE.todayLog.mealPhotos)STATE.todayLog.mealPhotos={};
-                STATE.todayLog.mealPhotos[m.key]=rawData;
-                try{localStorage.setItem(_photoKey(m.key),rawData);}catch(err){}
-                render();
-                analyzeSingleMeal(m.key,rawData);
-              };
-              img.src=rawData;
+                    const canvas=document.createElement('canvas');
+                    canvas.width=Math.min(img.width,800);
+                    canvas.height=Math.round(img.height*(canvas.width/img.width));
+                    canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);
+                    const compressed=canvas.toDataURL('image/jpeg',0.65);
+                    if(compressed.length<rawData.length){
+                      STATE.todayLog.mealPhotos[m.key]=compressed;
+                      try{localStorage.setItem(_photoKey(m.key),compressed);}catch(err){
+                        try{
+                          const tiny=canvas.toDataURL('image/jpeg',0.35);
+                          STATE.todayLog.mealPhotos[m.key]=tiny;
+                          localStorage.setItem(_photoKey(m.key),tiny);
+                        }catch(err2){}
+                      }
+                    }
+                  }catch(e){}
+                };
+                img.src=rawData;
+              }catch(e){}
             };reader.readAsDataURL(file);});});
 
   div.querySelector('#btn-analyze-photos').onclick=async()=>{
