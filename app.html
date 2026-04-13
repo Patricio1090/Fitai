@@ -494,8 +494,8 @@ let STATE={lang:'es',authMode:'login',user:null,authLoading:false,authError:'',s
 function clearUserState(){STATE.profile=null;STATE.dailyLogs=[];STATE.plan=null;STATE.nutrition=null;STATE.chat=[];STATE.qaHistory=[];STATE.aiMsg='';STATE.todayLog={weight:'',calories:'',protein:'',carbs:'',fats:'',sleep:'',water:'',training:'no',energy:'3',notes:'',mealPhotos:{},mealMacros:{},mealAnalyzing:{},photoAnalysis:'',extraFood:'',extraMacros:null,extraAnalyzing:false};STATE.planGeneratedAt=null;STATE.programStartDate=null;STATE.setupStep=0;STATE.setupData={};STATE.tab=0;STATE.needsAIPlan=false;STATE.couponApplied=false;STATE.couponCode='';STATE.couponData=null;STATE.couponDiscount=0;STATE.couponFinalAmount=CONFIG.AMOUNT;localStorage.removeItem(STORAGE_KEY);}
 function getTodayStr(){return new Date().toLocaleDateString('es-CL');}
 function _photoKey(meal){
-  // Each meal photo gets its OWN key — if one fails, others survive
-  var u=(STATE.user&&STATE.user.email?STATE.user.email:'anon');
+  // Requires real email — photos keyed by user, never 'anon'
+  var u=STATE.user&&STATE.user.email?STATE.user.email:'__no_user__';
   return 'fitai_photo_'+u+'_'+getTodayStr()+'_'+meal;
 }
 function saveTodayPhotos(){
@@ -527,7 +527,9 @@ function saveTodayPhotos(){
 }
 function loadTodayPhotos(){
   var photos={};
-  var u=(STATE.user&&STATE.user.email?STATE.user.email:'anon');
+  // Need real email — if not logged in yet, return empty
+  if(!STATE.user||!STATE.user.email)return photos;
+  var u=STATE.user.email;
   var prefix='fitai_photo_'+u+'_'+getTodayStr()+'_';
   try{
     Object.keys(localStorage).forEach(function(k){
@@ -541,8 +543,10 @@ function loadTodayPhotos(){
   return photos;
 }
 function cleanOldPhotos(){
+  // ONLY run when user is logged in — otherwise we'd delete real user photos
+  if(!STATE.user||!STATE.user.email)return;
   var today=getTodayStr();
-  var u=(STATE.user&&STATE.user.email?STATE.user.email:'anon');
+  var u=STATE.user.email;
   var prefix='fitai_photo_';
   var keepPrefix='fitai_photo_'+u+'_'+today+'_';
   try{
@@ -849,7 +853,7 @@ function renderAuth(){const div=document.createElement('div');div.className='scr
   div.querySelector('#tab-reg').onclick=()=>{STATE.authMode='register';STATE.authError='';render();};
   div.querySelector('#to-reg')?.addEventListener('click',()=>{STATE.authMode='register';STATE.authError='';render();});
   div.querySelector('#to-login')?.addEventListener('click',()=>{STATE.authMode='login';STATE.authError='';render();});
-  div.querySelector('#btn-auth').onclick=async()=>{const email=div.querySelector('#auth-email')?.value?.trim();const pass=div.querySelector('#auth-pass')?.value;const name=div.querySelector('#auth-name')?.value?.trim();const phone=div.querySelector('#auth-phone')?.value?.trim()||'';if(!email||!pass){STATE.authError='Completa todos los campos.';render();return;}STATE.authLoading=true;STATE.authError='';render();try{if(STATE.authMode==='register'){if(!name)throw new Error('Ingresa tu nombre.');STATE.user=await authRegister(email,pass,name,phone);}else STATE.user=await authLogin(email,pass);clearUserState();const cp=loadProfileCache(email);const cd=loadUserCache(email);if(cp)STATE.profile=cp;if(cd?.plan)STATE.plan=cd.plan;if(cd?.nutrition)STATE.nutrition=cd.nutrition;if(cd?.qaHistory)STATE.qaHistory=cd.qaHistory;if(cd?.planGeneratedAt)STATE.planGeneratedAt=cd.planGeneratedAt;if(cd?.programStartDate)STATE.programStartDate=cd.programStartDate;if(cd?.dailyLogs?.length)STATE.dailyLogs=cd.dailyLogs;save();await loadProfileFromSupabase(STATE.user.email);STATE.screen=!STATE.profile?'setup':!STATE.user.paid?'paywall':'app';}catch(e){STATE.authError=e.message;}STATE.authLoading=false;render();};
+  div.querySelector('#btn-auth').onclick=async()=>{const email=div.querySelector('#auth-email')?.value?.trim();const pass=div.querySelector('#auth-pass')?.value;const name=div.querySelector('#auth-name')?.value?.trim();const phone=div.querySelector('#auth-phone')?.value?.trim()||'';if(!email||!pass){STATE.authError='Completa todos los campos.';render();return;}STATE.authLoading=true;STATE.authError='';render();try{if(STATE.authMode==='register'){if(!name)throw new Error('Ingresa tu nombre.');STATE.user=await authRegister(email,pass,name,phone);}else STATE.user=await authLogin(email,pass);clearUserState();const cp=loadProfileCache(email);const cd=loadUserCache(email);if(cp)STATE.profile=cp;if(cd?.plan)STATE.plan=cd.plan;if(cd?.nutrition)STATE.nutrition=cd.nutrition;if(cd?.qaHistory)STATE.qaHistory=cd.qaHistory;if(cd?.planGeneratedAt)STATE.planGeneratedAt=cd.planGeneratedAt;if(cd?.programStartDate)STATE.programStartDate=cd.programStartDate;if(cd?.dailyLogs?.length)STATE.dailyLogs=cd.dailyLogs;save();await loadProfileFromSupabase(STATE.user.email);STATE.todayLog.mealPhotos=loadTodayPhotos();cleanOldPhotos();STATE.screen=!STATE.profile?'setup':!STATE.user.paid?'paywall':'app';}catch(e){STATE.authError=e.message;}STATE.authLoading=false;render();};
   div.querySelector('#auth-pass')?.addEventListener('keydown',e=>{if(e.key==='Enter')div.querySelector('#btn-auth')?.click();});
   return div;
 }
