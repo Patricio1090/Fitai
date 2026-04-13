@@ -653,7 +653,7 @@ function renderSideSection(){
         <label for="inbody-file-input" id="inbody-photo-btn" style="display:flex;align-items:center;justify-content:center;gap:12px;background:linear-gradient(135deg,var(--purple),#7c3aed);color:#fff;border-radius:14px;padding:16px;cursor:pointer;font-family:Syne,sans-serif;font-size:15px;font-weight:700;transition:opacity .2s">
           <span style="font-size:22px">📷</span> Tomar / Seleccionar foto del InBody
         </label>
-        <input type="file" id="inbody-file-input" accept="image/*" capture="environment" style="display:none"/>
+        <input type="file" id="inbody-file-input" accept="image/*" style="display:none"/>
       </div>
       <div id="inbody-error" style="display:none;background:#f8717115;border:1px solid #f8717140;border-radius:12px;padding:12px;font-size:13px;color:#f87171;margin-bottom:12px"></div>
       <button class="btn btn-blue" id="btn-analyze-inbody" disabled style="opacity:.5">
@@ -1378,7 +1378,7 @@ function renderLog(){
       <div style="display:flex;align-items:center;justify-content:space-between;${hp?'margin-bottom:10px':''}">
         <span style="font-size:14px;font-weight:700;color:${m.color}">${m.label}</span>
         <label for="photo-${m.key}" style="background:${hp?m.color+'22':'var(--surface)'};border:1.5px solid ${m.color}50;color:${m.color};border-radius:20px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer">${hp?'✓ Cambiar':'📷 Foto'}</label>
-        <input type="file" id="photo-${m.key}" accept="image/*" capture="environment" style="display:none" data-meal="${m.key}"/>
+        <input type="file" id="photo-${m.key}" accept="image/*" style="display:none" data-meal="${m.key}"/>
       </div>
       ${hp?`<img src="${log.mealPhotos[m.key]}" style="width:100%;border-radius:10px;max-height:160px;object-fit:cover;border:1px solid ${m.color}30"/>`:
       `<div style="border:2px dashed ${m.color}20;border-radius:10px;padding:10px;text-align:center;color:var(--muted);font-size:12px;margin-top:8px">Sin foto</div>`}
