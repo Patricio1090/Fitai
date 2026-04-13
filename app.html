@@ -255,6 +255,7 @@ textarea{resize:none;height:80px;}
 @keyframes dotAppear{from{opacity:0;transform:translateX(-50%) scale(0)}to{opacity:1;transform:translateX(-50%) scale(1)}}
 @keyframes floatLogo{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
 @keyframes shimmer{0%{background-position:-200% center}100%{background-position:200% center}}
+@keyframes macro-over-pulse{0%,100%{opacity:1;box-shadow:0 0 8px rgba(248,113,113,.5)}50%{opacity:.75;box-shadow:0 0 18px rgba(248,113,113,.9)}}
 @keyframes barGrow{from{transform:scaleY(0)}to{transform:scaleY(1)}}
 @keyframes draw{from{stroke-dashoffset:1200}to{stroke-dashoffset:0}}
 @keyframes pulse{0%,100%{opacity:.15;transform:scale(.8)}50%{opacity:1;transform:scale(1)}}
@@ -316,6 +317,7 @@ textarea{resize:none;height:80px;}
 .macro-pill-lbl{font-size:9px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.5px;display:block;margin-top:3px;}
 
 @keyframes shimmer{0%{background-position:-200% center}100%{background-position:200% center}}
+@keyframes macro-over-pulse{0%,100%{opacity:1;box-shadow:0 0 8px rgba(248,113,113,.5)}50%{opacity:.75;box-shadow:0 0 18px rgba(248,113,113,.9)}}
 
 
 /* ─── NUTRITION MACRO HERO CARD ─── */
@@ -1102,14 +1104,29 @@ function buildRingChart(pct,_c,size,stroke,label,sublabel){
   return h;
 }
 function buildMacroBar(label,val,max,_color){
-  var pct=max>0?Math.min(100,Math.round((val/max)*100)):0;
-  var col=pct>=100?'#2eef9a':pct>=75?'#b8ff57':pct>=50?'#ffcc44':pct>=25?'#fb923c':'#f87171';
+  var rawPct=max>0?Math.round((val/max)*100):0;
+  var pct=Math.min(100,rawPct);
+  var over=rawPct>100;
+  // Under target: red→orange→yellow→lime. Over target: red warning
+  var col=over?'#f87171':pct>=100?'#2eef9a':pct>=75?'#b8ff57':pct>=50?'#ffcc44':pct>=25?'#fb923c':'#f87171';
   var h='<div class="macro-bar-wrap">';
   h+='<div class="macro-bar-label">';
-  h+='<span style="color:'+col+';font-weight:700">'+label+'</span>';
-  h+='<span style="color:'+(pct>=100?col:'var(--muted)')+';font-weight:'+(pct>=100?'700':'500')+'">'+val+'g <span style="font-size:10px;opacity:.7">/'+max+'g</span></span>';
+  // Warning badge when over
+  var warn=over?'<span style="background:#f8717120;border:1px solid #f8717150;color:#f87171;border-radius:6px;padding:2px 7px;font-size:10px;font-weight:800;margin-left:4px">⚠️ +'+Math.round(val-max)+'g</span>':'';
+  h+='<span style="color:'+col+';font-weight:700">'+label+warn+'</span>';
+  h+='<span style="color:'+(over?'#f87171':'var(--muted)')+';font-weight:'+(over?'700':'500')+'">'+val+'g <span style="font-size:10px;opacity:.7">/'+max+'g</span></span>';
   h+='</div>';
-  h+='<div class="macro-bar-track"><div class="macro-bar-fill" style="background:'+col+';box-shadow:0 0 8px '+col+'60;--tw:'+pct+'%"></div></div>';
+  // Bar: if over, show full red bar with overflow pulse
+  var barStyle=over
+    ?'background:#f87171;box-shadow:0 0 10px rgba(248,113,113,.7);animation:macro-over-pulse 1.2s ease-in-out infinite;--tw:100%'
+    :'background:'+col+';box-shadow:0 0 8px '+col+'60;--tw:'+pct+'%';
+  h+='<div class="macro-bar-track"><div class="macro-bar-fill" style="'+barStyle+'"></div></div>';
+  // Overflow warning message
+  if(over){
+    h+='<div style="font-size:10px;color:#f87171;font-weight:600;margin-top:4px;display:flex;align-items:center;gap:4px">';
+    h+='🚫 Ya superaste tu meta diaria de este macro. Evita consumir más hoy.';
+    h+='</div>';
+  }
   h+='</div>';
   return h;
 }
