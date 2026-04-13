@@ -359,6 +359,16 @@ textarea{resize:none;height:80px;}
   border-radius:0 0 14px 14px;
 }
 
+
+/* ── Photo picker bottom sheet ── */
+.photo-sheet-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9000;display:flex;align-items:flex-end;justify-content:center;animation:fadeIn .15s ease}
+.photo-sheet{background:#1a1a2e;border-radius:20px 20px 0 0;padding:20px 16px 32px;width:100%;max-width:480px}
+.photo-sheet-title{font-size:12px;color:var(--muted);text-align:center;margin-bottom:16px;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+.photo-sheet-btn{display:flex;align-items:center;gap:14px;width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:16px;margin-bottom:10px;cursor:pointer;color:var(--text);font-size:15px;font-weight:600;transition:background .15s}
+.photo-sheet-btn:active{background:rgba(255,255,255,.1)}
+.photo-sheet-btn .ps-icon{font-size:24px;width:44px;height:44px;background:rgba(255,255,255,.07);border-radius:12px;display:flex;align-items:center;justify-content:center}
+.photo-sheet-cancel{width:100%;margin-top:4px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:14px;color:var(--muted);font-size:14px;font-weight:600;cursor:pointer}
+
 </style>
 </head>
 <body>
@@ -1267,6 +1277,42 @@ function renderNutrition(){
   return div;
 }
 
+
+// ── Photo picker bottom sheet ─────────────────────────────────────
+function showPhotoSheet(mealKey){
+  // Remove any existing sheet
+  var old=document.getElementById('photo-sheet-overlay');
+  if(old)old.remove();
+  var ov=document.createElement('div');
+  ov.className='photo-sheet-overlay';
+  ov.id='photo-sheet-overlay';
+  ov.innerHTML='<div class="photo-sheet">'+
+    '<div class="photo-sheet-title">¿Cómo quieres agregar la foto?</div>'+
+    '<button class="photo-sheet-btn" id="ps-cam">'+
+      '<span class="ps-icon">📷</span>'+
+      '<div><div>Tomar foto</div><div style="font-size:11px;color:var(--muted);font-weight:400">Abrir cámara</div></div>'+
+    '</button>'+
+    '<button class="photo-sheet-btn" id="ps-gal">'+
+      '<span class="ps-icon">🖼️</span>'+
+      '<div><div>Elegir de galería</div><div style="font-size:11px;color:var(--muted);font-weight:400">Google Fotos u otra app</div></div>'+
+    '</button>'+
+    '<button class="photo-sheet-cancel" id="ps-cancel">Cancelar</button>'+
+  '</div>';
+  document.body.appendChild(ov);
+  ov.querySelector('#ps-cam').onclick=function(){
+    ov.remove();
+    var inp=document.getElementById('photo-cam-'+mealKey);
+    if(inp)inp.click();
+  };
+  ov.querySelector('#ps-gal').onclick=function(){
+    ov.remove();
+    var inp=document.getElementById('photo-gal-'+mealKey);
+    if(inp)inp.click();
+  };
+  ov.querySelector('#ps-cancel').onclick=function(){ov.remove();};
+  ov.addEventListener('click',function(e){if(e.target===ov)ov.remove();});
+}
+
 // ── Real-time meal analysis ───────────────────────────────────────
 const MEAL_LABELS={desayuno:'Desayuno',colacion_am:'Colación AM',almuerzo:'Almuerzo',merienda:'Merienda PM',cena:'Cena'};
 
@@ -1377,8 +1423,9 @@ function renderLog(){
     return`<div style="background:var(--surface2);border:2px solid ${hp?(mac&&mac.ok?m.color+'80':analyzing?'rgba(157,113,255,.5)':m.color+'50'):'var(--border)'};border-radius:14px;padding:12px 14px;margin-bottom:10px;transition:border-color .3s">
       <div style="display:flex;align-items:center;justify-content:space-between;${hp?'margin-bottom:10px':''}">
         <span style="font-size:14px;font-weight:700;color:${m.color}">${m.label}</span>
-        <label for="photo-${m.key}" style="background:${hp?m.color+'22':'var(--surface)'};border:1.5px solid ${m.color}50;color:${m.color};border-radius:20px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer">${hp?'✓ Cambiar':'📷 Foto'}</label>
-        <input type="file" id="photo-${m.key}" accept="image/*" style="display:none" data-meal="${m.key}"/>
+        <button class="photo-pick-btn" data-meal="${m.key}" style="background:${hp?m.color+'22':'var(--surface)'};border:1.5px solid ${m.color}50;color:${m.color};border-radius:20px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer">${hp?'✓ Cambiar':'📷 Foto'}</button>
+        <input type="file" id="photo-cam-${m.key}" accept="image/*" capture="environment" style="display:none"/>
+        <input type="file" id="photo-gal-${m.key}" accept="image/*" style="display:none"/>
       </div>
       ${hp?`<img src="${log.mealPhotos[m.key]}" style="width:100%;border-radius:10px;max-height:160px;object-fit:cover;border:1px solid ${m.color}30"/>`:
       `<div style="border:2px dashed ${m.color}20;border-radius:10px;padding:10px;text-align:center;color:var(--muted);font-size:12px;margin-top:8px">Sin foto</div>`}
@@ -1458,14 +1505,20 @@ function renderLog(){
     analyzeExtraFood(txt);
   });
 
-  SLOTS.forEach(m=>{div.querySelector(`#photo-${m.key}`).addEventListener('change',e=>{const file=e.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=ev=>{
+  // Attach click handlers for photo picker buttons
+  div.querySelectorAll('.photo-pick-btn').forEach(function(btn){
+    btn.addEventListener('click',function(){showPhotoSheet(btn.dataset.meal);});
+  });
+
+  function attachPhotoHandler(inputEl, mealKey){
+    inputEl.addEventListener('change',e=>{const file=e.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=ev=>{
               const rawData=ev.target.result;
               // STEP 1: store raw in STATE and localStorage IMMEDIATELY (sync)
               if(!STATE.todayLog.mealPhotos)STATE.todayLog.mealPhotos={};
               STATE.todayLog.mealPhotos[m.key]=rawData;
               try{localStorage.setItem(_photoKey(m.key),rawData);}catch(err){}
               render(); // show photo right away
-              analyzeSingleMeal(m.key,rawData); // start AI analysis with raw
+              analyzeSingleMeal(mealKey,rawData); // start AI analysis with raw
               // STEP 2: compress async and replace (smaller = better, but raw is already safe)
               try{
                 const img=new Image();
@@ -1490,7 +1543,14 @@ function renderLog(){
                 };
                 img.src=rawData;
               }catch(e){}
-            };reader.readAsDataURL(file);});});
+            };reader.readAsDataURL(file);});
+  }
+  SLOTS.forEach(m=>{
+    const camInput=div.querySelector(`#photo-cam-${m.key}`);
+    const galInput=div.querySelector(`#photo-gal-${m.key}`);
+    if(camInput)attachPhotoHandler(camInput,m.key);
+    if(galInput)attachPhotoHandler(galInput,m.key);
+  });
 
   div.querySelector('#btn-analyze-photos').onclick=async()=>{
     const photos=STATE.todayLog.mealPhotos||{};const entries=Object.entries(photos);
