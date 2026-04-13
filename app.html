@@ -1167,11 +1167,11 @@ function renderDashboard(){
       <div style="text-align:right"><div class="streak-num" style="font-size:22px">${streak}🔥</div><div style="font-size:10px;color:var(--muted);font-weight:600">RACHA</div></div>
     </div>
     <div style="display:flex;gap:14px;align-items:center;justify-content:space-around">
-      <div style="position:relative">${buildRingChart(calPct,'#f87171',120,16,calToday>0?calToday+'':'--','kcal meta '+calGoal)}</div>
+      <div style="position:relative">${buildRingChart(calPct,'#f87171',120,16,calToday>0?calToday+'':'--','kcal de '+calGoal)}</div>
       <div style="flex:1">
-        ${buildMacroBar('Proteína · meta '+protGoal+'g',protToday,protGoal,'#60a5fa')}
-        ${buildMacroBar('Carbos · meta '+carbsGoal+'g',carbsToday,carbsGoal,'#fbbf24')}
-        ${buildMacroBar('Grasas · meta '+fatsGoal+'g',fatsToday,fatsGoal,'#a78bfa')}
+        ${buildMacroBar('Proteína',protToday,protGoal,'#60a5fa')}
+        ${buildMacroBar('Carbos',carbsToday,carbsGoal,'#fbbf24')}
+        ${buildMacroBar('Grasas',fatsToday,fatsGoal,'#a78bfa')}
       </div>
     </div>
     ${calToday===0?`<div style="text-align:center;margin-top:12px;font-size:12px;color:var(--muted)">📝 <button id="go-log-link" style="background:none;border:none;color:var(--purple);font-size:12px;font-weight:600;cursor:pointer;text-decoration:underline">Registra tu día</button> para ver tus macros aquí</div>`:''}
