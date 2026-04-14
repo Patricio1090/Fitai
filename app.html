@@ -1072,11 +1072,13 @@ function parseNutritionGoals(){
 }
 function buildRingChart(pct,_c,size,stroke,label,sublabel){
   var rawPct=Math.max(0,pct||0);
-  var p=Math.min(100,rawPct);
-  var tk=16,r=size/2-tk/2-2,circ=2*Math.PI*r,off=circ*(1-p/100);
   var over=rawPct>100;
+  var p=Math.min(100,rawPct);
+  var tk=16,r=size/2-tk/2-2,circ=2*Math.PI*r;
+  // When over 100%, arc is full circle (off=0)
+  var off=over?0:circ*(1-p/100);
   var col=over?'#f87171':p>=100?'#2eef9a':p>=75?'#b8ff57':p>=50?'#ffcc44':p>=25?'#fb923c':'#f87171';
-  var glow=over?'rgba(248,113,113,.7)':p>=100?'rgba(46,239,154,.7)':p>=75?'rgba(184,255,87,.65)':p>=50?'rgba(255,204,68,.6)':p>=25?'rgba(251,146,60,.55)':'rgba(248,113,113,.5)';
+  var glow=over?'rgba(248,113,113,.8)':p>=100?'rgba(46,239,154,.7)':p>=75?'rgba(184,255,87,.65)':p>=50?'rgba(255,204,68,.6)':p>=25?'rgba(251,146,60,.55)':'rgba(248,113,113,.5)';
   var fs=size>=110?'22px':'17px',fs2=size>=110?'10px':'9px',fsp=size>=110?'11px':'10px';
   var cx=size/2,cy=size/2,fc=p>0?col:'var(--muted)';
   var h='<div class="ring-chart-wrap" style="width:'+size+'px;height:'+size+'px">';
