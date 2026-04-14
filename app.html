@@ -614,6 +614,12 @@ function loadSaved(){
 loadSaved();
 // Ensure totals are always computed from mealMacros on startup
 try{if(Object.keys(STATE.todayLog.mealMacros||{}).length>0)recalcTotals();}catch(e){}
+// Auto re-analyze photos missing analysis after app loads (if user was already logged in)
+setTimeout(function(){
+  if(STATE.user&&STATE.user.paid&&STATE.screen==='app'){
+    autoReanalyzeIfNeeded();
+  }
+},2500);
 const _urlParams=new URLSearchParams(window.location.search);
 const _paymentStatus=_urlParams.get('payment');
 if(_paymentStatus==='success'||_urlParams.get('collection_status')==='approved'){const pu=localStorage.getItem('fitai_pending_user');if(pu&&!STATE.user)STATE.user=JSON.parse(pu);if(STATE.user){markAsPaid(STATE.user.email);STATE.screen=STATE.profile?'app':'setup';if(STATE.profile&&!STATE.plan)STATE.needsAIPlan=true;}localStorage.removeItem('fitai_pending_email');localStorage.removeItem('fitai_pending_user');window.history.replaceState({},'',window.location.pathname);}else if(_paymentStatus==='failure'){STATE.screen='paywall';STATE.payError='El pago no fue aprobado.';window.history.replaceState({},'',window.location.pathname);}
@@ -1366,6 +1372,22 @@ function showPhotoSheet(mealKey){
   ov.addEventListener('click',function(e){if(e.target===ov)ov.remove();});
 }
 
+
+// ── Auto re-analyze photos on load if mealMacros are missing ─────
+async function autoReanalyzeIfNeeded(){
+  const photos=STATE.todayLog.mealPhotos||{};
+  const macros=STATE.todayLog.mealMacros||{};
+  const meals=Object.keys(photos);
+  if(!meals.length)return;
+  // Find meals with photo but no valid analysis
+  const needsAnalysis=meals.filter(m=>photos[m]&&(!macros[m]||!macros[m].ok));
+  if(!needsAnalysis.length)return;
+  console.log('[AutoAnalyze] Re-analyzing',needsAnalysis.length,'meals...');
+  for(const meal of needsAnalysis){
+    await analyzeSingleMeal(meal,photos[meal]);
+  }
+}
+
 // ── Real-time meal analysis ───────────────────────────────────────
 const MEAL_LABELS={desayuno:'Desayuno',colacion_am:'Colación AM',almuerzo:'Almuerzo',merienda:'Merienda PM',cena:'Cena'};
 
@@ -1416,6 +1438,7 @@ async function analyzeExtraFood(text){
 async function analyzeSingleMeal(mealKey,dataUrl){
   if(!STATE.todayLog.mealAnalyzing)STATE.todayLog.mealAnalyzing={};
   STATE.todayLog.mealAnalyzing[mealKey]=true;
+  if(!STATE.todayLog.mealMacros)STATE.todayLog.mealMacros={};
   render();
   try{
     const b64=dataUrl.split(',')[1];const mt=dataUrl.split(';')[0].split(':')[1];
