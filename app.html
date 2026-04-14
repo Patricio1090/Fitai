@@ -624,6 +624,15 @@ setTimeout(function(){
     autoReanalyzeIfNeeded();
   }
 },2500);
+setTimeout(function(){
+  // Second pass: ensure totals are always correct
+  if(STATE.user&&STATE.screen==='app'){
+    if(Object.keys(STATE.todayLog.mealMacros||{}).length>0){
+      recalcTotals();
+      render();
+    }
+  }
+},4000);
 const _urlParams=new URLSearchParams(window.location.search);
 const _paymentStatus=_urlParams.get('payment');
 if(_paymentStatus==='success'||_urlParams.get('collection_status')==='approved'){const pu=localStorage.getItem('fitai_pending_user');if(pu&&!STATE.user)STATE.user=JSON.parse(pu);if(STATE.user){markAsPaid(STATE.user.email);STATE.screen=STATE.profile?'app':'setup';if(STATE.profile&&!STATE.plan)STATE.needsAIPlan=true;}localStorage.removeItem('fitai_pending_email');localStorage.removeItem('fitai_pending_user');window.history.replaceState({},'',window.location.pathname);}else if(_paymentStatus==='failure'){STATE.screen='paywall';STATE.payError='El pago no fue aprobado.';window.history.replaceState({},'',window.location.pathname);}
@@ -640,27 +649,24 @@ async function loadProfileFromSupabase(email){initSupabase();if(!supa)return;try
       // Load programStartDate from Supabase — never lost even if localStorage clears
       if(u.program_start_date&&!STATE.programStartDate)STATE.programStartDate=u.program_start_date;
       if(u.qa_history?.length&&u.qa_history.length>=(STATE.qaHistory?.length||0))STATE.qaHistory=u.qa_history;
-      // Restore today's partial log from Supabase — MERGE, never overwrite local mealMacros
+      // Restore from Supabase: LOCAL ALWAYS WINS — only fill gaps
       if(u.today_log_data&&u.today_log_date===getTodayStr()){try{
         const tl=JSON.parse(u.today_log_data);
         if(tl){
-          const curMacrosObj=(STATE.todayLog&&STATE.todayLog.mealMacros)||{};
-          const supaMacrosObj=tl.mealMacros||{};
-          const curMacrosCount=Object.keys(curMacrosObj).length;
-          const supaMacrosCount=Object.keys(supaMacrosObj).length;
-          if(supaMacrosCount>0||curMacrosCount===0){
-            // Merge: local wins for any meal already analyzed locally
-            const merged=Object.assign({},supaMacrosObj,curMacrosObj);
-            const curPhotos=STATE.todayLog&&STATE.todayLog.mealPhotos||{};
-            // Take the higher calorie base log
-            if(parseInt(tl.calories)>parseInt(STATE.todayLog&&STATE.todayLog.calories||0)){
-              STATE.todayLog=Object.assign({},tl,{mealPhotos:curPhotos,mealAnalyzing:{},mealMacros:merged});
-            } else {
-              STATE.todayLog.mealMacros=merged;
-              if(tl.extraFood&&!STATE.todayLog.extraFood)STATE.todayLog.extraFood=tl.extraFood;
-              if(tl.extraMacros&&!STATE.todayLog.extraMacros)STATE.todayLog.extraMacros=tl.extraMacros;
-            }
-          }
+          // Merge mealMacros: local entry overrides Supabase for same meal
+          const curMacros=(STATE.todayLog&&STATE.todayLog.mealMacros)||{};
+          const supaMacros=tl.mealMacros||{};
+          // Local wins: for every meal in Supabase, only use if local doesn't have it
+          const merged=Object.assign({},supaMacros,curMacros);
+          STATE.todayLog.mealMacros=merged;
+          // Fill in extraFood/extraMacros only if local is empty
+          if(tl.extraFood&&!STATE.todayLog.extraFood)STATE.todayLog.extraFood=tl.extraFood;
+          if(tl.extraMacros&&tl.extraMacros.ok&&!STATE.todayLog.extraMacros)STATE.todayLog.extraMacros=tl.extraMacros;
+          // Weight, sleep, water, training — fill if missing locally
+          if(tl.weight&&!STATE.todayLog.weight)STATE.todayLog.weight=tl.weight;
+          if(tl.sleep&&!STATE.todayLog.sleep)STATE.todayLog.sleep=tl.sleep;
+          if(tl.water&&!STATE.todayLog.water)STATE.todayLog.water=tl.water;
+          if(tl.training&&STATE.todayLog.training==='no')STATE.todayLog.training=tl.training;
           recalcTotals();
         }
       }catch(e){}}
@@ -921,10 +927,11 @@ function renderAuth(){const div=document.createElement('div');div.className='scr
     const cp=loadProfileCache(email);const cd=loadUserCache(email);if(cp)STATE.profile=cp;if(cd?.plan)STATE.plan=cd.plan;if(cd?.nutrition)STATE.nutrition=cd.nutrition;if(cd?.qaHistory)STATE.qaHistory=cd.qaHistory;if(cd?.planGeneratedAt)STATE.planGeneratedAt=cd.planGeneratedAt;if(cd?.programStartDate)STATE.programStartDate=cd.programStartDate;if(cd?.dailyLogs?.length)STATE.dailyLogs=cd.dailyLogs;
     STATE.user.email=email; // ensure email is set before loading photos
     STATE.todayLog.mealPhotos=loadTodayPhotos();
-    recalcTotals(); // recompute totals from mealMacros after restore
+    recalcTotals(); // recompute from mealMacros
     save();
     await loadProfileFromSupabase(STATE.user.email);
-    recalcTotals(); // recalc again after Supabase may have updated mealMacros
+    recalcTotals(); // final recalc after all data loaded
+    save(); // persist final correct totals
     cleanOldPhotos();
     STATE.screen=!STATE.profile?'setup':!STATE.user.paid?'paywall':'app';}catch(e){STATE.authError=e.message;}STATE.authLoading=false;render();};
   div.querySelector('#auth-pass')?.addEventListener('keydown',e=>{if(e.key==='Enter')div.querySelector('#btn-auth')?.click();});
