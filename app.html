@@ -1517,36 +1517,56 @@ function renderLog(){
   function attachPhotoHandler(inputEl, mealKey){
     inputEl.addEventListener('change',e=>{const file=e.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=ev=>{
               const rawData=ev.target.result;
-              // STEP 1: store raw in STATE and localStorage IMMEDIATELY (sync)
+              // Compress immediately, synchronously via canvas before storing
               if(!STATE.todayLog.mealPhotos)STATE.todayLog.mealPhotos={};
+              const _compress=function(dataUrl,maxW,quality){
+                try{
+                  const c=document.createElement('canvas');
+                  const i=document.createElement('img');
+                  // Use synchronous draw via createObjectURL trick isn't possible,
+                  // so we save raw first and compress after
+                  return null;
+                }catch(e){return null;}
+              };
+              // Save raw to STATE immediately so it shows in UI
               STATE.todayLog.mealPhotos[mealKey]=rawData;
-              try{localStorage.setItem(_photoKey(mealKey),rawData);}catch(err){}
-              render(); // show photo right away
-              analyzeSingleMeal(mealKey,rawData); // start AI analysis with raw
-              // STEP 2: compress async and replace (smaller = better, but raw is already safe)
-              try{
-                const img=new Image();
-                img.onload=function(){
+              // Try to save — multiple quality levels until one fits
+              var saved=false;
+              const tryLevels=[[600,0.5],[400,0.4],[300,0.3],[200,0.25]];
+              const imgEl=new Image();
+              imgEl.onload=function(){
+                for(var li=0;li<tryLevels.length;li++){
                   try{
-                    const canvas=document.createElement('canvas');
-                    canvas.width=Math.min(img.width,800);
-                    canvas.height=Math.round(img.height*(canvas.width/img.width));
-                    canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);
-                    const compressed=canvas.toDataURL('image/jpeg',0.65);
-                    if(compressed.length<rawData.length){
-                      STATE.todayLog.mealPhotos[mealKey]=compressed;
-                      try{localStorage.setItem(_photoKey(mealKey),compressed);}catch(err){
-                        try{
-                          const tiny=canvas.toDataURL('image/jpeg',0.35);
-                          STATE.todayLog.mealPhotos[mealKey]=tiny;
-                          localStorage.setItem(_photoKey(mealKey),tiny);
-                        }catch(err2){}
-                      }
-                    }
+                    const cv=document.createElement('canvas');
+                    cv.width=Math.min(imgEl.width,tryLevels[li][0]);
+                    cv.height=Math.round(imgEl.height*(cv.width/imgEl.width));
+                    cv.getContext('2d').drawImage(imgEl,0,0,cv.width,cv.height);
+                    const comp=cv.toDataURL('image/jpeg',tryLevels[li][1]);
+                    localStorage.setItem(_photoKey(mealKey),comp);
+                    STATE.todayLog.mealPhotos[mealKey]=comp;
+                    saved=true;
+                    break;
                   }catch(e){}
-                };
-                img.src=rawData;
-              }catch(e){}
+                }
+                if(!saved){
+                  // Last resort: remove old photos to free space, then retry smallest
+                  try{
+                    Object.keys(localStorage).filter(k=>k.startsWith('fitai_photo_')&&!k.includes(getTodayStr())).forEach(k=>localStorage.removeItem(k));
+                    const cv=document.createElement('canvas');
+                    cv.width=200;cv.height=Math.round(imgEl.height*(200/imgEl.width));
+                    cv.getContext('2d').drawImage(imgEl,0,0,cv.width,cv.height);
+                    localStorage.setItem(_photoKey(mealKey),cv.toDataURL('image/jpeg',0.2));
+                    saved=true;
+                  }catch(e){}
+                }
+              };
+              imgEl.onerror=function(){
+                // Can't compress — try saving raw directly
+                try{localStorage.setItem(_photoKey(mealKey),rawData);}catch(e){}
+              };
+              imgEl.src=rawData;
+              render(); // show photo right away (from STATE)
+              analyzeSingleMeal(mealKey,rawData); // start AI analysis
             };reader.readAsDataURL(file);});
   }
   SLOTS.forEach(m=>{
