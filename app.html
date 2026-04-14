@@ -927,11 +927,21 @@ function renderAuth(){const div=document.createElement('div');div.className='scr
     const cp=loadProfileCache(email);const cd=loadUserCache(email);if(cp)STATE.profile=cp;if(cd?.plan)STATE.plan=cd.plan;if(cd?.nutrition)STATE.nutrition=cd.nutrition;if(cd?.qaHistory)STATE.qaHistory=cd.qaHistory;if(cd?.planGeneratedAt)STATE.planGeneratedAt=cd.planGeneratedAt;if(cd?.programStartDate)STATE.programStartDate=cd.programStartDate;if(cd?.dailyLogs?.length)STATE.dailyLogs=cd.dailyLogs;
     STATE.user.email=email; // ensure email is set before loading photos
     STATE.todayLog.mealPhotos=loadTodayPhotos();
-    recalcTotals(); // recompute from mealMacros
+    // Merge from protected mealMacros key (survives logout)
+    var _pmm=loadMealMacros();
+    if(_pmm){
+      // Protected key wins — merge with local (local wins per meal)
+      STATE.todayLog.mealMacros=Object.assign({},_pmm.mealMacros||{},STATE.todayLog.mealMacros||{});
+      if(_pmm.extraMacros&&_pmm.extraMacros.ok&&!STATE.todayLog.extraMacros)STATE.todayLog.extraMacros=_pmm.extraMacros;
+      if(_pmm.extraFood&&!STATE.todayLog.extraFood)STATE.todayLog.extraFood=_pmm.extraFood;
+    }
+    recalcTotals();
+    saveMealMacros();
     save();
     await loadProfileFromSupabase(STATE.user.email);
-    recalcTotals(); // final recalc after all data loaded
-    save(); // persist final correct totals
+    recalcTotals();
+    save();
+    cleanOldMealMacros();
     cleanOldPhotos();
     STATE.screen=!STATE.profile?'setup':!STATE.user.paid?'paywall':'app';}catch(e){STATE.authError=e.message;}STATE.authLoading=false;render();};
   div.querySelector('#auth-pass')?.addEventListener('keydown',e=>{if(e.key==='Enter')div.querySelector('#btn-auth')?.click();});
@@ -1403,6 +1413,37 @@ async function autoReanalyzeIfNeeded(){
   }
 }
 
+
+// ── Protected mealMacros storage (survives logout/login) ──────────
+function _mmKey(){
+  var u=STATE.user&&STATE.user.email?STATE.user.email:'__anon__';
+  return 'fitai_mm_'+u+'_'+getTodayStr();
+}
+function saveMealMacros(){
+  // Save mealMacros + extraMacros + extraFood to their own key
+  if(!STATE.user||!STATE.user.email)return;
+  var mm=STATE.todayLog.mealMacros||{};
+  if(Object.keys(mm).length===0)return;
+  try{localStorage.setItem(_mmKey(),JSON.stringify({
+    mealMacros:mm,
+    extraMacros:STATE.todayLog.extraMacros||null,
+    extraFood:STATE.todayLog.extraFood||''
+  }));}catch(e){}
+}
+function loadMealMacros(){
+  // Returns saved mealMacros for today (or null)
+  if(!STATE.user||!STATE.user.email)return null;
+  try{var d=localStorage.getItem(_mmKey());return d?JSON.parse(d):null;}catch(e){return null;}
+}
+function cleanOldMealMacros(){
+  var today=getTodayStr();
+  var u=STATE.user&&STATE.user.email?STATE.user.email:'__anon__';
+  var keepKey='fitai_mm_'+u+'_'+today;
+  try{Object.keys(localStorage).forEach(function(k){
+    if(k.startsWith('fitai_mm_')&&k!==keepKey)localStorage.removeItem(k);
+  });}catch(e){}
+}
+
 // ── Real-time meal analysis ───────────────────────────────────────
 const MEAL_LABELS={desayuno:'Desayuno',colacion_am:'Colación AM',almuerzo:'Almuerzo',merienda:'Merienda PM',cena:'Cena'};
 
@@ -1447,6 +1488,7 @@ async function analyzeExtraFood(text){
     recalcTotals();
   }catch(e){STATE.todayLog.extraMacros={cal:0,prot:0,carbs:0,fats:0,ok:false};}
   STATE.todayLog.extraAnalyzing=false;
+  saveMealMacros(); // protected key — saves extraFood+extraMacros too
   save();render();
 }
 
@@ -1488,6 +1530,7 @@ Descripción: (10 palabras máx)`}
   }
   delete STATE.todayLog.mealAnalyzing[mealKey];
   recalcTotals();
+  saveMealMacros(); // protected key — survives logout
   save();
   render();
 }
