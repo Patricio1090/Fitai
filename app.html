@@ -1071,10 +1071,12 @@ function parseNutritionGoals(){
   return{calGoal,protGoal,carbsGoal,fatsGoal,fromPlan};
 }
 function buildRingChart(pct,_c,size,stroke,label,sublabel){
-  var p=Math.min(100,Math.max(0,pct||0));
+  var rawPct=Math.max(0,pct||0);
+  var p=Math.min(100,rawPct);
   var tk=16,r=size/2-tk/2-2,circ=2*Math.PI*r,off=circ*(1-p/100);
-  var col=p>=100?'#2eef9a':p>=75?'#b8ff57':p>=50?'#ffcc44':p>=25?'#fb923c':'#f87171';
-  var glow=p>=100?'rgba(46,239,154,.7)':p>=75?'rgba(184,255,87,.65)':p>=50?'rgba(255,204,68,.6)':p>=25?'rgba(251,146,60,.55)':'rgba(248,113,113,.5)';
+  var over=rawPct>100;
+  var col=over?'#f87171':p>=100?'#2eef9a':p>=75?'#b8ff57':p>=50?'#ffcc44':p>=25?'#fb923c':'#f87171';
+  var glow=over?'rgba(248,113,113,.7)':p>=100?'rgba(46,239,154,.7)':p>=75?'rgba(184,255,87,.65)':p>=50?'rgba(255,204,68,.6)':p>=25?'rgba(251,146,60,.55)':'rgba(248,113,113,.5)';
   var fs=size>=110?'22px':'17px',fs2=size>=110?'10px':'9px',fsp=size>=110?'11px':'10px';
   var cx=size/2,cy=size/2,fc=p>0?col:'var(--muted)';
   var h='<div class="ring-chart-wrap" style="width:'+size+'px;height:'+size+'px">';
@@ -1087,7 +1089,7 @@ function buildRingChart(pct,_c,size,stroke,label,sublabel){
   h+='</svg><div class="cal-ring-center">';
   h+='<div style="font-family:Syne,sans-serif;font-size:'+fs+';font-weight:900;color:'+fc+';line-height:1;animation:countUp .6s ease both .4s">'+label+'</div>';
   h+='<div style="font-size:'+fs2+';color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.4px;margin-top:3px">'+sublabel+'</div>';
-  if(p>0)h+='<div style="font-size:'+fsp+';color:'+col+';font-weight:800;margin-top:5px;background:'+col+'18;padding:2px 8px;border-radius:999px">'+Math.round(p)+'%</div>';
+  if(p>0)h+='<div style="font-size:'+fsp+';color:'+col+';font-weight:800;margin-top:5px;background:'+col+'18;padding:2px 8px;border-radius:999px">'+(over?'⚠️ ':'')+Math.round(rawPct)+'%</div>';
   h+='</div></div>';
   return h;
 }
