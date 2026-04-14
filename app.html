@@ -872,7 +872,9 @@ function render(){
   if(STATE.screen==='auth'){root.appendChild(renderAuth());return;}
   if(STATE.screen==='paywall'){root.appendChild(renderPaywall());return;}
   if(STATE.screen==='setup'&&!STATE.profile){root.appendChild(renderSetup());return;}
-  if(STATE.sideSection){root.appendChild(renderSideSection());root.appendChild(renderTabBar());return;}
+  if(STATE.sideSection){root.appendChild(renderHeader());root.appendChild(renderSideSection());root.appendChild(renderTabBar());
+    if(STATE.showUserMenu){const menu=document.createElement('div');menu.className='user-menu open';menu.innerHTML=`<div style="padding:8px 14px;border-bottom:1px solid var(--border);margin-bottom:4px"><div style="font-size:12px;font-weight:700">${STATE.user?.name||'Usuario'}</div><div style="font-size:11px;color:var(--muted)">${STATE.user?.email||''}</div></div><button class="user-menu-item" id="menu-logout-s" style="color:#f87171">🚪 Cerrar sesión</button>`;root.appendChild(menu);menu.querySelector('#menu-logout-s').onclick=()=>{save();clearUserState();STATE.user=null;STATE.screen='auth';STATE.showUserMenu=false;render();};document.addEventListener('click',function h(e){if(!menu.contains(e.target)){STATE.showUserMenu=false;document.removeEventListener('click',h);render();}},{once:true});}
+    return;}
   root.appendChild(renderHeader());
   const content=document.createElement('div');content.className='content fade-in';
   const tabs=[renderDashboard,renderWorkout,renderNutrition,renderLog,renderProgress];
@@ -1546,6 +1548,30 @@ Descripción: (10 palabras máx)`}
   delete STATE.todayLog.mealAnalyzing[mealKey];
   recalcTotals();
   saveMealMacros(); // protected key — survives logout
+  // Compress photo to small thumbnail after analysis (saves ~80% localStorage space)
+  // Macros are already saved, we only need a small preview image
+  try{
+    const photoData=STATE.todayLog.mealPhotos&&STATE.todayLog.mealPhotos[mealKey];
+    if(photoData){
+      const imgEl=new Image();
+      imgEl.onload=function(){
+        try{
+          const cv=document.createElement('canvas');
+          cv.width=Math.min(imgEl.width,300);
+          cv.height=Math.round(imgEl.height*(cv.width/imgEl.width));
+          cv.getContext('2d').drawImage(imgEl,0,0,cv.width,cv.height);
+          const thumb=cv.toDataURL('image/jpeg',0.35);
+          STATE.todayLog.mealPhotos[mealKey]=thumb;
+          try{localStorage.setItem(_photoKey(mealKey),thumb);}catch(e){
+            // If still fails, clear space from other analyzed meals
+            Object.keys(localStorage).filter(k=>k.startsWith('fitai_photo_')&&k!==_photoKey(mealKey)).forEach(k=>localStorage.removeItem(k));
+            try{localStorage.setItem(_photoKey(mealKey),thumb);}catch(e2){}
+          }
+        }catch(e){}
+      };
+      imgEl.src=photoData;
+    }
+  }catch(e){}
   save();
   render();
 }
