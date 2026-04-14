@@ -687,28 +687,14 @@ async function processPayment(){STATE.payLoading=true;STATE.payError='';render()
 function profileIsComplete(p){return p&&p.weight&&p.height&&p.age&&p.activityLevel&&p.goal;}
 function getGoalType(){const g=(STATE.profile?.goal||'').toLowerCase();if(g.includes('aumento')||g.includes('ganar masa'))return'gain';if(g.includes('recomp'))return'recomp';return'loss';}
 function getActiveLogs(){
+  // Returns all logs, merging today's partial log at the front if it has data
   const todayStr=getTodayStr();
   const tl=STATE.todayLog;
   const hasTodayData=parseFloat(tl.weight)>0||parseInt(tl.calories)>0;
-  let base;
-  if(hasTodayData){
-    const todayEntry={date:todayStr,weight:tl.weight,calories:tl.calories,protein:tl.protein,carbs:tl.carbs,fats:tl.fats,sleep:tl.sleep,water:tl.water,training:tl.training,energy:tl.energy,notes:tl.notes};
-    base=[todayEntry,...STATE.dailyLogs.filter(l=>l.date!==todayStr)];
-  }else{
-    base=STATE.dailyLogs;
-  }
-  if(!STATE.programStartDate)return base;
-  // Use only the date part (strip time) and parse with parseDateLog for consistency
-  const psdStr=(STATE.programStartDate+'').split('T')[0];
-  const psd=parseDateLog(psdStr);psd.setHours(0,0,0,0);
-  const ts=psd.getTime();
-  if(isNaN(ts))return base;
-  return base.filter(l=>{
-    if(!l.date)return false;
-    const d=parseDateLog(l.date);
-    if(isNaN(d.getTime()))return false;
-    return d.getTime()>=ts;
-  });
+  if(!hasTodayData)return STATE.dailyLogs;
+  const todayEntry={date:todayStr,weight:tl.weight,calories:tl.calories,protein:tl.protein,carbs:tl.carbs,fats:tl.fats,sleep:tl.sleep,water:tl.water,training:tl.training,energy:tl.energy,notes:tl.notes};
+  // Replace today's entry if already saved, otherwise prepend
+  return[todayEntry,...STATE.dailyLogs.filter(l=>l.date!==todayStr)];
 }
 function getDaysActive(){if(STATE.programStartDate){const s=new Date(STATE.programStartDate);s.setHours(0,0,0,0);const t=new Date();t.setHours(0,0,0,0);const d=Math.floor((t-s)/(864e5))+1;return Math.max(1,Math.min(d,(parseInt(STATE.profile?.weeksGoal)||16)*7+14));}if(STATE.dailyLogs.length>0){const GAP=14;const ld=STATE.dailyLogs.map(l=>{if(!l.date)return null;let d;if(l.date.includes('/')){const p=l.date.split('/');d=new Date(+p[2],+p[1]-1,+p[0]);}else if(l.date.includes('-')){const p=l.date.split('-');d=+p[0]>31?new Date(+p[0],+p[1]-1,+p[2]):new Date(+p[2],+p[1]-1,+p[0]);}else{d=new Date(l.date);}if(!d||isNaN(d.getTime())||d.getFullYear()<2025)return null;return d;}).filter(d=>d!==null).sort((a,b)=>a-b);if(ld.length>0){let ps=ld[0];for(let i=ld.length-1;i>0;i--){const g=(ld[i]-ld[i-1])/864e5;if(!isNaN(g)&&g>GAP){ps=ld[i];break;}}ps.setHours(0,0,0,0);const t=new Date();t.setHours(0,0,0,0);const d=Math.floor((t-ps)/864e5)+1;return Math.max(1,Math.min(d,(parseInt(STATE.profile?.weeksGoal)||16)*7+14));}}if(STATE.planGeneratedAt){const s=new Date(STATE.planGeneratedAt);s.setHours(0,0,0,0);const t=new Date();t.setHours(0,0,0,0);return Math.floor((t-s)/864e5)+1;}return STATE.dailyLogs.length;}
 function calcProgress(){const logs=getActiveLogs();const gtype=getGoalType();const sw=parseFloat(STATE.profile?.weight)||0;const tw=parseFloat(STATE.profile?.targetWeight)||sw;const lw=logs.length?(parseFloat(logs[0]?.weight)||sw):sw;const pi=sw;let lost,pct,retroceso,kgLabel,kgIcon,kgColor;if(gtype==='gain'){lost=lw-pi;const total=Math.max(.1,tw-pi);retroceso=logs.length>0&&lost<0;pct=retroceso?Math.min(100,(Math.abs(lost)/total)*100):Math.min(100,Math.max(0,(lost/total)*100));kgLabel=retroceso?'Kg perdidos':'Kg ganados';kgIcon=retroceso?'📉':'📈';kgColor=retroceso?'#f87171':'var(--green)';}else if(gtype==='recomp'){lost=pi-lw;const tw2=Math.max(1,parseInt(STATE.profile?.weeksGoal||12));pct=Math.min(100,(logs.length/(tw2*7))*100);retroceso=false;kgLabel='Kg ajustados';kgIcon='🔄';kgColor='var(--blue)';}else{lost=pi-lw;const total=Math.max(.1,pi-tw);retroceso=logs.length>0&&lost<0;pct=retroceso?Math.min(100,(Math.abs(lost)/total)*100):Math.min(100,(lost/total)*100);kgLabel=retroceso?'Kg ganados':'Kg perdidos';kgIcon=retroceso?'📈':'🔥';kgColor=retroceso?'#f87171':'var(--amber)';}const trend=logs.slice(0,14).reverse().map(l=>({date:l.date,w:parseFloat(l.weight)||null})).filter(l=>l.w);return{lost:lost.toFixed(1),pct:Math.max(0,pct).toFixed(0),days:getDaysActive(),trend,lw:lw||sw,retroceso,pesoInicial:pi,kgLabel,kgIcon,kgColor,gtype};}
@@ -1847,4 +1833,4 @@ if('serviceWorker' in navigator){const sw=`const C='fitai-v3';self.addEventListe
 (async function boot(){await initConfig();render();})();
 </script>
 </body>
-</html>
+  </html>
