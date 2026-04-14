@@ -686,7 +686,21 @@ function markAsPaid(email){const users=JSON.parse(localStorage.getItem('fitai_us
 async function processPayment(){STATE.payLoading=true;STATE.payError='';render();try{if(!CONFIG.MP_PUBLIC_KEY||CONFIG.MP_PUBLIC_KEY==='APP_USR-TU-PUBLIC-KEY-AQUI'){await new Promise(r=>setTimeout(r,1800));markAsPaid(STATE.user.email);STATE.screen='setup';STATE.payLoading=false;render();return;}const res=await fetch(CONFIG.PAYMENT_ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user_id:STATE.user.id||STATE.user.email,user_email:STATE.user.email,coupon_code:STATE.couponApplied?STATE.couponCode:''})});const data=await res.json();if(!data.init_point&&!data.initPoint&&!data.sandboxInitPoint)throw new Error('No se pudo crear el pago.');localStorage.setItem('fitai_pending_email',STATE.user.email);localStorage.setItem('fitai_pending_user',JSON.stringify(STATE.user));window.location.href=data.init_point||data.initPoint||data.sandboxInitPoint;}catch(e){STATE.payError=e.message||'Error al conectar con MercadoPago.';STATE.payLoading=false;render();}}
 function profileIsComplete(p){return p&&p.weight&&p.height&&p.age&&p.activityLevel&&p.goal;}
 function getGoalType(){const g=(STATE.profile?.goal||'').toLowerCase();if(g.includes('aumento')||g.includes('ganar masa'))return'gain';if(g.includes('recomp'))return'recomp';return'loss';}
-function getActiveLogs(){if(!STATE.programStartDate)return STATE.dailyLogs;const ts=new Date(STATE.programStartDate).setHours(0,0,0,0);return STATE.dailyLogs.filter(l=>{if(!l.date)return false;let d;if(l.date.includes('/')){const[dy,mo,yr]=l.date.split('/');d=new Date(+yr,+mo-1,+dy);}else{d=new Date(l.date);}return d.getTime()>=ts;});}
+function getActiveLogs(){
+  const todayStr=getTodayStr();
+  const tl=STATE.todayLog;
+  const hasTodayData=parseFloat(tl.weight)>0||parseInt(tl.calories)>0;
+  let base;
+  if(hasTodayData){
+    const todayEntry={date:todayStr,weight:tl.weight,calories:tl.calories,protein:tl.protein,carbs:tl.carbs,fats:tl.fats,sleep:tl.sleep,water:tl.water,training:tl.training,energy:tl.energy,notes:tl.notes};
+    base=[todayEntry,...STATE.dailyLogs.filter(l=>l.date!==todayStr)];
+  }else{
+    base=STATE.dailyLogs;
+  }
+  if(!STATE.programStartDate)return base;
+  const ts=new Date(STATE.programStartDate).setHours(0,0,0,0);
+  return base.filter(l=>{if(!l.date)return false;let d;if(l.date.includes('/')){const[dy,mo,yr]=l.date.split('/');d=new Date(+yr,+mo-1,+dy);}else{d=new Date(l.date);}return d.getTime()>=ts;});
+}
 function getDaysActive(){if(STATE.programStartDate){const s=new Date(STATE.programStartDate);s.setHours(0,0,0,0);const t=new Date();t.setHours(0,0,0,0);const d=Math.floor((t-s)/(864e5))+1;return Math.max(1,Math.min(d,(parseInt(STATE.profile?.weeksGoal)||16)*7+14));}if(STATE.dailyLogs.length>0){const GAP=14;const ld=STATE.dailyLogs.map(l=>{if(!l.date)return null;let d;if(l.date.includes('/')){const p=l.date.split('/');d=new Date(+p[2],+p[1]-1,+p[0]);}else if(l.date.includes('-')){const p=l.date.split('-');d=+p[0]>31?new Date(+p[0],+p[1]-1,+p[2]):new Date(+p[2],+p[1]-1,+p[0]);}else{d=new Date(l.date);}if(!d||isNaN(d.getTime())||d.getFullYear()<2025)return null;return d;}).filter(d=>d!==null).sort((a,b)=>a-b);if(ld.length>0){let ps=ld[0];for(let i=ld.length-1;i>0;i--){const g=(ld[i]-ld[i-1])/864e5;if(!isNaN(g)&&g>GAP){ps=ld[i];break;}}ps.setHours(0,0,0,0);const t=new Date();t.setHours(0,0,0,0);const d=Math.floor((t-ps)/864e5)+1;return Math.max(1,Math.min(d,(parseInt(STATE.profile?.weeksGoal)||16)*7+14));}}if(STATE.planGeneratedAt){const s=new Date(STATE.planGeneratedAt);s.setHours(0,0,0,0);const t=new Date();t.setHours(0,0,0,0);return Math.floor((t-s)/864e5)+1;}return STATE.dailyLogs.length;}
 function calcProgress(){const logs=getActiveLogs();const gtype=getGoalType();const sw=parseFloat(STATE.profile?.weight)||0;const tw=parseFloat(STATE.profile?.targetWeight)||sw;const lw=logs.length?(parseFloat(logs[0]?.weight)||sw):sw;const pi=sw;let lost,pct,retroceso,kgLabel,kgIcon,kgColor;if(gtype==='gain'){lost=lw-pi;const total=Math.max(.1,tw-pi);retroceso=logs.length>0&&lost<0;pct=retroceso?Math.min(100,(Math.abs(lost)/total)*100):Math.min(100,Math.max(0,(lost/total)*100));kgLabel=retroceso?'Kg perdidos':'Kg ganados';kgIcon=retroceso?'📉':'📈';kgColor=retroceso?'#f87171':'var(--green)';}else if(gtype==='recomp'){lost=pi-lw;const tw2=Math.max(1,parseInt(STATE.profile?.weeksGoal||12));pct=Math.min(100,(logs.length/(tw2*7))*100);retroceso=false;kgLabel='Kg ajustados';kgIcon='🔄';kgColor='var(--blue)';}else{lost=pi-lw;const total=Math.max(.1,pi-tw);retroceso=logs.length>0&&lost<0;pct=retroceso?Math.min(100,(Math.abs(lost)/total)*100):Math.min(100,(lost/total)*100);kgLabel=retroceso?'Kg ganados':'Kg perdidos';kgIcon=retroceso?'📈':'🔥';kgColor=retroceso?'#f87171':'var(--amber)';}const trend=logs.slice(0,14).reverse().map(l=>({date:l.date,w:parseFloat(l.weight)||null})).filter(l=>l.w);return{lost:lost.toFixed(1),pct:Math.max(0,pct).toFixed(0),days:getDaysActive(),trend,lw:lw||sw,retroceso,pesoInicial:pi,kgLabel,kgIcon,kgColor,gtype};}
 // ═══════════════════════════════════════
@@ -1566,10 +1580,37 @@ function renderLog(){
       ${macroTag}
     </div>`;
   }).join('');
-  div.innerHTML=`<div class="card card-amber" style="margin-bottom:12px"><div class="card-h">📝 Registro de Hoy</div><div style="font-size:12px;color:var(--amber)">${today}</div></div>
-  <div class="card" style="margin-bottom:12px;border-color:#a78bfa30;background:linear-gradient(135deg,#a78bfa06,var(--surface))">
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px"><div style="background:#a78bfa20;border-radius:10px;padding:8px;font-size:20px">📸</div><div><div style="font-family:Syne,sans-serif;font-size:16px;font-weight:700;color:var(--purple)">Fotos de tus comidas</div><div style="font-size:11px;color:var(--muted)">${pc>0?pc+' foto'+(pc>1?'s':'')+' agregada'+(pc>1?'s':''):'Fotografía cada comida del día'}</div></div></div>
-    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:10px 14px;margin-bottom:14px"><div style="font-size:12px;color:var(--muted);line-height:1.7">💡 Saca una foto de <strong style="color:var(--purple)">cada comida</strong> durante el día.<br>Al <strong style="color:var(--amber)">final del día</strong>, presiona analizar para calcular calorías, proteína, carbos y grasas automáticamente.</div></div>
+  div.innerHTML=`
+  <!-- TÍTULO -->
+  <div style="margin-bottom:16px">
+    <div style="font-family:'Syne',sans-serif;font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:2px;margin-bottom:4px">📋 Registros Diarios</div>
+    <div style="font-size:13px;color:var(--amber);font-weight:600">${today}</div>
+  </div>
+
+  <!-- E1: PESO -->
+  <div class="card" style="margin-bottom:14px;background:linear-gradient(135deg,rgba(255,204,68,.1),rgba(9,9,24,.97));border:2px solid rgba(255,204,68,.3);position:relative;overflow:hidden">
+    <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,#ffcc44,transparent)"></div>
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+      <div style="background:rgba(255,204,68,.15);border:1px solid rgba(255,204,68,.3);border-radius:14px;padding:10px;font-size:26px;line-height:1">⚖️</div>
+      <div>
+        <div style="font-family:'Syne',sans-serif;font-size:19px;font-weight:800;color:var(--amber)">Peso de Hoy</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">Registra tu peso en ayunas cada mañana</div>
+      </div>
+    </div>
+    ${log.weight?`<div style="text-align:center;margin-bottom:14px"><span style="font-family:'Syne',sans-serif;font-size:48px;font-weight:900;color:var(--amber);line-height:1;text-shadow:0 0 40px rgba(255,204,68,.4)">${log.weight}</span><span style="font-size:18px;color:var(--amber);font-weight:700"> kg</span></div>`:''}
+    <input type="number" placeholder="Ej: 79.5" data-key="weight" value="${log.weight||''}" step="0.1" style="width:100%;background:rgba(255,204,68,.06);border:1.5px solid rgba(255,204,68,.3);border-radius:13px;padding:14px 16px;color:var(--text);font-size:18px;font-weight:700;text-align:center;outline:none;font-family:'Syne',sans-serif"/>
+    <button id="btn-save-weight" class="btn btn-amber" style="margin-top:10px;font-size:15px;letter-spacing:.5px">${log.weight?'✅ Peso registrado — Actualizar':'⚖️ Registrar peso de hoy'}</button>
+  </div>
+
+  <!-- E2: FOTOS Y MACROS -->
+  <div class="card" style="margin-bottom:14px;border-color:#a78bfa30;background:linear-gradient(135deg,#a78bfa06,var(--surface))">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+      <div style="background:#a78bfa20;border-radius:10px;padding:8px;font-size:22px;line-height:1">📸</div>
+      <div>
+        <div style="font-family:'Syne',sans-serif;font-size:17px;font-weight:700;color:var(--purple)">Foto de tus comidas diarias</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:1px">${pc>0?pc+' foto'+(pc>1?'s':'')+' agregada'+(pc>1?'s':''):'Fotografía cada comida del día'}</div>
+      </div>
+    </div>
     ${mealsH}
     <button class="btn btn-purple" id="btn-analyze-photos" ${STATE.aiLoading?'disabled':''} style="margin-top:4px">${STATE.aiLoading?'⏳ Analizando…':'🔄 Re-analizar todas las fotos'}</button>
     <div style="background:rgba(255,255,255,.03);border:1.5px dashed rgba(255,255,255,.12);border-radius:14px;padding:14px;margin-top:12px">
@@ -1580,7 +1621,7 @@ function renderLog(){
           <div style="font-size:11px;color:var(--muted);margin-top:2px">Descríbelo y la IA estimará sus calorías y macros</div>
         </div>
       </div>
-      <textarea id="extra-food-input" placeholder="Ej: 2 marraquetas con palta, un jugo de naranja, un trozo de queque…" style="width:100%;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);border-radius:12px;padding:12px;color:var(--text);font-size:14px;font-family:'DM Sans',sans-serif;resize:none;height:80px;outline:none;line-height:1.6">${log.extraFood||''}</textarea>
+      <textarea id="extra-food-input" placeholder="Ej: 2 marraquetas con palta, un jugo de naranja…" style="width:100%;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);border-radius:12px;padding:12px;color:var(--text);font-size:14px;font-family:'DM Sans',sans-serif;resize:none;height:80px;outline:none;line-height:1.6">${log.extraFood||''}</textarea>
       <button id="btn-analyze-extra" class="btn btn-sm" style="background:linear-gradient(135deg,var(--amber),#d97706);color:#000;margin-top:8px;width:100%;font-size:13px;padding:11px" ${STATE.todayLog.extraAnalyzing?'disabled':''}>
         ${STATE.todayLog.extraAnalyzing?'⏳ Estimando…':'🤖 Estimar calorías y macros'}
       </button>
@@ -1592,21 +1633,15 @@ function renderLog(){
         <span style="background:rgba(157,113,255,.15);color:#9d71ff;border-radius:8px;padding:3px 10px;font-size:12px;font-weight:700">🥑${log.extraMacros.fats}g</span>
       </div>`:''}
     </div>
-    ${log.photoAnalysis?`<div style="background:#34d39912;border:1px solid #34d39930;border-radius:12px;padding:14px;margin-top:12px"><div style="font-size:12px;font-weight:700;color:var(--green);margin-bottom:8px">✅ Análisis de tus comidas</div><div style="font-size:13px;color:#c0f0d8;line-height:1.85;white-space:pre-wrap">${log.photoAnalysis}</div></div>`:''}
-  </div>
-  <div class="card" style="margin-bottom:12px"><div class="card-h">📊 Datos del día</div>
-    ${(parseInt(log.calories)||0)>0?`<div style="background:linear-gradient(135deg,rgba(248,113,113,.1),rgba(10,10,28,.95));border:1px solid rgba(248,113,113,.2);border-radius:14px;padding:12px 14px;margin-bottom:14px">
-      <div style="font-size:11px;color:rgba(248,113,113,.8);font-weight:700;text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px">🔥 Total acumulado hoy</div>
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;text-align:center">
-        <div><div style="font-family:Syne,sans-serif;font-size:17px;font-weight:900;color:#f87171">${log.calories}</div><div style="font-size:9px;color:var(--muted);font-weight:600;text-transform:uppercase">kcal</div></div>
-        <div><div style="font-family:Syne,sans-serif;font-size:17px;font-weight:900;color:#4db8ff">${log.protein}g</div><div style="font-size:9px;color:var(--muted);font-weight:600;text-transform:uppercase">prot</div></div>
-        <div><div style="font-family:Syne,sans-serif;font-size:17px;font-weight:900;color:#ffcc44">${log.carbs}g</div><div style="font-size:9px;color:var(--muted);font-weight:600;text-transform:uppercase">carbos</div></div>
-        <div><div style="font-family:Syne,sans-serif;font-size:17px;font-weight:900;color:#9d71ff">${log.fats}g</div><div style="font-size:9px;color:var(--muted);font-weight:600;text-transform:uppercase">grasas</div></div>
-      </div>
-    </div>`:''}
-    <div class="field"><label>⚖️ Peso actual (kg)</label><input type="number" placeholder="Ej: 79.5" data-key="weight" value="${log.weight||''}" step="0.1"/></div>
-    <div style="background:${log.photoAnalysis?'rgba(46,239,154,.06)':'rgba(255,255,255,.02)'};border:1px solid ${log.photoAnalysis?'rgba(46,239,154,.2)':'var(--border)'};border-radius:14px;padding:14px;margin-bottom:12px">
-      <div style="font-size:11px;color:${log.photoAnalysis?'var(--green)':'var(--muted)'};font-weight:700;text-transform:uppercase;letter-spacing:.6px;margin-bottom:12px">${log.photoAnalysis?'✅ Auto-completado por IA':'📊 Macronutrientes del día'}</div>
+    <!-- TOTAL MACROS AUTO -->
+    <div style="margin-top:14px;background:${(parseInt(log.calories)||0)>0?'linear-gradient(135deg,rgba(248,113,113,.1),rgba(10,10,28,.95))':'rgba(255,255,255,.02)'};border:1px solid ${(parseInt(log.calories)||0)>0?'rgba(248,113,113,.25)':'var(--border)'};border-radius:14px;padding:14px">
+      <div style="font-size:11px;color:${(parseInt(log.calories)||0)>0?'rgba(248,113,113,.9)':'var(--muted)'};font-weight:700;text-transform:uppercase;letter-spacing:.6px;margin-bottom:12px">${(parseInt(log.calories)||0)>0?'🔥 Total acumulado hoy (auto)':'📊 Macronutrientes del día'}</div>
+      ${(parseInt(log.calories)||0)>0?`<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;text-align:center;margin-bottom:14px">
+        <div><div style="font-family:Syne,sans-serif;font-size:18px;font-weight:900;color:#f87171">${log.calories}</div><div style="font-size:9px;color:var(--muted);font-weight:600;text-transform:uppercase">kcal</div></div>
+        <div><div style="font-family:Syne,sans-serif;font-size:18px;font-weight:900;color:#4db8ff">${log.protein}g</div><div style="font-size:9px;color:var(--muted);font-weight:600;text-transform:uppercase">prot</div></div>
+        <div><div style="font-family:Syne,sans-serif;font-size:18px;font-weight:900;color:#ffcc44">${log.carbs}g</div><div style="font-size:9px;color:var(--muted);font-weight:600;text-transform:uppercase">carbos</div></div>
+        <div><div style="font-family:Syne,sans-serif;font-size:18px;font-weight:900;color:#9d71ff">${log.fats}g</div><div style="font-size:9px;color:var(--muted);font-weight:600;text-transform:uppercase">grasas</div></div>
+      </div>`:''}
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
         <div class="field" style="margin-bottom:0"><label>🔥 Calorías</label><input type="number" placeholder="kcal" data-key="calories" value="${log.calories||''}"/></div>
         <div class="field" style="margin-bottom:0"><label>🥩 Proteína (g)</label><input type="number" placeholder="g" data-key="protein" value="${log.protein||''}"/></div>
@@ -1614,13 +1649,22 @@ function renderLog(){
         <div class="field" style="margin-bottom:0"><label>🥑 Grasas (g)</label><input type="number" placeholder="g" data-key="fats" value="${log.fats||''}"/></div>
       </div>
     </div>
-    <div class="field"><label>😴 Horas de sueño</label><input type="number" placeholder="Ej: 7.5" data-key="sleep" value="${log.sleep||''}" step="0.5"/></div>
-    <div class="field"><label>💧 Agua (litros)</label><input type="number" placeholder="Ej: 2.5" data-key="water" value="${log.water||''}" step="0.1"/></div>
-    <div class="field"><label>🏋️ ¿Entrenaste hoy?</label><select data-key="training"><option value="no" ${log.training==='no'?'selected':''}>No entrené hoy</option><option value="si" ${log.training==='si'?'selected':''}>Sí, entrené 💪</option><option value="activo" ${log.training==='activo'?'selected':''}>Descanso activo 🚶</option></select></div>
-    <div class="field"><label>⚡ Nivel de energía (1-5)</label><div class="energy-row">${[1,2,3,4,5].map(n=>`<button class="energy-btn ${log.energy==n?'active':''}" data-e="${n}">${n}</button>`).join('')}</div></div>
-    <div class="field"><label>📓 Notas</label><textarea placeholder="¿Cómo te sentiste hoy?">${log.notes||''}</textarea></div>
+    ${log.photoAnalysis?`<div style="background:#34d39912;border:1px solid #34d39930;border-radius:12px;padding:14px;margin-top:12px"><div style="font-size:12px;font-weight:700;color:var(--green);margin-bottom:8px">✅ Análisis de tus comidas</div><div style="font-size:13px;color:#c0f0d8;line-height:1.85;white-space:pre-wrap">${log.photoAnalysis}</div></div>`:''}
   </div>
-  <button class="btn btn-amber" id="btn-save">${STATE.aiLoading?'⏳ Analizando…':'✅ Guardar y analizar mi día'}</button>
+
+  <!-- E3: OTROS -->
+  <div class="card" style="margin-bottom:14px;border-color:#60a5fa25;background:linear-gradient(135deg,#60a5fa06,var(--surface))">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+      <div style="background:#60a5fa20;border-radius:10px;padding:8px;font-size:22px;line-height:1">📋</div>
+      <div style="font-family:'Syne',sans-serif;font-size:17px;font-weight:700;color:var(--blue)">Otros registros</div>
+    </div>
+    <div class="field"><label>💧 Agua (litros)</label><input type="number" placeholder="Ej: 2.5" data-key="water" value="${log.water||''}" step="0.1"/></div>
+    <div class="field"><label>😴 Horas de sueño</label><input type="number" placeholder="Ej: 7.5" data-key="sleep" value="${log.sleep||''}" step="0.5"/></div>
+    <div class="field"><label>🏋️ ¿Entrenaste hoy?</label><select data-key="training"><option value="no" ${log.training==='no'?'selected':''}>No entrené hoy</option><option value="si" ${log.training==='si'?'selected':''}>Sí, entrené 💪</option><option value="activo" ${log.training==='activo'?'selected':''}>Descanso activo 🚶</option></select></div>
+    <div class="field" style="margin-bottom:0"><label>⚡ Nivel de energía (1-5)</label><div class="energy-row">${[1,2,3,4,5].map(n=>`<button class="energy-btn ${log.energy==n?'active':''}" data-e="${n}">${n}</button>`).join('')}</div></div>
+  </div>
+
+  <button class="btn btn-amber" id="btn-save" style="font-size:15px;padding:17px">${STATE.aiLoading?'⏳ Analizando…':'✅ Guardar y analizar mi día'}</button>
   ${STATE.aiMsg?`<div class="card card-green" style="margin-top:12px"><div class="card-sh">🧠 Análisis personalizado</div><div class="ai-text">${STATE.aiMsg}</div></div>`:''}`;
 
   // Extra food textarea
@@ -1716,6 +1760,8 @@ function renderLog(){
   div.querySelectorAll('input[data-key],select[data-key]').forEach(el=>el.addEventListener('input',e=>{STATE.todayLog[e.target.dataset.key]=e.target.value;autoSaveTodayLog();}));
   div.querySelectorAll('textarea').forEach(el=>el.addEventListener('input',e=>{STATE.todayLog.notes=e.target.value;}));
   div.querySelectorAll('.energy-btn').forEach(b=>b.addEventListener('click',()=>{STATE.todayLog.energy=b.dataset.e;autoSaveTodayLog();render();}));
+  // Weight quick-save button
+  div.querySelector('#btn-save-weight')?.addEventListener('click',()=>{const wi=div.querySelector('input[data-key="weight"]');if(wi&&wi.value){STATE.todayLog.weight=wi.value;autoSaveTodayLog();render();}});
 
   div.querySelector('#btn-save').onclick=async()=>{const ts=new Date().toLocaleDateString('es-CL');const nl={date:ts,...STATE.todayLog};const lDB={...nl};delete lDB.mealPhotos;delete lDB.photoAnalysis;STATE.dailyLogs=[nl,...STATE.dailyLogs.filter(l=>l.date!==ts)].slice(0,90);save();dbSaveDailyLog(STATE.user?.email,lDB);if(STATE.user?.email)dbSaveTodayLog(STATE.user.email);STATE.aiLoading=true;render();const prog=calcProgress();const p=STATE.profile;const ctx=prog.retroceso?`⚠️ ALERTA: subió ${Math.abs(prog.lost)}kg desde inicio.`:'';const r=await claude([{role:'user',content:`Análisis de hoy de ${p.name} (máx 200 palabras):\n${ctx}\nPeso ${nl.weight||'-'}kg, cal ${nl.calories||'-'}kcal, proteína ${nl.protein||'-'}g, carbos ${nl.carbs||'-'}g, grasas ${nl.fats||'-'}g, sueño ${nl.sleep||'-'}h, agua ${nl.water||'-'}L, energía ${nl.energy||'-'}/5, entrenamiento: ${nl.training}.\nProgreso: ${prog.lost}kg en ${prog.days} días. Objetivo: ${p.goal}, meta ${p.targetWeight}kg.`}]);STATE.aiMsg=r;STATE.aiLoading=false;render();};
   return div;
