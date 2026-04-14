@@ -1117,7 +1117,7 @@ function buildMacroBar(label,val,max,_color){
   // Overflow warning message
   if(over){
     h+='<div style="font-size:10px;color:#f87171;font-weight:600;margin-top:4px;display:flex;align-items:center;gap:4px">';
-    h+='🚫 Ya superaste tu meta diaria de este macro. Evita consumir más hoy.';
+    h+=label.includes('Carbos')?'🚫 Ya superaste el máximo de carbohidratos de hoy. Evítalos a partir de ahora.':label.includes('Grasas')?'🚫 Ya superaste el máximo de grasas de hoy. Evítalas a partir de ahora.':'🎉 ¡Felicitaciones! Llegaste a las proteínas sugeridas de tu plan hoy. ¡Sigue así!';
     h+='</div>';
   }
   h+='</div>';
@@ -1154,7 +1154,7 @@ function renderDashboard(){
   // ── Goals from AI nutrition plan ──
   const {calGoal,protGoal,carbsGoal,fatsGoal,fromPlan}=parseNutritionGoals();
   const calToday=parseInt(log.calories)||0;
-  const calPct=Math.min(100,Math.round((calToday/calGoal)*100));
+  const calPct=Math.round((calToday/calGoal)*100);
   const protToday=parseInt(log.protein)||0;
   const carbsToday=parseInt(log.carbs)||0;
   const fatsToday=parseInt(log.fats)||0;
