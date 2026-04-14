@@ -612,6 +612,8 @@ function loadSaved(){
   cleanOldPhotos();
 }
 loadSaved();
+// Ensure totals are always computed from mealMacros on startup
+try{if(Object.keys(STATE.todayLog.mealMacros||{}).length>0)recalcTotals();}catch(e){}
 const _urlParams=new URLSearchParams(window.location.search);
 const _paymentStatus=_urlParams.get('payment');
 if(_paymentStatus==='success'||_urlParams.get('collection_status')==='approved'){const pu=localStorage.getItem('fitai_pending_user');if(pu&&!STATE.user)STATE.user=JSON.parse(pu);if(STATE.user){markAsPaid(STATE.user.email);STATE.screen=STATE.profile?'app':'setup';if(STATE.profile&&!STATE.plan)STATE.needsAIPlan=true;}localStorage.removeItem('fitai_pending_email');localStorage.removeItem('fitai_pending_user');window.history.replaceState({},'',window.location.pathname);}else if(_paymentStatus==='failure'){STATE.screen='paywall';STATE.payError='El pago no fue aprobado.';window.history.replaceState({},'',window.location.pathname);}
@@ -628,19 +630,28 @@ async function loadProfileFromSupabase(email){initSupabase();if(!supa)return;try
       // Load programStartDate from Supabase — never lost even if localStorage clears
       if(u.program_start_date&&!STATE.programStartDate)STATE.programStartDate=u.program_start_date;
       if(u.qa_history?.length&&u.qa_history.length>=(STATE.qaHistory?.length||0))STATE.qaHistory=u.qa_history;
-      // Restore today's partial log from Supabase — only if better than what we have
+      // Restore today's partial log from Supabase — MERGE, never overwrite local mealMacros
       if(u.today_log_data&&u.today_log_date===getTodayStr()){try{
         const tl=JSON.parse(u.today_log_data);
         if(tl){
-          const curCal=parseInt(STATE.todayLog&&STATE.todayLog.calories)||0;
-          const supaCal=parseInt(tl.calories)||0;
-          const curMacros=Object.keys((STATE.todayLog&&STATE.todayLog.mealMacros)||{}).length;
-          const supaMacros=Object.keys(tl.mealMacros||{}).length;
-          // Use whichever has more data (more macros or more calories)
-          if(supaMacros>curMacros||(supaMacros===curMacros&&supaCal>curCal)){
-            STATE.todayLog=Object.assign({},tl,{mealPhotos:STATE.todayLog&&STATE.todayLog.mealPhotos||{},mealAnalyzing:{}});
-            if(!STATE.todayLog.mealMacros)STATE.todayLog.mealMacros={};
+          const curMacrosObj=(STATE.todayLog&&STATE.todayLog.mealMacros)||{};
+          const supaMacrosObj=tl.mealMacros||{};
+          const curMacrosCount=Object.keys(curMacrosObj).length;
+          const supaMacrosCount=Object.keys(supaMacrosObj).length;
+          if(supaMacrosCount>0||curMacrosCount===0){
+            // Merge: local wins for any meal already analyzed locally
+            const merged=Object.assign({},supaMacrosObj,curMacrosObj);
+            const curPhotos=STATE.todayLog&&STATE.todayLog.mealPhotos||{};
+            // Take the higher calorie base log
+            if(parseInt(tl.calories)>parseInt(STATE.todayLog&&STATE.todayLog.calories||0)){
+              STATE.todayLog=Object.assign({},tl,{mealPhotos:curPhotos,mealAnalyzing:{},mealMacros:merged});
+            } else {
+              STATE.todayLog.mealMacros=merged;
+              if(tl.extraFood&&!STATE.todayLog.extraFood)STATE.todayLog.extraFood=tl.extraFood;
+              if(tl.extraMacros&&!STATE.todayLog.extraMacros)STATE.todayLog.extraMacros=tl.extraMacros;
+            }
           }
+          recalcTotals();
         }
       }catch(e){}}
       // Restore chat history from Supabase
