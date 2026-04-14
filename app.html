@@ -502,12 +502,16 @@ function saveUserCache(e,d){try{localStorage.setItem('fitai_ucache_'+btoa(e),JSO
 function loadUserCache(e){try{const d=localStorage.getItem('fitai_ucache_'+btoa(e));return d?JSON.parse(d):null;}catch(x){return null;}}
 let STATE={lang:'es',authMode:'login',user:null,authLoading:false,authError:'',screen:'auth',payLoading:false,payError:'',profile:null,dailyLogs:[],plan:null,nutrition:null,chat:[],setupStep:0,setupData:{},tab:0,aiLoading:false,aiMsg:'',todayLog:{weight:'',calories:'',protein:'',carbs:'',fats:'',sleep:'',water:'',training:'no',energy:'3',notes:'',mealPhotos:{},mealMacros:{},mealAnalyzing:{},photoAnalysis:'',extraFood:'',extraMacros:null,extraAnalyzing:false},showUserMenu:false,showSideMenu:false,showModeMenu:false,showPlaceMenu:false,sideSection:null,qaHistory:[],couponApplied:false,couponCode:'',couponData:null,couponDiscount:0,couponFinalAmount:CONFIG.AMOUNT,needsAIPlan:false,planGeneratedAt:null,programStartDate:null};
 function clearUserState(){
-  // Save today's log to localStorage AND Supabase before clearing state
+  // Save today's log to localStorage AND Supabase ONLY if there's real data
   try{
     var tl=Object.assign({},STATE.todayLog,{mealPhotos:{},mealAnalyzing:{}});
-    localStorage.setItem('fitai_today',JSON.stringify({log:tl,date:getTodayStr()}));
-    // Also flush to Supabase synchronously
-    if(STATE.user&&STATE.user.email)dbSaveTodayLog(STATE.user.email);
+    var hasMacros=Object.keys(tl.mealMacros||{}).length>0;
+    var hasExtras=tl.extraMacros&&tl.extraMacros.ok;
+    var hasCals=parseInt(tl.calories)>0;
+    if(hasMacros||hasExtras||hasCals){
+      localStorage.setItem('fitai_today',JSON.stringify({log:tl,date:getTodayStr()}));
+      if(STATE.user&&STATE.user.email)dbSaveTodayLog(STATE.user.email);
+    }
   }catch(e){}
   STATE.profile=null;STATE.dailyLogs=[];STATE.plan=null;STATE.nutrition=null;STATE.chat=[];STATE.qaHistory=[];STATE.aiMsg='';
   STATE.todayLog={weight:'',calories:'',protein:'',carbs:'',fats:'',sleep:'',water:'',training:'no',energy:'3',notes:'',mealPhotos:{},mealMacros:{},mealAnalyzing:{},photoAnalysis:'',extraFood:'',extraMacros:null,extraAnalyzing:false};
@@ -907,9 +911,13 @@ function renderAuth(){const div=document.createElement('div');div.className='scr
   div.querySelector('#tab-reg').onclick=()=>{STATE.authMode='register';STATE.authError='';render();};
   div.querySelector('#to-reg')?.addEventListener('click',()=>{STATE.authMode='register';STATE.authError='';render();});
   div.querySelector('#to-login')?.addEventListener('click',()=>{STATE.authMode='login';STATE.authError='';render();});
-  div.querySelector('#btn-auth').onclick=async()=>{const email=div.querySelector('#auth-email')?.value?.trim();const pass=div.querySelector('#auth-pass')?.value;const name=div.querySelector('#auth-name')?.value?.trim();const phone=div.querySelector('#auth-phone')?.value?.trim()||'';if(!email||!pass){STATE.authError='Completa todos los campos.';render();return;}STATE.authLoading=true;STATE.authError='';render();try{if(STATE.authMode==='register'){if(!name)throw new Error('Ingresa tu nombre.');STATE.user=await authRegister(email,pass,name,phone);}else STATE.user=await authLogin(email,pass);clearUserState();
-    // CRITICAL: restore today's data BEFORE save() so we don't overwrite it
-    try{var _td=JSON.parse(localStorage.getItem('fitai_today')||'{}');if(_td.log&&_td.date===getTodayStr()){STATE.todayLog=Object.assign({},_td.log,{mealPhotos:{},mealAnalyzing:{}});if(!STATE.todayLog.mealMacros)STATE.todayLog.mealMacros={};}}catch(e){}
+  div.querySelector('#btn-auth').onclick=async()=>{const email=div.querySelector('#auth-email')?.value?.trim();const pass=div.querySelector('#auth-pass')?.value;const name=div.querySelector('#auth-name')?.value?.trim();const phone=div.querySelector('#auth-phone')?.value?.trim()||'';if(!email||!pass){STATE.authError='Completa todos los campos.';render();return;}STATE.authLoading=true;STATE.authError='';render();try{if(STATE.authMode==='register'){if(!name)throw new Error('Ingresa tu nombre.');STATE.user=await authRegister(email,pass,name,phone);}else STATE.user=await authLogin(email,pass);// Preserve today's data BEFORE clearUserState() overwrites fitai_today
+    var _preservedToday=localStorage.getItem('fitai_today');
+    clearUserState();
+    // Immediately restore the preserved data (clearUserState saves empty STATE)
+    if(_preservedToday){try{localStorage.setItem('fitai_today',_preservedToday);}catch(e){}}
+    // Now restore to STATE
+    try{var _td=JSON.parse(_preservedToday||'{}');if(_td.log&&_td.date===getTodayStr()){STATE.todayLog=Object.assign({},_td.log,{mealPhotos:{},mealAnalyzing:{}});if(!STATE.todayLog.mealMacros)STATE.todayLog.mealMacros={};if(!STATE.todayLog.extraMacros)STATE.todayLog.extraMacros=null;if(STATE.todayLog.extraFood===undefined)STATE.todayLog.extraFood='';}}catch(e){}
     const cp=loadProfileCache(email);const cd=loadUserCache(email);if(cp)STATE.profile=cp;if(cd?.plan)STATE.plan=cd.plan;if(cd?.nutrition)STATE.nutrition=cd.nutrition;if(cd?.qaHistory)STATE.qaHistory=cd.qaHistory;if(cd?.planGeneratedAt)STATE.planGeneratedAt=cd.planGeneratedAt;if(cd?.programStartDate)STATE.programStartDate=cd.programStartDate;if(cd?.dailyLogs?.length)STATE.dailyLogs=cd.dailyLogs;
     STATE.user.email=email; // ensure email is set before loading photos
     STATE.todayLog.mealPhotos=loadTodayPhotos();
