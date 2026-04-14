@@ -1515,8 +1515,8 @@ function renderLog(){
               const rawData=ev.target.result;
               // STEP 1: store raw in STATE and localStorage IMMEDIATELY (sync)
               if(!STATE.todayLog.mealPhotos)STATE.todayLog.mealPhotos={};
-              STATE.todayLog.mealPhotos[m.key]=rawData;
-              try{localStorage.setItem(_photoKey(m.key),rawData);}catch(err){}
+              STATE.todayLog.mealPhotos[mealKey]=rawData;
+              try{localStorage.setItem(_photoKey(mealKey),rawData);}catch(err){}
               render(); // show photo right away
               analyzeSingleMeal(mealKey,rawData); // start AI analysis with raw
               // STEP 2: compress async and replace (smaller = better, but raw is already safe)
@@ -1530,12 +1530,12 @@ function renderLog(){
                     canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);
                     const compressed=canvas.toDataURL('image/jpeg',0.65);
                     if(compressed.length<rawData.length){
-                      STATE.todayLog.mealPhotos[m.key]=compressed;
-                      try{localStorage.setItem(_photoKey(m.key),compressed);}catch(err){
+                      STATE.todayLog.mealPhotos[mealKey]=compressed;
+                      try{localStorage.setItem(_photoKey(mealKey),compressed);}catch(err){
                         try{
                           const tiny=canvas.toDataURL('image/jpeg',0.35);
-                          STATE.todayLog.mealPhotos[m.key]=tiny;
-                          localStorage.setItem(_photoKey(m.key),tiny);
+                          STATE.todayLog.mealPhotos[mealKey]=tiny;
+                          localStorage.setItem(_photoKey(mealKey),tiny);
                         }catch(err2){}
                       }
                     }
