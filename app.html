@@ -502,8 +502,13 @@ function saveUserCache(e,d){try{localStorage.setItem('fitai_ucache_'+btoa(e),JSO
 function loadUserCache(e){try{const d=localStorage.getItem('fitai_ucache_'+btoa(e));return d?JSON.parse(d):null;}catch(x){return null;}}
 let STATE={lang:'es',authMode:'login',user:null,authLoading:false,authError:'',screen:'auth',payLoading:false,payError:'',profile:null,dailyLogs:[],plan:null,nutrition:null,chat:[],setupStep:0,setupData:{},tab:0,aiLoading:false,aiMsg:'',todayLog:{weight:'',calories:'',protein:'',carbs:'',fats:'',sleep:'',water:'',training:'no',energy:'3',notes:'',mealPhotos:{},mealMacros:{},mealAnalyzing:{},photoAnalysis:'',extraFood:'',extraMacros:null,extraAnalyzing:false},showUserMenu:false,showSideMenu:false,showModeMenu:false,showPlaceMenu:false,sideSection:null,qaHistory:[],couponApplied:false,couponCode:'',couponData:null,couponDiscount:0,couponFinalAmount:CONFIG.AMOUNT,needsAIPlan:false,planGeneratedAt:null,programStartDate:null};
 function clearUserState(){
-  // Save today's log to localStorage before clearing state (so it survives logout)
-  try{var tl=Object.assign({},STATE.todayLog,{mealPhotos:{},mealAnalyzing:{}});localStorage.setItem('fitai_today',JSON.stringify({log:tl,date:getTodayStr()}));}catch(e){}
+  // Save today's log to localStorage AND Supabase before clearing state
+  try{
+    var tl=Object.assign({},STATE.todayLog,{mealPhotos:{},mealAnalyzing:{}});
+    localStorage.setItem('fitai_today',JSON.stringify({log:tl,date:getTodayStr()}));
+    // Also flush to Supabase synchronously
+    if(STATE.user&&STATE.user.email)dbSaveTodayLog(STATE.user.email);
+  }catch(e){}
   STATE.profile=null;STATE.dailyLogs=[];STATE.plan=null;STATE.nutrition=null;STATE.chat=[];STATE.qaHistory=[];STATE.aiMsg='';
   STATE.todayLog={weight:'',calories:'',protein:'',carbs:'',fats:'',sleep:'',water:'',training:'no',energy:'3',notes:'',mealPhotos:{},mealMacros:{},mealAnalyzing:{},photoAnalysis:'',extraFood:'',extraMacros:null,extraAnalyzing:false};
   STATE.planGeneratedAt=null;STATE.programStartDate=null;STATE.setupStep=0;STATE.setupData={};STATE.tab=0;STATE.needsAIPlan=false;STATE.couponApplied=false;STATE.couponCode='';STATE.couponData=null;STATE.couponDiscount=0;STATE.couponFinalAmount=CONFIG.AMOUNT;
@@ -648,6 +653,7 @@ async function loadProfileFromSupabase(email){initSupabase();if(!supa)return;try
         if(earliest&&earliest.date){STATE.programStartDate=earliest.date;dbSaveProgramStartDate(email,earliest.date);}
       }
     }
+    recalcTotals(); // ensure totals are correct after Supabase restore
     save();}catch(e){console.log('loadProfile error:',e);}}
 function markAsPaid(email){const users=JSON.parse(localStorage.getItem('fitai_users')||'{}');if(users[email]){users[email].paid=true;localStorage.setItem('fitai_users',JSON.stringify(users));}if(STATE.user)STATE.user.paid=true;save();dbMarkPaid(email);}
 async function processPayment(){STATE.payLoading=true;STATE.payError='';render();try{if(!CONFIG.MP_PUBLIC_KEY||CONFIG.MP_PUBLIC_KEY==='APP_USR-TU-PUBLIC-KEY-AQUI'){await new Promise(r=>setTimeout(r,1800));markAsPaid(STATE.user.email);STATE.screen='setup';STATE.payLoading=false;render();return;}const res=await fetch(CONFIG.PAYMENT_ENDPOINT,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user_id:STATE.user.id||STATE.user.email,user_email:STATE.user.email,coupon_code:STATE.couponApplied?STATE.couponCode:''})});const data=await res.json();if(!data.init_point&&!data.initPoint&&!data.sandboxInitPoint)throw new Error('No se pudo crear el pago.');localStorage.setItem('fitai_pending_email',STATE.user.email);localStorage.setItem('fitai_pending_user',JSON.stringify(STATE.user));window.location.href=data.init_point||data.initPoint||data.sandboxInitPoint;}catch(e){STATE.payError=e.message||'Error al conectar con MercadoPago.';STATE.payLoading=false;render();}}
@@ -890,8 +896,10 @@ function renderAuth(){const div=document.createElement('div');div.className='scr
     const cp=loadProfileCache(email);const cd=loadUserCache(email);if(cp)STATE.profile=cp;if(cd?.plan)STATE.plan=cd.plan;if(cd?.nutrition)STATE.nutrition=cd.nutrition;if(cd?.qaHistory)STATE.qaHistory=cd.qaHistory;if(cd?.planGeneratedAt)STATE.planGeneratedAt=cd.planGeneratedAt;if(cd?.programStartDate)STATE.programStartDate=cd.programStartDate;if(cd?.dailyLogs?.length)STATE.dailyLogs=cd.dailyLogs;
     STATE.user.email=email; // ensure email is set before loading photos
     STATE.todayLog.mealPhotos=loadTodayPhotos();
+    recalcTotals(); // recompute totals from mealMacros after restore
     save();
     await loadProfileFromSupabase(STATE.user.email);
+    recalcTotals(); // recalc again after Supabase may have updated mealMacros
     cleanOldPhotos();
     STATE.screen=!STATE.profile?'setup':!STATE.user.paid?'paywall':'app';}catch(e){STATE.authError=e.message;}STATE.authLoading=false;render();};
   div.querySelector('#auth-pass')?.addEventListener('keydown',e=>{if(e.key==='Enter')div.querySelector('#btn-auth')?.click();});
@@ -1355,7 +1363,7 @@ function autoSaveTodayLog(){
   clearTimeout(_todaySaveTimer);
   _todaySaveTimer=setTimeout(function(){
     if(STATE.user&&STATE.user.email)dbSaveTodayLog(STATE.user.email);
-  },2000);
+  },800);
 }
 
 function recalcTotals(){
