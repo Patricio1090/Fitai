@@ -1642,11 +1642,11 @@ function renderLog(){
         <div><div style="font-family:Syne,sans-serif;font-size:18px;font-weight:900;color:#ffcc44">${log.carbs}g</div><div style="font-size:9px;color:var(--muted);font-weight:600;text-transform:uppercase">carbos</div></div>
         <div><div style="font-family:Syne,sans-serif;font-size:18px;font-weight:900;color:#9d71ff">${log.fats}g</div><div style="font-size:9px;color:var(--muted);font-weight:600;text-transform:uppercase">grasas</div></div>
       </div>`:''}
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-        <div class="field" style="margin-bottom:0"><label>🔥 Calorías</label><input type="number" placeholder="kcal" data-key="calories" value="${log.calories||''}"/></div>
-        <div class="field" style="margin-bottom:0"><label>🥩 Proteína (g)</label><input type="number" placeholder="g" data-key="protein" value="${log.protein||''}"/></div>
-        <div class="field" style="margin-bottom:0"><label>🍚 Carbohidratos (g)</label><input type="number" placeholder="g" data-key="carbs" value="${log.carbs||''}"/></div>
-        <div class="field" style="margin-bottom:0"><label>🥑 Grasas (g)</label><input type="number" placeholder="g" data-key="fats" value="${log.fats||''}"/></div>
+      <div style="display:none">
+        <input type="number" data-key="calories" value="${log.calories||''}"/>
+        <input type="number" data-key="protein" value="${log.protein||''}"/>
+        <input type="number" data-key="carbs" value="${log.carbs||''}"/>
+        <input type="number" data-key="fats" value="${log.fats||''}"/>
       </div>
     </div>
     ${log.photoAnalysis?`<div style="background:#34d39912;border:1px solid #34d39930;border-radius:12px;padding:14px;margin-top:12px"><div style="font-size:12px;font-weight:700;color:var(--green);margin-bottom:8px">✅ Análisis de tus comidas</div><div style="font-size:13px;color:#c0f0d8;line-height:1.85;white-space:pre-wrap">${log.photoAnalysis}</div></div>`:''}
