@@ -481,14 +481,14 @@ async function dbSaveProgramStartDate(email,date){
 }
 
 async function dbSaveTodayLog(email){
-  // Saves the partial day log (including mealMacros) to Supabase users table
-  // Recovered on login so no partial day is ever lost
   if(!email||!STATE.todayLog)return;
-  queueSync('today_log',{email:email,date:getTodayStr(),log:JSON.stringify({...STATE.todayLog,mealPhotos:{},mealAnalyzing:{}})});
+  // Embed _date so we can validate on restore that data belongs to today
+  const logWithDate={...STATE.todayLog,mealPhotos:{},mealAnalyzing:{},_date:getTodayStr()};
+  queueSync('today_log',{email:email,date:getTodayStr(),log:JSON.stringify(logWithDate)});
   initSupabase();if(!supa)return;
   try{
     await supa.from('users').update({
-      today_log_data:JSON.stringify({...STATE.todayLog,mealPhotos:{},mealAnalyzing:{}}),
+      today_log_data:JSON.stringify(logWithDate),
       today_log_date:getTodayStr()
     }).eq('email',email);
     dequeueSync('today_log',email);
@@ -651,6 +651,15 @@ loadSaved();
       Object.keys(localStorage).forEach(function(k){
         if(k.startsWith('fitai_mm_')&&k.endsWith('_'+today))localStorage.removeItem(k);
       });
+      // Also wipe Supabase today_log asynchronously (fire and forget)
+      setTimeout(function(){
+        try{
+          initSupabase();
+          if(supa&&STATE.user&&STATE.user.email){
+            supa.from('users').update({today_log_data:null,today_log_date:null}).eq('email',STATE.user.email).then(function(){}).catch(function(){});
+          }
+        }catch(e){}
+      },3000);
     }
   }catch(e){}
 })();
@@ -729,10 +738,12 @@ async function loadProfileFromSupabase(email){initSupabase();if(!supa)return;try
       if(!STATE.qaHistory?.length&&email){const qc=loadQACache(email);if(qc?.length)STATE.qaHistory=qc;}
       // Restore from Supabase: LOCAL ALWAYS WINS — only fill gaps
       // Extra guard: only restore if data has real calories, weight or macros (not a stale empty save)
+      // Also check embedded _date field to reject data saved on a different day
       if(u.today_log_data&&u.today_log_date===getTodayStr()){try{
         const tl=JSON.parse(u.today_log_data);
+        const dateOk=!tl._date||tl._date===getTodayStr();
         const hasRealData=tl&&(parseFloat(tl.weight)>0||parseInt(tl.calories)>0||Object.keys(tl.mealMacros||{}).length>0||tl.extraMacros?.ok);
-        if(tl&&hasRealData){
+        if(tl&&hasRealData&&dateOk){
           // Merge mealMacros: local entry overrides Supabase for same meal
           const curMacros=(STATE.todayLog&&STATE.todayLog.mealMacros)||{};
           const supaMacros=tl.mealMacros||{};
