@@ -639,25 +639,29 @@ try{if(Object.keys(STATE.todayLog.mealMacros||{}).length>0)recalcTotals();}catch
 var _lastKnownDay=getTodayStr();
 function checkDayReset(){
   var today=getTodayStr();
-  if(today!==_lastKnownDay){
-    _lastKnownDay=today;
-    console.log('[DayReset] New day detected — clearing todayLog');
-    // Save yesterday's data if not already saved
-    if(STATE.user&&STATE.user.email){
-      var tl=Object.assign({},STATE.todayLog,{mealPhotos:{},mealAnalyzing:{}});
-      if(parseInt(tl.calories)>0||parseFloat(tl.weight)>0||Object.keys(tl.mealMacros||{}).length>0){
-        dbSaveDailyLog(STATE.user.email,Object.assign({date:_lastKnownDay!==today?_lastKnownDay:today},tl));
-      }
+  if(today===_lastKnownDay)return;
+  var yesterday=_lastKnownDay;
+  _lastKnownDay=today;
+  console.log('[DayReset] Day changed from',yesterday,'to',today);
+  // 1. Save yesterday's data to daily_logs with YESTERDAY's date (not today)
+  if(STATE.user&&STATE.user.email){
+    var tl=Object.assign({},STATE.todayLog,{mealPhotos:{},mealAnalyzing:{}});
+    if(parseInt(tl.calories)>0||parseFloat(tl.weight)>0||Object.keys(tl.mealMacros||{}).length>0){
+      dbSaveDailyLog(STATE.user.email,Object.assign({},tl,{date:yesterday}));
     }
-    // Reset today's log
-    STATE.todayLog={weight:'',calories:'',protein:'',carbs:'',fats:'',sleep:'',water:'',training:'no',energy:'3',notes:'',mealPhotos:{},mealMacros:{},mealAnalyzing:{},photoAnalysis:'',extraFood:'',extraMacros:null,extraAnalyzing:false};
-    STATE.aiMsg='';
-    localStorage.removeItem('fitai_today');
-    cleanOldPhotos();
-    cleanOldMealMacros();
-    save();
-    if(STATE.screen==='app')render();
+    // 2. Wipe today_log in Supabase so login doesn't restore yesterday's food
+    initSupabase();
+    if(supa){supa.from('users').update({today_log_data:null,today_log_date:null}).eq('email',STATE.user.email).then(()=>{}).catch(()=>{});}
   }
+  // 3. Reset STATE and localStorage
+  STATE.todayLog={weight:'',calories:'',protein:'',carbs:'',fats:'',sleep:'',water:'',training:'no',energy:'3',notes:'',mealPhotos:{},mealMacros:{},mealAnalyzing:{},photoAnalysis:'',extraFood:'',extraMacros:null,extraAnalyzing:false};
+  STATE.aiMsg='';
+  localStorage.removeItem('fitai_today');
+  // Clear yesterday's mm key (cleanOldMealMacros uses today's key so yesterday is auto-removed)
+  cleanOldPhotos();
+  cleanOldMealMacros();
+  save();
+  if(STATE.screen==='app')render();
 }
 // Check every 30 seconds
 setInterval(checkDayReset,30000);
@@ -698,9 +702,11 @@ async function loadProfileFromSupabase(email){initSupabase();if(!supa)return;try
       // QA dedicated cache fallback (in case Supabase column missing)
       if(!STATE.qaHistory?.length&&email){const qc=loadQACache(email);if(qc?.length)STATE.qaHistory=qc;}
       // Restore from Supabase: LOCAL ALWAYS WINS — only fill gaps
+      // Extra guard: only restore if data has real calories, weight or macros (not a stale empty save)
       if(u.today_log_data&&u.today_log_date===getTodayStr()){try{
         const tl=JSON.parse(u.today_log_data);
-        if(tl){
+        const hasRealData=tl&&(parseFloat(tl.weight)>0||parseInt(tl.calories)>0||Object.keys(tl.mealMacros||{}).length>0||tl.extraMacros?.ok);
+        if(tl&&hasRealData){
           // Merge mealMacros: local entry overrides Supabase for same meal
           const curMacros=(STATE.todayLog&&STATE.todayLog.mealMacros)||{};
           const supaMacros=tl.mealMacros||{};
