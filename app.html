@@ -1882,7 +1882,22 @@ function renderProgress(){
         <div style="font-size:10px;color:${calOver?'#f87171':'var(--muted)'};font-weight:600;margin-top:6px;text-align:center;max-width:100px;line-height:1.4">Promedio ${calDirTxt}</div>
       </div>
       <div style="flex:1;min-width:0">${buildMacroBarAvg('Proteína',avgProt,protGoal,true)}${buildMacroBarAvg('Carbos',avgCarbs,carbsGoal,false)}${buildMacroBarAvg('Grasas',avgFats,fatsGoal,false)}</div>
-    </div></div>`;})()}  <div class="card"><div class="card-h">📋 Historial reciente</div>${!al.length?'<div style="color:var(--muted);font-size:13px;text-align:center;padding:20px">Sin registros aún 💪</div>':sortedLogs(al).slice(0,14).map(l=>`<div class="log-item"><div class="log-row"><span class="log-date">${l.date}</span><span class="badge" style="background:${l.training==='si'?'#34d39920':'#1e1e3a'};color:${l.training==='si'?'var(--green)':'var(--muted)'}">${l.training==='si'?'💪 Entrenó':l.training==='activo'?'🚶 Activo':'😴 Descanso'}</span></div><div class="tags">${l.weight?`<span class="tag">⚖️ ${l.weight}kg</span>`:''} ${l.calories?`<span class="tag">🔥 ${l.calories}kcal</span>`:''} ${l.protein?`<span class="tag">🥩 ${l.protein}g</span>`:''} ${l.carbs?`<span class="tag">🍚 ${l.carbs}g</span>`:''} ${l.fats?`<span class="tag">🥑 ${l.fats}g</span>`:''} ${l.sleep?`<span class="tag">😴 ${l.sleep}h</span>`:''} ${l.energy?`<span class="tag">⚡ ${l.energy}/5</span>`:''}</div></div>`).join('')}</div>
+    </div></div>`;})()}
+  ${(()=>{
+    // Last 14 days deduped by date
+    const last14=sortedLogs(al).reduce((acc,l)=>{if(!acc.find(x=>x.date===l.date))acc.push(l);return acc;},[]).slice(0,14);
+    const trainedDays=last14.filter(l=>l.training==='si'||l.training==='activo').length;
+    const trainLabel=trainedDays===0?'ningún día':trainedDays===1?'1 día':`${trainedDays} días`;
+    const trainMsg=trainedDays<=5?'Este número es clave para tu objetivo. Vamos a mejorarlo semana a semana.':trainedDays<=8?'Esto está bien. De aquí hacia arriba los resultados aparecen.':trainedDays<=12?'Una máquina, nada ni nadie te detiene. 🔥':'Estás a full, recuerda que tu cuerpo necesita descansar. 😴';
+    const trainHTML=`<div style="background:linear-gradient(135deg,rgba(46,239,154,.08),rgba(9,9,24,.97));border:1px solid rgba(46,239,154,.22);border-radius:16px;padding:14px 16px;margin-bottom:14px;display:flex;align-items:center;gap:14px">
+      <div style="font-size:32px;line-height:1">💪</div>
+      <div><div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:800;color:var(--green)">De los últimos 14 días</div>
+      <div style="font-size:13px;color:var(--muted);margin-top:2px">Entrené <span style="color:var(--green);font-weight:700">${trainLabel}</span></div>
+      <div style="font-size:12px;color:var(--muted);margin-top:6px;line-height:1.5;font-style:italic">${trainMsg}</div></div></div>`;
+    if(!last14.length)return trainHTML;
+    const logsHTML=last14.map(l=>`<div class="log-item"><div class="log-row"><span class="log-date">${l.date}</span><span class="badge" style="background:${l.training==='si'?'#34d39920':l.training==='activo'?'#4db8ff20':'#1e1e3a'};color:${l.training==='si'?'var(--green)':l.training==='activo'?'var(--blue)':'var(--muted)'}">${l.training==='si'?'💪 Entrenó':l.training==='activo'?'🚶 Activo':'😴 Descanso'}</span></div><div class="tags">${l.weight?`<span class="tag">⚖️ ${l.weight}kg</span>`:''} ${l.calories?`<span class="tag">🔥 ${l.calories}kcal</span>`:''} ${l.protein?`<span class="tag">🥩 ${l.protein}g</span>`:''} ${l.carbs?`<span class="tag">🍚 ${l.carbs}g</span>`:''} ${l.fats?`<span class="tag">🥑 ${l.fats}g</span>`:''} ${l.sleep?`<span class="tag">😴 ${l.sleep}h</span>`:''} ${l.energy?`<span class="tag">⚡ ${l.energy}/5</span>`:''}</div></div>`).join('');
+    return trainHTML+`<div class="card"><div class="card-h">📋 Historial reciente</div>${logsHTML}</div>`;
+  })()}
   <button class="btn btn-blue" id="btn-weekly">${STATE.aiLoading?'⏳ Analizando…':'🧠 Análisis semanal con IA'}</button>
   ${STATE.aiMsg?`<div class="card card-blue" style="margin-top:12px"><div class="card-sh">📊 Informe de progreso</div><div class="ai-text">${STATE.aiMsg}</div></div>`:''}`;
   div.querySelector('#btn-weekly').onclick=async()=>{STATE.aiLoading=true;render();const p=STATE.profile;const prog2=calcProgress();const r=await claude([{role:'user',content:`Análisis de progreso de ${p.name} (300 palabras):\n${prog2.retroceso?`⚠️ ALERTA: subió ${Math.abs(prog2.lost)}kg desde inicio.`:''}\nPerfil: ${JSON.stringify(p)}\nRegistros: ${JSON.stringify(al.slice(0,7))}\nProgreso: ${prog2.lost}kg en ${prog2.days} días.`}]);STATE.aiMsg=r;STATE.aiLoading=false;render();};
