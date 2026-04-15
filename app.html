@@ -639,7 +639,22 @@ function loadSaved(){
   cleanOldPhotos();
 }
 loadSaved();
-// Ensure totals are always computed from mealMacros on startup
+// ── Startup: remove stale mm/photo keys if fitai_today is from a different day ──
+(function cleanStaleStorage(){
+  try{
+    var today=new Date().toLocaleDateString('es-CL');
+    var td=JSON.parse(localStorage.getItem('fitai_today')||'{}');
+    // If fitai_today exists but is NOT from today, it's stale — wipe today-keyed storage
+    if(td.date&&td.date!==today){
+      localStorage.removeItem('fitai_today');
+      // Remove any mm keys that end with today's date (they have wrong data from midnight bug)
+      Object.keys(localStorage).forEach(function(k){
+        if(k.startsWith('fitai_mm_')&&k.endsWith('_'+today))localStorage.removeItem(k);
+      });
+    }
+  }catch(e){}
+})();
+
 try{if(Object.keys(STATE.todayLog.mealMacros||{}).length>0)recalcTotals();}catch(e){}
 
 // ── Midnight reset: detect day change and clear todayLog ──────────
@@ -1007,8 +1022,10 @@ function renderAuth(){const div=document.createElement('div');div.className='scr
     STATE.todayLog.mealPhotos=loadTodayPhotos();
     // Ensure weight is restored from fitai_today if present
     try{var _tw=JSON.parse(localStorage.getItem('fitai_today')||'{}');if(_tw.log&&_tw.date===getTodayStr()){if(_tw.log.weight&&!STATE.todayLog.weight)STATE.todayLog.weight=_tw.log.weight;if(_tw.log.sleep&&!STATE.todayLog.sleep)STATE.todayLog.sleep=_tw.log.sleep;if(_tw.log.water&&!STATE.todayLog.water)STATE.todayLog.water=_tw.log.water;if(_tw.log.training&&STATE.todayLog.training==='no')STATE.todayLog.training=_tw.log.training;if(_tw.log.energy&&STATE.todayLog.energy==='3')STATE.todayLog.energy=_tw.log.energy;}}catch(e){}
-    // Merge from protected mealMacros key (survives logout)
-    var _pmm=loadMealMacros();
+    // Merge from protected mealMacros key (ONLY if fitai_today is from today — prevents stale day data)
+    var _todayCheck=null;try{_todayCheck=JSON.parse(localStorage.getItem('fitai_today')||'{}');}catch(e){}
+    var _todayIsValid=_todayCheck&&_todayCheck.date===getTodayStr()&&_todayCheck.log;
+    var _pmm=_todayIsValid?loadMealMacros():null;
     if(_pmm){
       STATE.todayLog.mealMacros=Object.assign({},_pmm.mealMacros||{},STATE.todayLog.mealMacros||{});
       if(_pmm.extraMacros&&_pmm.extraMacros.ok&&!STATE.todayLog.extraMacros)STATE.todayLog.extraMacros=_pmm.extraMacros;
