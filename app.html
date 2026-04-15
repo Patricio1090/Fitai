@@ -506,27 +506,34 @@ function loadQACache(e){try{const d=localStorage.getItem('fitai_qa_'+btoa(e));re
 let STATE={lang:'es',authMode:'login',user:null,authLoading:false,authError:'',screen:'auth',payLoading:false,payError:'',profile:null,dailyLogs:[],plan:null,nutrition:null,chat:[],setupStep:0,setupData:{},tab:0,aiLoading:false,aiMsg:'',todayLog:{weight:'',calories:'',protein:'',carbs:'',fats:'',sleep:'',water:'',training:'no',energy:'3',notes:'',mealPhotos:{},mealMacros:{},mealAnalyzing:{},photoAnalysis:'',extraFood:'',extraMacros:null,extraAnalyzing:false},showUserMenu:false,showSideMenu:false,showModeMenu:false,showPlaceMenu:false,sideSection:null,qaHistory:[],couponApplied:false,couponCode:'',couponData:null,couponDiscount:0,couponFinalAmount:CONFIG.AMOUNT,needsAIPlan:false,planGeneratedAt:null,programStartDate:null};
 function clearUserState(){
   var email=STATE.user&&STATE.user.email?STATE.user.email:null;
-  // 1. Persist all current photos to localStorage before clearing
-  if(email&&STATE.todayLog&&STATE.todayLog.mealPhotos){
+  var todayStr=getTodayStr();
+  // Only persist data if it actually belongs to TODAY (not stale from previous day)
+  var savedDate=null;
+  try{var _st=JSON.parse(localStorage.getItem('fitai_today')||'{}');savedDate=_st.date;}catch(e){}
+  var dataIsToday=(savedDate===todayStr)||(parseFloat(STATE.todayLog.weight)>0&&!savedDate);
+  // 1. Persist photos (only if today's data)
+  if(email&&dataIsToday&&STATE.todayLog&&STATE.todayLog.mealPhotos){
     Object.keys(STATE.todayLog.mealPhotos).forEach(function(meal){
       var data=STATE.todayLog.mealPhotos[meal];
       if(data)savePhotoNow(email,meal,data);
     });
   }
-  // 2. Save today's log
-  try{
-    var tl=Object.assign({},STATE.todayLog,{mealPhotos:{},mealAnalyzing:{}});
-    var hasMacros=Object.keys(tl.mealMacros||{}).length>0;
-    var hasExtras=tl.extraMacros&&tl.extraMacros.ok;
-    var hasCals=parseInt(tl.calories)>0;
-    var hasWeight=parseFloat(tl.weight)>0;
-    if(hasMacros||hasExtras||hasCals||hasWeight){
-      localStorage.setItem('fitai_today',JSON.stringify({log:tl,date:getTodayStr()}));
-      if(email)dbSaveTodayLog(email);
-    }
-  }catch(e){}
-  // 3. Save meal macros
-  if(email)saveMealMacros();
+  // 2. Save today's log (only if today's data)
+  if(dataIsToday){
+    try{
+      var tl=Object.assign({},STATE.todayLog,{mealPhotos:{},mealAnalyzing:{}});
+      var hasMacros=Object.keys(tl.mealMacros||{}).length>0;
+      var hasExtras=tl.extraMacros&&tl.extraMacros.ok;
+      var hasCals=parseInt(tl.calories)>0;
+      var hasWeight=parseFloat(tl.weight)>0;
+      if(hasMacros||hasExtras||hasCals||hasWeight){
+        localStorage.setItem('fitai_today',JSON.stringify({log:tl,date:todayStr}));
+        if(email)dbSaveTodayLog(email);
+      }
+    }catch(e){}
+    // 3. Save meal macros (only if today's data — prevents saving yesterday's macros under today's key)
+    if(email)saveMealMacros();
+  }
   // 4. Preserve QA history
   if(email&&STATE.qaHistory&&STATE.qaHistory.length)saveQACache(email,STATE.qaHistory);
   STATE.profile=null;STATE.dailyLogs=[];STATE.plan=null;STATE.nutrition=null;STATE.chat=[];STATE.qaHistory=[];STATE.aiMsg='';
@@ -657,6 +664,10 @@ function checkDayReset(){
   STATE.todayLog={weight:'',calories:'',protein:'',carbs:'',fats:'',sleep:'',water:'',training:'no',energy:'3',notes:'',mealPhotos:{},mealMacros:{},mealAnalyzing:{},photoAnalysis:'',extraFood:'',extraMacros:null,extraAnalyzing:false};
   STATE.aiMsg='';
   localStorage.removeItem('fitai_today');
+  // Explicitly remove today's mm key (prevents stale data from clearUserState being picked up)
+  if(STATE.user&&STATE.user.email){
+    try{localStorage.removeItem('fitai_mm_'+STATE.user.email+'_'+today);}catch(e){}
+  }
   // Clear yesterday's mm key (cleanOldMealMacros uses today's key so yesterday is auto-removed)
   cleanOldPhotos();
   cleanOldMealMacros();
