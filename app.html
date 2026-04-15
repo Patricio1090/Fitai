@@ -510,16 +510,19 @@ function clearUserState(){
     var hasMacros=Object.keys(tl.mealMacros||{}).length>0;
     var hasExtras=tl.extraMacros&&tl.extraMacros.ok;
     var hasCals=parseInt(tl.calories)>0;
-    if(hasMacros||hasExtras||hasCals){
+    var hasWeight=parseFloat(tl.weight)>0;
+    if(hasMacros||hasExtras||hasCals||hasWeight){
       localStorage.setItem('fitai_today',JSON.stringify({log:tl,date:getTodayStr()}));
       if(STATE.user&&STATE.user.email)dbSaveTodayLog(STATE.user.email);
     }
   }catch(e){}
+  // Preserve QA history before clearing (keyed by email — survives logout)
+  if(STATE.user&&STATE.user.email&&STATE.qaHistory&&STATE.qaHistory.length)saveQACache(STATE.user.email,STATE.qaHistory);
   STATE.profile=null;STATE.dailyLogs=[];STATE.plan=null;STATE.nutrition=null;STATE.chat=[];STATE.qaHistory=[];STATE.aiMsg='';
   STATE.todayLog={weight:'',calories:'',protein:'',carbs:'',fats:'',sleep:'',water:'',training:'no',energy:'3',notes:'',mealPhotos:{},mealMacros:{},mealAnalyzing:{},photoAnalysis:'',extraFood:'',extraMacros:null,extraAnalyzing:false};
   STATE.planGeneratedAt=null;STATE.programStartDate=null;STATE.setupStep=0;STATE.setupData={};STATE.tab=0;STATE.needsAIPlan=false;STATE.couponApplied=false;STATE.couponCode='';STATE.couponData=null;STATE.couponDiscount=0;STATE.couponFinalAmount=CONFIG.AMOUNT;
   localStorage.removeItem(STORAGE_KEY);
-  // NOTE: fitai_today, fitai_core, fitai_plan and photo keys are preserved for next login
+  // NOTE: fitai_today, fitai_core, fitai_plan, fitai_qa_ and photo keys are preserved for next login
 }
 function getTodayStr(){return new Date().toLocaleDateString('es-CL');}
 function _photoKey(meal){
@@ -873,6 +876,7 @@ function render(){
   if(STATE.screen==='paywall'){root.appendChild(renderPaywall());return;}
   if(STATE.screen==='setup'&&!STATE.profile){root.appendChild(renderSetup());return;}
   if(STATE.sideSection){root.appendChild(renderHeader());root.appendChild(renderSideSection());root.appendChild(renderTabBar());
+    if(STATE.showSideMenu){const ov2=document.createElement('div');ov2.className='side-overlay open';ov2.onclick=()=>{STATE.showSideMenu=false;render();};root.appendChild(ov2);const sm2=document.createElement('div');sm2.className='side-menu open';sm2.innerHTML=`<div class="side-header"><div class="side-logo">⚡ FitAI Pro</div><div class="side-user">${STATE.user?.name||''} · ${STATE.user?.email||''}</div></div><div class="side-section-title">Herramientas IA</div><div class="side-item" id="ss-inbody"><span class="side-item-icon">📊</span>Análisis de InBody</div><div class="side-section-title">Contenido Científico</div><div class="side-item" id="ss-supplements"><span class="side-item-icon">💊</span>Top 10 Suplementos</div><div class="side-item" id="ss-harvard"><span class="side-item-icon">🔬</span>Top 10 Estudios Harvard</div><div class="side-section-title">Mi Historia</div><div class="side-item" id="ss-qa"><span class="side-item-icon">💬</span>Mis Preguntas y Respuestas</div><div class="side-section-title">Comunidad</div><div class="side-item" id="ss-feedback"><span class="side-item-icon">💡</span>Deja tu opinión</div><div class="side-section-title">Cuenta</div><div class="side-item" id="ss-logout" style="color:#f87171"><span class="side-item-icon">🚪</span>Cerrar sesión</div>`;sm2.querySelector('#ss-inbody').onclick=()=>{STATE.showSideMenu=false;STATE.sideSection='inbody';render();};sm2.querySelector('#ss-supplements').onclick=()=>{STATE.showSideMenu=false;STATE.sideSection='supplements';render();};sm2.querySelector('#ss-harvard').onclick=()=>{STATE.showSideMenu=false;STATE.sideSection='harvard';render();};sm2.querySelector('#ss-qa').onclick=()=>{STATE.showSideMenu=false;STATE.sideSection='qa';render();};sm2.querySelector('#ss-feedback').onclick=()=>{STATE.showSideMenu=false;STATE.sideSection='feedback';render();};sm2.querySelector('#ss-logout').onclick=()=>{save();clearUserState();STATE.user=null;STATE.screen='auth';STATE.showSideMenu=false;STATE.sideSection=null;render();};root.appendChild(sm2);}
     if(STATE.showUserMenu){const menu=document.createElement('div');menu.className='user-menu open';menu.innerHTML=`<div style="padding:8px 14px;border-bottom:1px solid var(--border);margin-bottom:4px"><div style="font-size:12px;font-weight:700">${STATE.user?.name||'Usuario'}</div><div style="font-size:11px;color:var(--muted)">${STATE.user?.email||''}</div></div><button class="user-menu-item" id="menu-logout-s" style="color:#f87171">🚪 Cerrar sesión</button>`;root.appendChild(menu);menu.querySelector('#menu-logout-s').onclick=()=>{save();clearUserState();STATE.user=null;STATE.screen='auth';STATE.showUserMenu=false;render();};document.addEventListener('click',function h(e){if(!menu.contains(e.target)){STATE.showUserMenu=false;document.removeEventListener('click',h);render();}},{once:true});}
     return;}
   root.appendChild(renderHeader());
@@ -944,10 +948,11 @@ function renderAuth(){const div=document.createElement('div');div.className='scr
     const cachedQA=loadQACache(email);if(cachedQA&&cachedQA.length>(STATE.qaHistory||[]).length)STATE.qaHistory=cachedQA;
     STATE.user.email=email; // ensure email is set before loading photos
     STATE.todayLog.mealPhotos=loadTodayPhotos();
+    // Ensure weight is restored from fitai_today if present
+    try{var _tw=JSON.parse(localStorage.getItem('fitai_today')||'{}');if(_tw.log&&_tw.date===getTodayStr()){if(_tw.log.weight&&!STATE.todayLog.weight)STATE.todayLog.weight=_tw.log.weight;if(_tw.log.sleep&&!STATE.todayLog.sleep)STATE.todayLog.sleep=_tw.log.sleep;if(_tw.log.water&&!STATE.todayLog.water)STATE.todayLog.water=_tw.log.water;if(_tw.log.training&&STATE.todayLog.training==='no')STATE.todayLog.training=_tw.log.training;if(_tw.log.energy&&STATE.todayLog.energy==='3')STATE.todayLog.energy=_tw.log.energy;}}catch(e){}
     // Merge from protected mealMacros key (survives logout)
     var _pmm=loadMealMacros();
     if(_pmm){
-      // Protected key wins — merge with local (local wins per meal)
       STATE.todayLog.mealMacros=Object.assign({},_pmm.mealMacros||{},STATE.todayLog.mealMacros||{});
       if(_pmm.extraMacros&&_pmm.extraMacros.ok&&!STATE.todayLog.extraMacros)STATE.todayLog.extraMacros=_pmm.extraMacros;
       if(_pmm.extraFood&&!STATE.todayLog.extraFood)STATE.todayLog.extraFood=_pmm.extraFood;
@@ -1829,26 +1834,27 @@ function buildMacroBarAvg(label,val,max,isProtein){
   var rawPct=max>0?Math.round((val/max)*100):0;
   var pct=Math.min(100,rawPct);
   var over=rawPct>100;
-  var diff=rawPct-100;
+  var absDiff=Math.abs(rawPct-100);
   var col=over?'#f87171':pct>=100?'#2eef9a':pct>=75?'#b8ff57':pct>=50?'#ffcc44':pct>=25?'#fb923c':'#f87171';
   var barStyle=over
     ?'background:#f87171;box-shadow:0 0 8px rgba(248,113,113,.6);--tw:100%'
     :'background:'+col+';box-shadow:0 0 6px '+col+'50;--tw:'+pct+'%';
   var h='<div class="macro-bar-wrap" style="margin-bottom:14px">';
+  h+='<div class="macro-bar-label"><span style="color:'+col+';font-weight:700">'+label+'</span>';
+  h+='<span style="color:var(--muted);font-weight:500">'+val+'g <span style="font-size:10px;opacity:.7">/'+max+'g</span> <span style="font-size:10px;color:'+col+';font-weight:700">('+rawPct+'%)</span></span></div>';
+  h+='<div class="macro-bar-track"><div class="macro-bar-fill" style="'+barStyle+'"></div></div>';
   if(isProtein){
-    // Proteína: solo promedio vs meta, sin mensaje
-    h+='<div class="macro-bar-label"><span style="color:'+col+';font-weight:700">'+label+'</span>';
-    h+='<span style="color:var(--muted);font-weight:500">'+val+'g <span style="font-size:10px;opacity:.7">/'+max+'g</span> <span style="font-size:10px;color:'+col+';font-weight:700">('+rawPct+'%)</span></span></div>';
-    h+='<div class="macro-bar-track"><div class="macro-bar-fill" style="'+barStyle+'"></div></div>';
+    // Proteína: si llega o supera → 👌, si no llega → cuánto le falta
+    if(rawPct>=100){
+      h+='<div style="font-size:11px;color:var(--green);margin-top:4px;font-weight:600">👌 Cumpliste tu objetivo de proteína</div>';
+    }else{
+      h+='<div style="font-size:11px;color:var(--muted);margin-top:4px;line-height:1.5">Aumenta un <span style="color:'+col+';font-weight:700">'+absDiff+'%</span> de proteína y logra tu objetivo</div>';
+    }
   }else{
-    // Carbos / Grasas / Calorías: promedio + frase sobre/bajo
-    var unit=label==='Calorías'?'kcal':'g';
-    var absDiff=Math.abs(diff);
-    var dirTxt=over?'<span style="color:#f87171;font-weight:700">'+absDiff+'% sobre</span> tu objetivo':'<span style="color:'+col+';font-weight:700">'+absDiff+'% bajo</span> tu objetivo';
-    h+='<div class="macro-bar-label"><span style="color:'+col+';font-weight:700">'+label+'</span>';
-    h+='<span style="color:var(--muted);font-weight:500">'+val+unit+' /'+max+unit+' <span style="font-size:10px;color:'+col+';font-weight:700">('+rawPct+'%)</span></span></div>';
-    h+='<div class="macro-bar-track"><div class="macro-bar-fill" style="'+barStyle+'"></div></div>';
-    h+='<div style="font-size:11px;color:var(--muted);margin-top:4px;line-height:1.5">Promedio '+label.toLowerCase()+': '+val+unit+', '+dirTxt+'</div>';
+    // Carbos / Grasas: solo advertir si está sobre, ignorar si está bajo
+    if(over){
+      h+='<div style="font-size:11px;color:#f87171;margin-top:4px;line-height:1.5;font-weight:600">Consumiste un '+absDiff+'% más. Eso te aleja de tu objetivo.</div>';
+    }
   }
   h+='</div>';
   return h;
@@ -1868,7 +1874,7 @@ function renderProgress(){
     const avg=(logs,key)=>{const valid=logs.filter(l=>parseInt(l[key])>0);return valid.length?Math.round(valid.reduce((s,l)=>s+(parseInt(l[key])||0),0)/valid.length):0;};
     const avgCal=avg(recent,'calories');const avgProt=avg(recent,'protein');const avgCarbs=avg(recent,'carbs');const avgFats=avg(recent,'fats');
     const calPct=Math.round((avgCal/calGoal)*100);const calOver=calPct>100;const calDiff=Math.abs(calPct-100);
-    const calDirTxt=calOver?`<span style="color:#f87171;font-weight:700">${calDiff}% sobre</span> tu objetivo`:`<span style="color:${calPct>=75?'#b8ff57':calPct>=50?'#ffcc44':'#fb923c'};font-weight:700">${calDiff}% bajo</span> tu objetivo`;
+    const calDirTxt=calOver?`<span style="color:#f87171;font-weight:700">${calDiff}% más</span> de lo recomendado`:`<span style="color:${calPct>=75?'#b8ff57':calPct>=50?'#ffcc44':'#fb923c'};font-weight:700">${calDiff}% menos</span> de lo recomendado`;
     return`<div class="card"><div class="card-h">📊 Macros promedio (7 días)</div>
     <div style="display:flex;gap:12px;align-items:flex-start">
       <div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0">
@@ -1876,7 +1882,7 @@ function renderProgress(){
         <div style="font-size:10px;color:${calOver?'#f87171':'var(--muted)'};font-weight:600;margin-top:6px;text-align:center;max-width:100px;line-height:1.4">Promedio ${calDirTxt}</div>
       </div>
       <div style="flex:1;min-width:0">${buildMacroBarAvg('Proteína',avgProt,protGoal,true)}${buildMacroBarAvg('Carbos',avgCarbs,carbsGoal,false)}${buildMacroBarAvg('Grasas',avgFats,fatsGoal,false)}</div>
-    </div></div>`;})()}  <div class="card"><div class="card-h">📋 Historial reciente</div>${!al.length?'<div style="color:var(--muted);font-size:13px;text-align:center;padding:20px">Sin registros aún 💪</div>':sortedLogs(al).slice(0,10).map(l=>`<div class="log-item"><div class="log-row"><span class="log-date">${l.date}</span><span class="badge" style="background:${l.training==='si'?'#34d39920':'#1e1e3a'};color:${l.training==='si'?'var(--green)':'var(--muted)'}">${l.training==='si'?'💪 Entrenó':l.training==='activo'?'🚶 Activo':'😴 Descanso'}</span></div><div class="tags">${l.weight?`<span class="tag">⚖️ ${l.weight}kg</span>`:''} ${l.calories?`<span class="tag">🔥 ${l.calories}kcal</span>`:''} ${l.protein?`<span class="tag">🥩 ${l.protein}g</span>`:''} ${l.carbs?`<span class="tag">🍚 ${l.carbs}g</span>`:''} ${l.fats?`<span class="tag">🥑 ${l.fats}g</span>`:''} ${l.sleep?`<span class="tag">😴 ${l.sleep}h</span>`:''} ${l.energy?`<span class="tag">⚡ ${l.energy}/5</span>`:''}</div></div>`).join('')}</div>
+    </div></div>`;})()}  <div class="card"><div class="card-h">📋 Historial reciente</div>${!al.length?'<div style="color:var(--muted);font-size:13px;text-align:center;padding:20px">Sin registros aún 💪</div>':sortedLogs(al).slice(0,14).map(l=>`<div class="log-item"><div class="log-row"><span class="log-date">${l.date}</span><span class="badge" style="background:${l.training==='si'?'#34d39920':'#1e1e3a'};color:${l.training==='si'?'var(--green)':'var(--muted)'}">${l.training==='si'?'💪 Entrenó':l.training==='activo'?'🚶 Activo':'😴 Descanso'}</span></div><div class="tags">${l.weight?`<span class="tag">⚖️ ${l.weight}kg</span>`:''} ${l.calories?`<span class="tag">🔥 ${l.calories}kcal</span>`:''} ${l.protein?`<span class="tag">🥩 ${l.protein}g</span>`:''} ${l.carbs?`<span class="tag">🍚 ${l.carbs}g</span>`:''} ${l.fats?`<span class="tag">🥑 ${l.fats}g</span>`:''} ${l.sleep?`<span class="tag">😴 ${l.sleep}h</span>`:''} ${l.energy?`<span class="tag">⚡ ${l.energy}/5</span>`:''}</div></div>`).join('')}</div>
   <button class="btn btn-blue" id="btn-weekly">${STATE.aiLoading?'⏳ Analizando…':'🧠 Análisis semanal con IA'}</button>
   ${STATE.aiMsg?`<div class="card card-blue" style="margin-top:12px"><div class="card-sh">📊 Informe de progreso</div><div class="ai-text">${STATE.aiMsg}</div></div>`:''}`;
   div.querySelector('#btn-weekly').onclick=async()=>{STATE.aiLoading=true;render();const p=STATE.profile;const prog2=calcProgress();const r=await claude([{role:'user',content:`Análisis de progreso de ${p.name} (300 palabras):\n${prog2.retroceso?`⚠️ ALERTA: subió ${Math.abs(prog2.lost)}kg desde inicio.`:''}\nPerfil: ${JSON.stringify(p)}\nRegistros: ${JSON.stringify(al.slice(0,7))}\nProgreso: ${prog2.lost}kg en ${prog2.days} días.`}]);STATE.aiMsg=r;STATE.aiLoading=false;render();};
