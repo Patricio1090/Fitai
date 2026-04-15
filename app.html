@@ -1176,7 +1176,7 @@ function buildRingChart(pct,_c,size,stroke,label,sublabel){
   var off=over?0:circ*(1-p/100);
   var col=over?'#f87171':p>=100?'#2eef9a':p>=75?'#b8ff57':p>=50?'#ffcc44':p>=25?'#fb923c':'#f87171';
   var glow=over?'rgba(248,113,113,.8)':p>=100?'rgba(46,239,154,.7)':p>=75?'rgba(184,255,87,.65)':p>=50?'rgba(255,204,68,.6)':p>=25?'rgba(251,146,60,.55)':'rgba(248,113,113,.5)';
-  var fs=size>=110?'22px':'17px',fs2=size>=110?'10px':'9px',fsp=size>=110?'11px':'10px';
+  var fs=size>=110?(label.length>=4?'17px':'22px'):'17px',fs2=size>=110?'10px':'9px',fsp=size>=110?'11px':'10px';
   var cx=size/2,cy=size/2,fc=p>0?col:'var(--muted)';
   var h='<div class="ring-chart-wrap" style="width:'+size+'px;height:'+size+'px">';
   h+='<svg width="'+size+'" height="'+size+'" viewBox="0 0 '+size+' '+size+'" style="overflow:visible;display:block">';
@@ -1825,6 +1825,34 @@ function buildWeightChart(logs){
     <span style="display:flex;align-items:center;gap:5px"><span style="width:8px;height:8px;border-radius:50%;background:#9d71ff;box-shadow:0 0 8px rgba(157,113,255,.6);display:inline-block"></span>Actual: ${ws[ws.length-1]}kg</span>
   </div>`;
 }
+function buildMacroBarAvg(label,val,max,isProtein){
+  var rawPct=max>0?Math.round((val/max)*100):0;
+  var pct=Math.min(100,rawPct);
+  var over=rawPct>100;
+  var diff=rawPct-100;
+  var col=over?'#f87171':pct>=100?'#2eef9a':pct>=75?'#b8ff57':pct>=50?'#ffcc44':pct>=25?'#fb923c':'#f87171';
+  var barStyle=over
+    ?'background:#f87171;box-shadow:0 0 8px rgba(248,113,113,.6);--tw:100%'
+    :'background:'+col+';box-shadow:0 0 6px '+col+'50;--tw:'+pct+'%';
+  var h='<div class="macro-bar-wrap" style="margin-bottom:14px">';
+  if(isProtein){
+    // Proteína: solo promedio vs meta, sin mensaje
+    h+='<div class="macro-bar-label"><span style="color:'+col+';font-weight:700">'+label+'</span>';
+    h+='<span style="color:var(--muted);font-weight:500">'+val+'g <span style="font-size:10px;opacity:.7">/'+max+'g</span> <span style="font-size:10px;color:'+col+';font-weight:700">('+rawPct+'%)</span></span></div>';
+    h+='<div class="macro-bar-track"><div class="macro-bar-fill" style="'+barStyle+'"></div></div>';
+  }else{
+    // Carbos / Grasas / Calorías: promedio + frase sobre/bajo
+    var unit=label==='Calorías'?'kcal':'g';
+    var absDiff=Math.abs(diff);
+    var dirTxt=over?'<span style="color:#f87171;font-weight:700">'+absDiff+'% sobre</span> tu objetivo':'<span style="color:'+col+';font-weight:700">'+absDiff+'% bajo</span> tu objetivo';
+    h+='<div class="macro-bar-label"><span style="color:'+col+';font-weight:700">'+label+'</span>';
+    h+='<span style="color:var(--muted);font-weight:500">'+val+unit+' /'+max+unit+' <span style="font-size:10px;color:'+col+';font-weight:700">('+rawPct+'%)</span></span></div>';
+    h+='<div class="macro-bar-track"><div class="macro-bar-fill" style="'+barStyle+'"></div></div>';
+    h+='<div style="font-size:11px;color:var(--muted);margin-top:4px;line-height:1.5">Promedio '+label.toLowerCase()+': '+val+unit+', '+dirTxt+'</div>';
+  }
+  h+='</div>';
+  return h;
+}
 function renderProgress(){
   const prog=calcProgress();const div=document.createElement('div');const al=getActiveLogs();
   const kgV=prog.gtype==='gain'?(parseFloat(prog.lost)>=0?'+':'')+prog.lost+'kg':(prog.retroceso?'+'+Math.abs(prog.lost):''+Math.max(0,prog.lost))+'kg';
@@ -1838,8 +1866,17 @@ function renderProgress(){
   ${(()=>{const {calGoal,protGoal,carbsGoal,fatsGoal}=parseNutritionGoals();const recent=al.filter(l=>l.calories).slice(0,7);if(!recent.length)return'';
     // Average only days that have actual data for each macro (avoid false zeros)
     const avg=(logs,key)=>{const valid=logs.filter(l=>parseInt(l[key])>0);return valid.length?Math.round(valid.reduce((s,l)=>s+(parseInt(l[key])||0),0)/valid.length):0;};
-    const avgCal=avg(recent,'calories');const avgProt=avg(recent,'protein');const avgCarbs=avg(recent,'carbs');const avgFats=avg(recent,'fats');return`<div class="card"><div class="card-h">📊 Macros promedio (7 días)</div><div style="display:flex;gap:16px;align-items:center;justify-content:space-around"><div style="position:relative">${buildRingChart(Math.round((avgCal/calGoal)*100),'#f87171',110,16,avgCal+'','kcal/día')}</div><div style="flex:1">${buildMacroBar('Proteína',avgProt,protGoal,'#60a5fa')}${buildMacroBar('Carbos',avgCarbs,carbsGoal,'#fbbf24')}${buildMacroBar('Grasas',avgFats,fatsGoal,'#a78bfa')}</div></div></div>`;})()}
-  <div class="card"><div class="card-h">📋 Historial reciente</div>${!al.length?'<div style="color:var(--muted);font-size:13px;text-align:center;padding:20px">Sin registros aún 💪</div>':sortedLogs(al).slice(0,10).map(l=>`<div class="log-item"><div class="log-row"><span class="log-date">${l.date}</span><span class="badge" style="background:${l.training==='si'?'#34d39920':'#1e1e3a'};color:${l.training==='si'?'var(--green)':'var(--muted)'}">${l.training==='si'?'💪 Entrenó':l.training==='activo'?'🚶 Activo':'😴 Descanso'}</span></div><div class="tags">${l.weight?`<span class="tag">⚖️ ${l.weight}kg</span>`:''} ${l.calories?`<span class="tag">🔥 ${l.calories}kcal</span>`:''} ${l.protein?`<span class="tag">🥩 ${l.protein}g</span>`:''} ${l.carbs?`<span class="tag">🍚 ${l.carbs}g</span>`:''} ${l.fats?`<span class="tag">🥑 ${l.fats}g</span>`:''} ${l.sleep?`<span class="tag">😴 ${l.sleep}h</span>`:''} ${l.energy?`<span class="tag">⚡ ${l.energy}/5</span>`:''}</div></div>`).join('')}</div>
+    const avgCal=avg(recent,'calories');const avgProt=avg(recent,'protein');const avgCarbs=avg(recent,'carbs');const avgFats=avg(recent,'fats');
+    const calPct=Math.round((avgCal/calGoal)*100);const calOver=calPct>100;const calDiff=Math.abs(calPct-100);
+    const calDirTxt=calOver?`<span style="color:#f87171;font-weight:700">${calDiff}% sobre</span> tu objetivo`:`<span style="color:${calPct>=75?'#b8ff57':calPct>=50?'#ffcc44':'#fb923c'};font-weight:700">${calDiff}% bajo</span> tu objetivo`;
+    return`<div class="card"><div class="card-h">📊 Macros promedio (7 días)</div>
+    <div style="display:flex;gap:12px;align-items:flex-start">
+      <div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0">
+        ${buildRingChart(calPct,'#f87171',124,15,avgCal>999?String(avgCal):(avgCal+''),'kcal/día')}
+        <div style="font-size:10px;color:${calOver?'#f87171':'var(--muted)'};font-weight:600;margin-top:6px;text-align:center;max-width:100px;line-height:1.4">Promedio ${calDirTxt}</div>
+      </div>
+      <div style="flex:1;min-width:0">${buildMacroBarAvg('Proteína',avgProt,protGoal,true)}${buildMacroBarAvg('Carbos',avgCarbs,carbsGoal,false)}${buildMacroBarAvg('Grasas',avgFats,fatsGoal,false)}</div>
+    </div></div>`;})()}  <div class="card"><div class="card-h">📋 Historial reciente</div>${!al.length?'<div style="color:var(--muted);font-size:13px;text-align:center;padding:20px">Sin registros aún 💪</div>':sortedLogs(al).slice(0,10).map(l=>`<div class="log-item"><div class="log-row"><span class="log-date">${l.date}</span><span class="badge" style="background:${l.training==='si'?'#34d39920':'#1e1e3a'};color:${l.training==='si'?'var(--green)':'var(--muted)'}">${l.training==='si'?'💪 Entrenó':l.training==='activo'?'🚶 Activo':'😴 Descanso'}</span></div><div class="tags">${l.weight?`<span class="tag">⚖️ ${l.weight}kg</span>`:''} ${l.calories?`<span class="tag">🔥 ${l.calories}kcal</span>`:''} ${l.protein?`<span class="tag">🥩 ${l.protein}g</span>`:''} ${l.carbs?`<span class="tag">🍚 ${l.carbs}g</span>`:''} ${l.fats?`<span class="tag">🥑 ${l.fats}g</span>`:''} ${l.sleep?`<span class="tag">😴 ${l.sleep}h</span>`:''} ${l.energy?`<span class="tag">⚡ ${l.energy}/5</span>`:''}</div></div>`).join('')}</div>
   <button class="btn btn-blue" id="btn-weekly">${STATE.aiLoading?'⏳ Analizando…':'🧠 Análisis semanal con IA'}</button>
   ${STATE.aiMsg?`<div class="card card-blue" style="margin-top:12px"><div class="card-sh">📊 Informe de progreso</div><div class="ai-text">${STATE.aiMsg}</div></div>`:''}`;
   div.querySelector('#btn-weekly').onclick=async()=>{STATE.aiLoading=true;render();const p=STATE.profile;const prog2=calcProgress();const r=await claude([{role:'user',content:`Análisis de progreso de ${p.name} (300 palabras):\n${prog2.retroceso?`⚠️ ALERTA: subió ${Math.abs(prog2.lost)}kg desde inicio.`:''}\nPerfil: ${JSON.stringify(p)}\nRegistros: ${JSON.stringify(al.slice(0,7))}\nProgreso: ${prog2.lost}kg en ${prog2.days} días.`}]);STATE.aiMsg=r;STATE.aiLoading=false;render();};
