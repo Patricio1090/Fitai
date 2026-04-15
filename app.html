@@ -504,7 +504,15 @@ function saveQACache(e,qa){try{if(e&&qa?.length)localStorage.setItem('fitai_qa_'
 function loadQACache(e){try{const d=localStorage.getItem('fitai_qa_'+btoa(e));return d?JSON.parse(d):null;}catch(x){return null;}}
 let STATE={lang:'es',authMode:'login',user:null,authLoading:false,authError:'',screen:'auth',payLoading:false,payError:'',profile:null,dailyLogs:[],plan:null,nutrition:null,chat:[],setupStep:0,setupData:{},tab:0,aiLoading:false,aiMsg:'',todayLog:{weight:'',calories:'',protein:'',carbs:'',fats:'',sleep:'',water:'',training:'no',energy:'3',notes:'',mealPhotos:{},mealMacros:{},mealAnalyzing:{},photoAnalysis:'',extraFood:'',extraMacros:null,extraAnalyzing:false},showUserMenu:false,showSideMenu:false,showModeMenu:false,showPlaceMenu:false,sideSection:null,qaHistory:[],couponApplied:false,couponCode:'',couponData:null,couponDiscount:0,couponFinalAmount:CONFIG.AMOUNT,needsAIPlan:false,planGeneratedAt:null,programStartDate:null};
 function clearUserState(){
-  // Save today's log to localStorage AND Supabase ONLY if there's real data
+  var email=STATE.user&&STATE.user.email?STATE.user.email:null;
+  // 1. Persist all current photos to localStorage before clearing
+  if(email&&STATE.todayLog&&STATE.todayLog.mealPhotos){
+    Object.keys(STATE.todayLog.mealPhotos).forEach(function(meal){
+      var data=STATE.todayLog.mealPhotos[meal];
+      if(data)savePhotoNow(email,meal,data);
+    });
+  }
+  // 2. Save today's log
   try{
     var tl=Object.assign({},STATE.todayLog,{mealPhotos:{},mealAnalyzing:{}});
     var hasMacros=Object.keys(tl.mealMacros||{}).length>0;
@@ -513,16 +521,18 @@ function clearUserState(){
     var hasWeight=parseFloat(tl.weight)>0;
     if(hasMacros||hasExtras||hasCals||hasWeight){
       localStorage.setItem('fitai_today',JSON.stringify({log:tl,date:getTodayStr()}));
-      if(STATE.user&&STATE.user.email)dbSaveTodayLog(STATE.user.email);
+      if(email)dbSaveTodayLog(email);
     }
   }catch(e){}
-  // Preserve QA history before clearing (keyed by email — survives logout)
-  if(STATE.user&&STATE.user.email&&STATE.qaHistory&&STATE.qaHistory.length)saveQACache(STATE.user.email,STATE.qaHistory);
+  // 3. Save meal macros
+  if(email)saveMealMacros();
+  // 4. Preserve QA history
+  if(email&&STATE.qaHistory&&STATE.qaHistory.length)saveQACache(email,STATE.qaHistory);
   STATE.profile=null;STATE.dailyLogs=[];STATE.plan=null;STATE.nutrition=null;STATE.chat=[];STATE.qaHistory=[];STATE.aiMsg='';
   STATE.todayLog={weight:'',calories:'',protein:'',carbs:'',fats:'',sleep:'',water:'',training:'no',energy:'3',notes:'',mealPhotos:{},mealMacros:{},mealAnalyzing:{},photoAnalysis:'',extraFood:'',extraMacros:null,extraAnalyzing:false};
   STATE.planGeneratedAt=null;STATE.programStartDate=null;STATE.setupStep=0;STATE.setupData={};STATE.tab=0;STATE.needsAIPlan=false;STATE.couponApplied=false;STATE.couponCode='';STATE.couponData=null;STATE.couponDiscount=0;STATE.couponFinalAmount=CONFIG.AMOUNT;
   localStorage.removeItem(STORAGE_KEY);
-  // NOTE: fitai_today, fitai_core, fitai_plan, fitai_qa_ and photo keys are preserved for next login
+  // fitai_today, fitai_core, fitai_plan, fitai_qa_, fitai_mm_, fitai_photo_ preserved for next login
 }
 function getTodayStr(){return new Date().toLocaleDateString('es-CL');}
 function _photoKey(meal){
@@ -1442,10 +1452,9 @@ function _mmKey(){
   return 'fitai_mm_'+u+'_'+getTodayStr();
 }
 function saveMealMacros(){
-  // Save mealMacros + extraMacros + extraFood to their own key
   if(!STATE.user||!STATE.user.email)return;
   var mm=STATE.todayLog.mealMacros||{};
-  if(Object.keys(mm).length===0)return;
+  if(Object.keys(mm).length===0&&!STATE.todayLog.extraMacros?.ok)return;
   try{localStorage.setItem(_mmKey(),JSON.stringify({
     mealMacros:mm,
     extraMacros:STATE.todayLog.extraMacros||null,
@@ -1453,9 +1462,35 @@ function saveMealMacros(){
   }));}catch(e){}
 }
 function loadMealMacros(){
-  // Returns saved mealMacros for today (or null)
   if(!STATE.user||!STATE.user.email)return null;
   try{var d=localStorage.getItem(_mmKey());return d?JSON.parse(d):null;}catch(e){return null;}
+}
+// Save a single photo immediately to localStorage with compression
+function savePhotoNow(email,meal,dataUrl){
+  if(!email||!meal||!dataUrl)return;
+  var key='fitai_photo_'+email+'_'+getTodayStr()+'_'+meal;
+  // Try multiple quality levels until one fits
+  var levels=[[400,0.5],[300,0.4],[220,0.3],[150,0.22]];
+  var imgEl=new Image();
+  imgEl.onload=function(){
+    for(var i=0;i<levels.length;i++){
+      try{
+        var cv=document.createElement('canvas');
+        cv.width=Math.min(imgEl.width,levels[i][0]);
+        cv.height=Math.round(imgEl.height*(cv.width/imgEl.width));
+        cv.getContext('2d').drawImage(imgEl,0,0,cv.width,cv.height);
+        var comp=cv.toDataURL('image/jpeg',levels[i][1]);
+        // Clear old photos to make room
+        try{localStorage.setItem(key,comp);if(STATE.todayLog.mealPhotos)STATE.todayLog.mealPhotos[meal]=comp;break;}
+        catch(e){// No space — clear other days' photos and retry
+          Object.keys(localStorage).filter(k=>k.startsWith('fitai_photo_')&&k!==key).forEach(k=>localStorage.removeItem(k));
+          try{localStorage.setItem(key,comp);if(STATE.todayLog.mealPhotos)STATE.todayLog.mealPhotos[meal]=comp;break;}catch(e2){}
+        }
+      }catch(e){}
+    }
+  };
+  imgEl.onerror=function(){try{localStorage.setItem(key,dataUrl);}catch(e){}};
+  imgEl.src=dataUrl;
 }
 function cleanOldMealMacros(){
   var today=getTodayStr();
@@ -1553,31 +1588,11 @@ Descripción: (10 palabras máx)`}
   delete STATE.todayLog.mealAnalyzing[mealKey];
   recalcTotals();
   saveMealMacros(); // protected key — survives logout
-  // Compress photo to small thumbnail after analysis (saves ~80% localStorage space)
-  // Macros are already saved, we only need a small preview image
-  try{
-    const photoData=STATE.todayLog.mealPhotos&&STATE.todayLog.mealPhotos[mealKey];
-    if(photoData){
-      const imgEl=new Image();
-      imgEl.onload=function(){
-        try{
-          const cv=document.createElement('canvas');
-          cv.width=Math.min(imgEl.width,300);
-          cv.height=Math.round(imgEl.height*(cv.width/imgEl.width));
-          cv.getContext('2d').drawImage(imgEl,0,0,cv.width,cv.height);
-          const thumb=cv.toDataURL('image/jpeg',0.35);
-          STATE.todayLog.mealPhotos[mealKey]=thumb;
-          try{localStorage.setItem(_photoKey(mealKey),thumb);}catch(e){
-            // If still fails, clear space from other analyzed meals
-            Object.keys(localStorage).filter(k=>k.startsWith('fitai_photo_')&&k!==_photoKey(mealKey)).forEach(k=>localStorage.removeItem(k));
-            try{localStorage.setItem(_photoKey(mealKey),thumb);}catch(e2){}
-          }
-        }catch(e){}
-      };
-      imgEl.src=photoData;
-    }
-  }catch(e){}
   save();
+  // Compress and persist photo after analysis
+  if(STATE.user&&STATE.user.email&&STATE.todayLog.mealPhotos&&STATE.todayLog.mealPhotos[mealKey]){
+    savePhotoNow(STATE.user.email,mealKey,STATE.todayLog.mealPhotos[mealKey]);
+  }
   render();
 }
 
@@ -1722,58 +1737,15 @@ function renderLog(){
 
   function attachPhotoHandler(inputEl, mealKey){
     inputEl.addEventListener('change',e=>{const file=e.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=ev=>{
-              const rawData=ev.target.result;
-              // Compress immediately, synchronously via canvas before storing
-              if(!STATE.todayLog.mealPhotos)STATE.todayLog.mealPhotos={};
-              const _compress=function(dataUrl,maxW,quality){
-                try{
-                  const c=document.createElement('canvas');
-                  const i=document.createElement('img');
-                  // Use synchronous draw via createObjectURL trick isn't possible,
-                  // so we save raw first and compress after
-                  return null;
-                }catch(e){return null;}
-              };
-              // Save raw to STATE immediately so it shows in UI
-              STATE.todayLog.mealPhotos[mealKey]=rawData;
-              // Try to save — multiple quality levels until one fits
-              var saved=false;
-              const tryLevels=[[600,0.5],[400,0.4],[300,0.3],[200,0.25]];
-              const imgEl=new Image();
-              imgEl.onload=function(){
-                for(var li=0;li<tryLevels.length;li++){
-                  try{
-                    const cv=document.createElement('canvas');
-                    cv.width=Math.min(imgEl.width,tryLevels[li][0]);
-                    cv.height=Math.round(imgEl.height*(cv.width/imgEl.width));
-                    cv.getContext('2d').drawImage(imgEl,0,0,cv.width,cv.height);
-                    const comp=cv.toDataURL('image/jpeg',tryLevels[li][1]);
-                    localStorage.setItem(_photoKey(mealKey),comp);
-                    STATE.todayLog.mealPhotos[mealKey]=comp;
-                    saved=true;
-                    break;
-                  }catch(e){}
-                }
-                if(!saved){
-                  // Last resort: remove old photos to free space, then retry smallest
-                  try{
-                    Object.keys(localStorage).filter(k=>k.startsWith('fitai_photo_')&&!k.includes(getTodayStr())).forEach(k=>localStorage.removeItem(k));
-                    const cv=document.createElement('canvas');
-                    cv.width=200;cv.height=Math.round(imgEl.height*(200/imgEl.width));
-                    cv.getContext('2d').drawImage(imgEl,0,0,cv.width,cv.height);
-                    localStorage.setItem(_photoKey(mealKey),cv.toDataURL('image/jpeg',0.2));
-                    saved=true;
-                  }catch(e){}
-                }
-              };
-              imgEl.onerror=function(){
-                // Can't compress — try saving raw directly
-                try{localStorage.setItem(_photoKey(mealKey),rawData);}catch(e){}
-              };
-              imgEl.src=rawData;
-              render(); // show photo right away (from STATE)
-              analyzeSingleMeal(mealKey,rawData); // start AI analysis
-            };reader.readAsDataURL(file);});
+      const rawData=ev.target.result;
+      if(!STATE.todayLog.mealPhotos)STATE.todayLog.mealPhotos={};
+      STATE.todayLog.mealPhotos[mealKey]=rawData;
+      // Immediately compress and persist to localStorage
+      if(STATE.user&&STATE.user.email)savePhotoNow(STATE.user.email,mealKey,rawData);
+      save();
+      render(); // show photo right away
+      analyzeSingleMeal(mealKey,rawData); // start AI analysis
+    };reader.readAsDataURL(file);});
   }
   SLOTS.forEach(m=>{
     const camInput=div.querySelector(`#photo-cam-${m.key}`);
