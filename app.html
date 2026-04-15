@@ -346,9 +346,10 @@ textarea{resize:none;height:80px;}
 .macro-hero-cell:active{transform:scale(.96);}
 .macro-hero-icon{font-size:18px;margin-bottom:5px;display:block;}
 .macro-hero-val{
-  font-family:'Syne',sans-serif;font-size:16px;font-weight:900;
+  font-family:'Syne',sans-serif;font-size:clamp(11px,4vw,16px);font-weight:900;
   display:block;line-height:1.1;
   animation:countUp .6s cubic-bezier(.16,1,.3,1) both;
+  word-break:break-all;overflow-wrap:anywhere;
 }
 .macro-hero-lbl{
   font-size:9px;font-weight:700;text-transform:uppercase;
@@ -633,6 +634,36 @@ function loadSaved(){
 loadSaved();
 // Ensure totals are always computed from mealMacros on startup
 try{if(Object.keys(STATE.todayLog.mealMacros||{}).length>0)recalcTotals();}catch(e){}
+
+// ── Midnight reset: detect day change and clear todayLog ──────────
+var _lastKnownDay=getTodayStr();
+function checkDayReset(){
+  var today=getTodayStr();
+  if(today!==_lastKnownDay){
+    _lastKnownDay=today;
+    console.log('[DayReset] New day detected — clearing todayLog');
+    // Save yesterday's data if not already saved
+    if(STATE.user&&STATE.user.email){
+      var tl=Object.assign({},STATE.todayLog,{mealPhotos:{},mealAnalyzing:{}});
+      if(parseInt(tl.calories)>0||parseFloat(tl.weight)>0||Object.keys(tl.mealMacros||{}).length>0){
+        dbSaveDailyLog(STATE.user.email,Object.assign({date:_lastKnownDay!==today?_lastKnownDay:today},tl));
+      }
+    }
+    // Reset today's log
+    STATE.todayLog={weight:'',calories:'',protein:'',carbs:'',fats:'',sleep:'',water:'',training:'no',energy:'3',notes:'',mealPhotos:{},mealMacros:{},mealAnalyzing:{},photoAnalysis:'',extraFood:'',extraMacros:null,extraAnalyzing:false};
+    STATE.aiMsg='';
+    localStorage.removeItem('fitai_today');
+    cleanOldPhotos();
+    cleanOldMealMacros();
+    save();
+    if(STATE.screen==='app')render();
+  }
+}
+// Check every 30 seconds
+setInterval(checkDayReset,30000);
+// Also check on every render (visibility change)
+document.addEventListener('visibilitychange',function(){if(!document.hidden)checkDayReset();});
+
 // Auto re-analyze photos missing analysis after app loads (if user was already logged in)
 setTimeout(function(){
   if(STATE.user&&STATE.user.paid&&STATE.screen==='app'){
@@ -886,7 +917,7 @@ function render(){
   if(STATE.screen==='paywall'){root.appendChild(renderPaywall());return;}
   if(STATE.screen==='setup'&&!STATE.profile){root.appendChild(renderSetup());return;}
   if(STATE.sideSection){root.appendChild(renderHeader());root.appendChild(renderSideSection());root.appendChild(renderTabBar());
-    if(STATE.showSideMenu){const ov2=document.createElement('div');ov2.className='side-overlay open';ov2.onclick=()=>{STATE.showSideMenu=false;render();};root.appendChild(ov2);const sm2=document.createElement('div');sm2.className='side-menu open';sm2.innerHTML=`<div class="side-header"><div class="side-logo">⚡ FitAI Pro</div><div class="side-user">${STATE.user?.name||''} · ${STATE.user?.email||''}</div></div><div class="side-section-title">Herramientas IA</div><div class="side-item" id="ss-inbody"><span class="side-item-icon">📊</span>Análisis de InBody</div><div class="side-section-title">Contenido Científico</div><div class="side-item" id="ss-supplements"><span class="side-item-icon">💊</span>Top 10 Suplementos</div><div class="side-item" id="ss-harvard"><span class="side-item-icon">🔬</span>Top 10 Estudios Harvard</div><div class="side-section-title">Mi Historia</div><div class="side-item" id="ss-qa"><span class="side-item-icon">💬</span>Mis Preguntas y Respuestas</div><div class="side-section-title">Comunidad</div><div class="side-item" id="ss-feedback"><span class="side-item-icon">💡</span>Deja tu opinión</div><div class="side-section-title">Cuenta</div><div class="side-item" id="ss-logout" style="color:#f87171"><span class="side-item-icon">🚪</span>Cerrar sesión</div>`;sm2.querySelector('#ss-inbody').onclick=()=>{STATE.showSideMenu=false;STATE.sideSection='inbody';render();};sm2.querySelector('#ss-supplements').onclick=()=>{STATE.showSideMenu=false;STATE.sideSection='supplements';render();};sm2.querySelector('#ss-harvard').onclick=()=>{STATE.showSideMenu=false;STATE.sideSection='harvard';render();};sm2.querySelector('#ss-qa').onclick=()=>{STATE.showSideMenu=false;STATE.sideSection='qa';render();};sm2.querySelector('#ss-feedback').onclick=()=>{STATE.showSideMenu=false;STATE.sideSection='feedback';render();};sm2.querySelector('#ss-logout').onclick=()=>{save();clearUserState();STATE.user=null;STATE.screen='auth';STATE.showSideMenu=false;STATE.sideSection=null;render();};root.appendChild(sm2);}
+    if(STATE.showSideMenu){const ov2=document.createElement('div');ov2.className='side-overlay open';ov2.onclick=()=>{STATE.showSideMenu=false;render();};root.appendChild(ov2);const sm2=document.createElement('div');sm2.className='side-menu open';sm2.innerHTML=`<div class="side-header"><div class="side-logo">⚡ FitAI Pro</div><div class="side-user">${STATE.user?.name||''} · ${STATE.user?.email||''}</div></div><div class="side-section-title">Contenido Científico</div><div class="side-item" id="ss-supplements"><span class="side-item-icon">💊</span>Top 10 Suplementos</div><div class="side-item" id="ss-harvard"><span class="side-item-icon">🔬</span>Top 10 Estudios Harvard</div><div class="side-section-title">Mi Historia</div><div class="side-item" id="ss-qa"><span class="side-item-icon">💬</span>Mis Preguntas y Respuestas</div><div class="side-item" id="ss-inbody"><span class="side-item-icon">📊</span>Análisis de InBody</div><div class="side-section-title">Comunidad</div><div class="side-item" id="ss-feedback"><span class="side-item-icon">💡</span>Deja tu opinión</div><div class="side-section-title">Cuenta</div><div class="side-item" id="ss-logout" style="color:#f87171"><span class="side-item-icon">🚪</span>Cerrar sesión</div>`;sm2.querySelector('#ss-inbody').onclick=()=>{STATE.showSideMenu=false;STATE.sideSection='inbody';render();};sm2.querySelector('#ss-supplements').onclick=()=>{STATE.showSideMenu=false;STATE.sideSection='supplements';render();};sm2.querySelector('#ss-harvard').onclick=()=>{STATE.showSideMenu=false;STATE.sideSection='harvard';render();};sm2.querySelector('#ss-qa').onclick=()=>{STATE.showSideMenu=false;STATE.sideSection='qa';render();};sm2.querySelector('#ss-feedback').onclick=()=>{STATE.showSideMenu=false;STATE.sideSection='feedback';render();};sm2.querySelector('#ss-logout').onclick=()=>{save();clearUserState();STATE.user=null;STATE.screen='auth';STATE.showSideMenu=false;STATE.sideSection=null;render();};root.appendChild(sm2);}
     if(STATE.showUserMenu){const menu=document.createElement('div');menu.className='user-menu open';menu.innerHTML=`<div style="padding:8px 14px;border-bottom:1px solid var(--border);margin-bottom:4px"><div style="font-size:12px;font-weight:700">${STATE.user?.name||'Usuario'}</div><div style="font-size:11px;color:var(--muted)">${STATE.user?.email||''}</div></div><button class="user-menu-item" id="menu-logout-s" style="color:#f87171">🚪 Cerrar sesión</button>`;root.appendChild(menu);menu.querySelector('#menu-logout-s').onclick=()=>{save();clearUserState();STATE.user=null;STATE.screen='auth';STATE.showUserMenu=false;render();};document.addEventListener('click',function h(e){if(!menu.contains(e.target)){STATE.showUserMenu=false;document.removeEventListener('click',h);render();}},{once:true});}
     return;}
   root.appendChild(renderHeader());
@@ -898,13 +929,12 @@ function render(){
     const overlay=document.createElement('div');overlay.className='side-overlay open';overlay.onclick=()=>{STATE.showSideMenu=false;render();};root.appendChild(overlay);
     const menu=document.createElement('div');menu.className='side-menu open';
     menu.innerHTML=`<div class="side-header"><div class="side-logo">⚡ FitAI Pro</div><div class="side-user">${STATE.user?.name||''} · ${STATE.user?.email||''}</div></div>
-      <div class="side-section-title">Herramientas IA</div>
-      <div class="side-item" id="sm-inbody"><span class="side-item-icon">📊</span>Análisis de InBody</div>
       <div class="side-section-title">Contenido Científico</div>
       <div class="side-item" id="sm-supplements"><span class="side-item-icon">💊</span>Top 10 Suplementos</div>
       <div class="side-item" id="sm-harvard"><span class="side-item-icon">🔬</span>Top 10 Estudios Harvard</div>
       <div class="side-section-title">Mi Historia</div>
       <div class="side-item" id="sm-qa"><span class="side-item-icon">💬</span>Mis Preguntas y Respuestas</div>
+      <div class="side-item" id="sm-inbody"><span class="side-item-icon">📊</span>Análisis de InBody</div>
       <div class="side-section-title">Comunidad</div>
       <div class="side-item" id="sm-feedback"><span class="side-item-icon">💡</span>Deja tu opinión</div>
       <div class="side-section-title">Cuenta</div>
@@ -927,14 +957,14 @@ function render(){
   }
   if(STATE.aiLoading){const ov=document.createElement('div');ov.className='loading-overlay';ov.innerHTML='<div class="dot"></div><div class="dot"></div><div class="dot"></div><span style="font-size:12px;color:var(--purple)">Procesando con IA…</span>';root.appendChild(ov);}
   if(STATE.showModeMenu&&STATE.profile){
-    const m=document.createElement('div');m.style.cssText='position:fixed;top:62px;right:56px;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:8px;z-index:200;min-width:200px;box-shadow:0 8px 32px #00000060';
+    const m=document.createElement('div');m.style.cssText='position:fixed;top:62px;right:56px;background:rgba(18,10,40,.97);border:1px solid rgba(157,113,255,.25);border-radius:16px;padding:8px;z-index:200;min-width:200px;box-shadow:0 16px 48px rgba(0,0,0,.75),0 0 0 1px rgba(157,113,255,.1);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px)';
     const goals=['⚖️ Bajar de peso (quema de grasa)','🔄 Recomposición corporal (mantener peso, bajar grasa y ganar músculo)','💪 Aumento de peso (ganar masa muscular)'];
     m.innerHTML=`<div style="font-size:10px;color:var(--muted);font-weight:700;letter-spacing:1px;padding:4px 10px 8px;text-transform:uppercase">Cambiar objetivo</div>`+goals.map(g=>`<button class="user-menu-item" data-g="${g}" style="font-size:13px;${STATE.profile.goal===g?'color:var(--purple);font-weight:700':''}">${g}</button>`).join('');
     m.querySelectorAll('[data-g]').forEach(b=>b.onclick=async()=>{STATE.profile.goal=b.dataset.g;saveProfileCache(STATE.user?.email,STATE.profile);if(supa)await supa.from('users').update({goal:b.dataset.g}).eq('email',STATE.user?.email);STATE.showModeMenu=false;STATE.plan=null;STATE.nutrition=null;STATE.aiLoading=true;save();render();const p=STATE.profile;const desc=`${p.name},${p.age}años,${p.gender},${p.weight}kg,${p.height}cm,objetivo:${p.goal}`;try{STATE.plan=await claude([{role:'user',content:`Plan entrenamiento semanal para ${desc}. ${getTrainingPrompt(p.trainingPlace)}\nFORMATO:\n## DÍA 1 - LUNES: Grupo\n- Ejercicio (X series x Y reps)\nMáx 500 palabras.`}]);STATE.nutrition=await claude([{role:'user',content:`Plan alimentación diario para ${desc}. Formato:\n## Desayuno\n## Almuerzo\n## Cena\nMáx 300 palabras.`}]);STATE.planGeneratedAt=new Date().toISOString();dbSavePlanNutrition(STATE.user?.email,STATE.plan,STATE.nutrition);}catch(e){STATE.plan='⚠️ Error. Toca 🔄 Nueva semana.';STATE.nutrition='⚠️ Error. Toca 🔄 Nuevo menú.';}STATE.aiLoading=false;save();render();});
     root.appendChild(m);document.addEventListener('click',function h(e){if(!m.contains(e.target)){STATE.showModeMenu=false;document.removeEventListener('click',h);render();}},{once:true});
   }
   if(STATE.showPlaceMenu&&STATE.profile){
-    const m=document.createElement('div');m.style.cssText='position:fixed;top:62px;right:12px;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:8px;z-index:200;min-width:220px;box-shadow:0 8px 32px #00000060';
+    const m=document.createElement('div');m.style.cssText='position:fixed;top:62px;right:12px;background:rgba(10,18,40,.97);border:1px solid rgba(77,184,255,.25);border-radius:16px;padding:8px;z-index:200;min-width:220px;box-shadow:0 16px 48px rgba(0,0,0,.75),0 0 0 1px rgba(77,184,255,.1);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px)';
     const places=['🏋️ En el gimnasio (con equipamiento completo)','🏠 En casa (con equipamiento limitado o sin equipamiento)','🏋️🏠 Ambos (gimnasio y casa)'];
     m.innerHTML=`<div style="font-size:10px;color:var(--muted);font-weight:700;letter-spacing:1px;padding:4px 10px 8px;text-transform:uppercase">Cambiar equipamiento</div>`+places.map(p=>`<button class="user-menu-item" data-p="${p}" style="font-size:12px;${STATE.profile.trainingPlace===p?'color:var(--blue);font-weight:700':''}">${p}</button>`).join('');
     m.querySelectorAll('[data-p]').forEach(b=>b.onclick=async()=>{STATE.profile.trainingPlace=b.dataset.p;saveProfileCache(STATE.user?.email,STATE.profile);if(supa)await supa.from('users').update({training_place:b.dataset.p}).eq('email',STATE.user?.email);STATE.showPlaceMenu=false;STATE.plan=null;STATE.aiLoading=true;save();render();const p=STATE.profile;const desc=`${p.name},${p.goal},${p.activityLevel}`;try{STATE.plan=await claude([{role:'user',content:`Plan entrenamiento semanal para ${desc}, lugar:${p.trainingPlace}. ${getTrainingPrompt(p.trainingPlace)}\nFORMATO:\n## DÍA 1 - LUNES: Grupo\n- Ejercicio (series x reps)\nMáx 500 palabras.`}]);STATE.planGeneratedAt=new Date().toISOString();dbSavePlanNutrition(STATE.user?.email,STATE.plan,STATE.nutrition);}catch(e){STATE.plan='⚠️ Error. Toca 🔄 Nueva semana.';}STATE.aiLoading=false;save();render();});
