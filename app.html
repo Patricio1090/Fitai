@@ -741,7 +741,7 @@ async function loadProfileFromSupabase(email){initSupabase();if(!supa)return;try
       // Also check embedded _date field to reject data saved on a different day
       if(u.today_log_data&&u.today_log_date===getTodayStr()){try{
         const tl=JSON.parse(u.today_log_data);
-        const dateOk=!tl._date||tl._date===getTodayStr();
+        const dateOk=tl._date===getTodayStr();
         const hasRealData=tl&&(parseFloat(tl.weight)>0||parseInt(tl.calories)>0||Object.keys(tl.mealMacros||{}).length>0||tl.extraMacros?.ok);
         if(tl&&hasRealData&&dateOk){
           // Merge mealMacros: local entry overrides Supabase for same meal
