@@ -507,31 +507,28 @@ let STATE={lang:'es',authMode:'login',user:null,authLoading:false,authError:'',s
 function clearUserState(){
   var email=STATE.user&&STATE.user.email?STATE.user.email:null;
   var todayStr=getTodayStr();
-  // Only persist data if it actually belongs to TODAY (not stale from previous day)
-  var savedDate=null;
-  try{var _st=JSON.parse(localStorage.getItem('fitai_today')||'{}');savedDate=_st.date;}catch(e){}
-  var dataIsToday=(savedDate===todayStr)||(parseFloat(STATE.todayLog.weight)>0&&!savedDate);
-  // 1. Persist photos (only if today's data)
-  if(email&&dataIsToday&&STATE.todayLog&&STATE.todayLog.mealPhotos){
-    Object.keys(STATE.todayLog.mealPhotos).forEach(function(meal){
-      var data=STATE.todayLog.mealPhotos[meal];
-      if(data)savePhotoNow(email,meal,data);
-    });
-  }
-  // 2. Save today's log (only if today's data)
+  // Only persist today's data — check the stored fitai_today date matches actual today
+  var storedDate=null;
+  try{storedDate=JSON.parse(localStorage.getItem('fitai_today')||'{}').date;}catch(e){}
+  // Data is valid for today if: stored date = today, OR no stored date but weight/data just entered
+  var dataIsToday=storedDate===todayStr||(storedDate===null&&parseFloat(STATE.todayLog.weight)>0);
   if(dataIsToday){
+    // 1. Persist photos
+    if(email&&STATE.todayLog&&STATE.todayLog.mealPhotos){
+      Object.keys(STATE.todayLog.mealPhotos).forEach(function(meal){
+        var data=STATE.todayLog.mealPhotos[meal];
+        if(data)savePhotoNow(email,meal,data);
+      });
+    }
+    // 2. Save today's log
     try{
       var tl=Object.assign({},STATE.todayLog,{mealPhotos:{},mealAnalyzing:{}});
-      var hasMacros=Object.keys(tl.mealMacros||{}).length>0;
-      var hasExtras=tl.extraMacros&&tl.extraMacros.ok;
-      var hasCals=parseInt(tl.calories)>0;
-      var hasWeight=parseFloat(tl.weight)>0;
-      if(hasMacros||hasExtras||hasCals||hasWeight){
+      if(parseInt(tl.calories)>0||parseFloat(tl.weight)>0||Object.keys(tl.mealMacros||{}).length>0||tl.extraMacros?.ok){
         localStorage.setItem('fitai_today',JSON.stringify({log:tl,date:todayStr}));
         if(email)dbSaveTodayLog(email);
       }
     }catch(e){}
-    // 3. Save meal macros (only if today's data — prevents saving yesterday's macros under today's key)
+    // 3. Save meal macros
     if(email)saveMealMacros();
   }
   // 4. Preserve QA history
@@ -540,7 +537,6 @@ function clearUserState(){
   STATE.todayLog={weight:'',calories:'',protein:'',carbs:'',fats:'',sleep:'',water:'',training:'no',energy:'3',notes:'',mealPhotos:{},mealMacros:{},mealAnalyzing:{},photoAnalysis:'',extraFood:'',extraMacros:null,extraAnalyzing:false};
   STATE.planGeneratedAt=null;STATE.programStartDate=null;STATE.setupStep=0;STATE.setupData={};STATE.tab=0;STATE.needsAIPlan=false;STATE.couponApplied=false;STATE.couponCode='';STATE.couponData=null;STATE.couponDiscount=0;STATE.couponFinalAmount=CONFIG.AMOUNT;
   localStorage.removeItem(STORAGE_KEY);
-  // fitai_today, fitai_core, fitai_plan, fitai_qa_, fitai_mm_, fitai_photo_ preserved for next login
 }
 function getTodayStr(){return new Date().toLocaleDateString('es-CL');}
 function _photoKey(meal){
@@ -630,8 +626,8 @@ function loadSaved(){
   try{var core=JSON.parse(localStorage.getItem('fitai_core')||'{}');if(core.user)STATE.user=core.user;if(core.profile)STATE.profile=core.profile;if(core.dailyLogs)STATE.dailyLogs=core.dailyLogs;if(core.planGeneratedAt)STATE.planGeneratedAt=core.planGeneratedAt;if(core.programStartDate)STATE.programStartDate=core.programStartDate;}catch(e){}
   // 2. Plan data
   try{var pl=JSON.parse(localStorage.getItem('fitai_plan')||'{}');if(pl.plan)STATE.plan=pl.plan;if(pl.nutrition)STATE.nutrition=pl.nutrition;if(pl.chat)STATE.chat=pl.chat;if(pl.qaHistory)STATE.qaHistory=pl.qaHistory;}catch(e){}
-  // 3. Today log (only if same day AND embedded _date matches — rejects midnight-bug data)
-  try{var td=JSON.parse(localStorage.getItem('fitai_today')||'{}');if(td.log&&td.date===getTodayStr()&&td.log._date===getTodayStr()){STATE.todayLog=Object.assign({},td.log,{mealPhotos:{},mealAnalyzing:{}});STATE.todayLog.mealPhotos=loadTodayPhotos();if(!STATE.todayLog.mealMacros)STATE.todayLog.mealMacros={};}}catch(e){}
+  // 3. Today log (only if same day)
+  try{var td=JSON.parse(localStorage.getItem('fitai_today')||'{}');if(td.log&&td.date===getTodayStr()){STATE.todayLog=Object.assign({},td.log,{mealPhotos:{},mealAnalyzing:{}});STATE.todayLog.mealPhotos=loadTodayPhotos();if(!STATE.todayLog.mealMacros)STATE.todayLog.mealMacros={};}}catch(e){}
   // 4. Legacy fallback: old fitai_v3 — ALWAYS try to fill gaps
   try{var d=JSON.parse(localStorage.getItem(STORAGE_KEY)||'{}');if(d.user&&!STATE.user)STATE.user=d.user;if(d.profile&&!STATE.profile)STATE.profile=d.profile;if(d.dailyLogs&&d.dailyLogs.length>STATE.dailyLogs.length)STATE.dailyLogs=d.dailyLogs;if(d.plan&&!STATE.plan)STATE.plan=d.plan;if(d.nutrition&&!STATE.nutrition)STATE.nutrition=d.nutrition;if(d.planGeneratedAt&&!STATE.planGeneratedAt)STATE.planGeneratedAt=d.planGeneratedAt;if(d.programStartDate&&!STATE.programStartDate)STATE.programStartDate=d.programStartDate;if(d.qaHistory&&d.qaHistory.length>(STATE.qaHistory||[]).length)STATE.qaHistory=d.qaHistory;}catch(e){}
   // 5. Also try userCache as last resort for dailyLogs
@@ -639,27 +635,19 @@ function loadSaved(){
   cleanOldPhotos();
 }
 loadSaved();
-// ── Startup: remove stale mm/photo keys if fitai_today is from a different day ──
+// ── Startup: remove stale today-log if it belongs to a different day ──
 (function cleanStaleStorage(){
   try{
     var today=new Date().toLocaleDateString('es-CL');
     var td=JSON.parse(localStorage.getItem('fitai_today')||'{}');
-    // Stale = date doesn't match today, OR date matches but log has no _date (midnight-bug data)
-    var isStale=(td.date&&td.date!==today)||(td.date&&td.date===today&&td.log&&!td.log._date);
-    if(isStale){
+    if(td.date&&td.date!==today){
       localStorage.removeItem('fitai_today');
-      // Remove any mm keys that end with today's date (they have wrong data from midnight bug)
       Object.keys(localStorage).forEach(function(k){
         if(k.startsWith('fitai_mm_')&&k.endsWith('_'+today))localStorage.removeItem(k);
       });
-      // Also wipe Supabase today_log asynchronously (fire and forget)
+      // Wipe Supabase today_log after user loads
       setTimeout(function(){
-        try{
-          initSupabase();
-          if(supa&&STATE.user&&STATE.user.email){
-            supa.from('users').update({today_log_data:null,today_log_date:null}).eq('email',STATE.user.email).then(function(){}).catch(function(){});
-          }
-        }catch(e){}
+        try{initSupabase();if(supa&&STATE.user&&STATE.user.email){supa.from('users').update({today_log_data:null,today_log_date:null}).eq('email',STATE.user.email).then(function(){}).catch(function(){});}}catch(e){}
       },3000);
     }
   }catch(e){}
@@ -738,13 +726,10 @@ async function loadProfileFromSupabase(email){initSupabase();if(!supa)return;try
       // QA dedicated cache fallback (in case Supabase column missing)
       if(!STATE.qaHistory?.length&&email){const qc=loadQACache(email);if(qc?.length)STATE.qaHistory=qc;}
       // Restore from Supabase: LOCAL ALWAYS WINS — only fill gaps
-      // Extra guard: only restore if data has real calories, weight or macros (not a stale empty save)
-      // Also check embedded _date field to reject data saved on a different day
       if(u.today_log_data&&u.today_log_date===getTodayStr()){try{
         const tl=JSON.parse(u.today_log_data);
-        const dateOk=tl._date===getTodayStr();
         const hasRealData=tl&&(parseFloat(tl.weight)>0||parseInt(tl.calories)>0||Object.keys(tl.mealMacros||{}).length>0||tl.extraMacros?.ok);
-        if(tl&&hasRealData&&dateOk){
+        if(tl&&hasRealData){
           // Merge mealMacros: local entry overrides Supabase for same meal
           const curMacros=(STATE.todayLog&&STATE.todayLog.mealMacros)||{};
           const supaMacros=tl.mealMacros||{};
@@ -1026,7 +1011,7 @@ function renderAuth(){const div=document.createElement('div');div.className='scr
     // Immediately restore the preserved data (clearUserState saves empty STATE)
     if(_preservedToday){try{localStorage.setItem('fitai_today',_preservedToday);}catch(e){}}
     // Now restore to STATE
-    try{var _td=JSON.parse(_preservedToday||'{}');if(_td.log&&_td.date===getTodayStr()&&_td.log._date===getTodayStr()){STATE.todayLog=Object.assign({},_td.log,{mealPhotos:{},mealAnalyzing:{}});if(!STATE.todayLog.mealMacros)STATE.todayLog.mealMacros={};if(!STATE.todayLog.extraMacros)STATE.todayLog.extraMacros=null;if(STATE.todayLog.extraFood===undefined)STATE.todayLog.extraFood='';}}catch(e){}
+    try{var _td=JSON.parse(_preservedToday||'{}');if(_td.log&&_td.date===getTodayStr()){STATE.todayLog=Object.assign({},_td.log,{mealPhotos:{},mealAnalyzing:{}});if(!STATE.todayLog.mealMacros)STATE.todayLog.mealMacros={};if(!STATE.todayLog.extraMacros)STATE.todayLog.extraMacros=null;if(STATE.todayLog.extraFood===undefined)STATE.todayLog.extraFood='';}}catch(e){}
     const cp=loadProfileCache(email);const cd=loadUserCache(email);if(cp)STATE.profile=cp;if(cd?.plan)STATE.plan=cd.plan;if(cd?.nutrition)STATE.nutrition=cd.nutrition;if(cd?.qaHistory)STATE.qaHistory=cd.qaHistory;if(cd?.planGeneratedAt)STATE.planGeneratedAt=cd.planGeneratedAt;if(cd?.programStartDate)STATE.programStartDate=cd.programStartDate;if(cd?.dailyLogs?.length)STATE.dailyLogs=cd.dailyLogs;
     // Load dedicated QA cache (survives logout, keyed by email)
     const cachedQA=loadQACache(email);if(cachedQA&&cachedQA.length>(STATE.qaHistory||[]).length)STATE.qaHistory=cachedQA;
@@ -1971,4 +1956,4 @@ if('serviceWorker' in navigator){const sw=`const C='fitai-v3';self.addEventListe
 (async function boot(){await initConfig();render();})();
 </script>
 </body>
-  </html>
+</html>
