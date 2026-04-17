@@ -1596,17 +1596,26 @@ async function analyzeExtraFood(text){
     const pM=r.match(/[Pp]roteína:\s*(\d+)/);
     const crM=r.match(/[Cc]arbohidratos:\s*(\d+)/);
     const fM=r.match(/[Gg]rasas:\s*(\d+)/);
+    const newCal=cM?parseInt(cM[1]):0;
+    const newProt=pM?parseInt(pM[1]):0;
+    const newCarbs=crM?parseInt(crM[1]):0;
+    const newFats=fM?parseInt(fM[1]):0;
+    const ok=!!(cM&&pM);
+    // ACCUMULATE: sum with any existing estimate
+    const prev=STATE.todayLog.extraMacros&&STATE.todayLog.extraMacros.ok?STATE.todayLog.extraMacros:{cal:0,prot:0,carbs:0,fats:0};
     STATE.todayLog.extraMacros={
-      cal:cM?parseInt(cM[1]):0,
-      prot:pM?parseInt(pM[1]):0,
-      carbs:crM?parseInt(crM[1]):0,
-      fats:fM?parseInt(fM[1]):0,
-      ok:!!(cM&&pM)
+      cal:prev.cal+newCal,
+      prot:prev.prot+newProt,
+      carbs:prev.carbs+newCarbs,
+      fats:prev.fats+newFats,
+      ok:ok
     };
+    // Clear textarea after successful estimate so user knows it was added
+    if(ok)STATE.todayLog.extraFood='';
     recalcTotals();
-  }catch(e){STATE.todayLog.extraMacros={cal:0,prot:0,carbs:0,fats:0,ok:false};}
+  }catch(e){STATE.todayLog.extraMacros=STATE.todayLog.extraMacros||{cal:0,prot:0,carbs:0,fats:0,ok:false};}
   STATE.todayLog.extraAnalyzing=false;
-  saveMealMacros(); // protected key — saves extraFood+extraMacros too
+  saveMealMacros();
   save();render();
 }
 
@@ -1734,7 +1743,10 @@ function renderLog(){
         ${STATE.todayLog.extraAnalyzing?'⏳ Estimando…':'🤖 Estimar calorías y macros'}
       </button>
       ${log.extraMacros&&log.extraMacros.ok?`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;padding:10px;background:rgba(255,204,68,.06);border:1px solid rgba(255,204,68,.15);border-radius:10px">
-        <div style="font-size:11px;color:var(--muted);width:100%;margin-bottom:4px;font-weight:600">✅ Estimado por IA — sumado a tus totales del día</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;width:100%;margin-bottom:4px">
+          <div style="font-size:11px;color:var(--muted);font-weight:600">✅ Total acumulado por IA — sumado a tus macros del día</div>
+          <button id="btn-reset-extra" style="background:rgba(255,85,119,.12);border:1px solid rgba(255,85,119,.2);color:#ff7090;border-radius:8px;padding:2px 8px;font-size:10px;font-weight:700;cursor:pointer">✕ Borrar</button>
+        </div>
         <span style="background:rgba(248,113,113,.15);color:#f87171;border-radius:8px;padding:3px 10px;font-size:12px;font-weight:700">🔥${log.extraMacros.cal}kcal</span>
         <span style="background:rgba(77,184,255,.15);color:#4db8ff;border-radius:8px;padding:3px 10px;font-size:12px;font-weight:700">🥩${log.extraMacros.prot}g</span>
         <span style="background:rgba(255,204,68,.15);color:#ffcc44;border-radius:8px;padding:3px 10px;font-size:12px;font-weight:700">🍚${log.extraMacros.carbs}g</span>
@@ -1789,6 +1801,11 @@ function renderLog(){
     const txt=(STATE.todayLog.extraFood||'').trim();
     if(!txt){alert('Describe lo que comiste primero 😊');return;}
     analyzeExtraFood(txt);
+  });
+  div.querySelector('#btn-reset-extra')?.addEventListener('click',()=>{
+    STATE.todayLog.extraMacros=null;
+    STATE.todayLog.extraFood='';
+    recalcTotals();saveMealMacros();save();render();
   });
 
   // Attach click handlers for photo picker buttons
