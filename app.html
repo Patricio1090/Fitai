@@ -1011,7 +1011,7 @@ function renderAuth(){const div=document.createElement('div');div.className='scr
     // Immediately restore the preserved data (clearUserState saves empty STATE)
     if(_preservedToday){try{localStorage.setItem('fitai_today',_preservedToday);}catch(e){}}
     // Now restore to STATE
-    try{var _td=JSON.parse(_preservedToday||'{}');if(_td.log&&_td.date===getTodayStr()){STATE.todayLog=Object.assign({},_td.log,{mealPhotos:{},mealAnalyzing:{}});if(!STATE.todayLog.mealMacros)STATE.todayLog.mealMacros={};if(!STATE.todayLog.extraMacros)STATE.todayLog.extraMacros=null;if(STATE.todayLog.extraFood===undefined)STATE.todayLog.extraFood='';}}catch(e){}
+    try{var _td=JSON.parse(_preservedToday||'{}');if(_td.log&&_td.date===getTodayStr()){STATE.todayLog=Object.assign({},_td.log,{mealPhotos:{},mealAnalyzing:{}});STATE.todayLog.mealPhotos=loadTodayPhotos();if(!STATE.todayLog.mealMacros)STATE.todayLog.mealMacros={};if(!STATE.todayLog.extraMacros)STATE.todayLog.extraMacros=null;if(STATE.todayLog.extraFood===undefined)STATE.todayLog.extraFood='';}}catch(e){}
     const cp=loadProfileCache(email);const cd=loadUserCache(email);if(cp)STATE.profile=cp;if(cd?.plan)STATE.plan=cd.plan;if(cd?.nutrition)STATE.nutrition=cd.nutrition;if(cd?.qaHistory)STATE.qaHistory=cd.qaHistory;if(cd?.planGeneratedAt)STATE.planGeneratedAt=cd.planGeneratedAt;if(cd?.programStartDate)STATE.programStartDate=cd.programStartDate;if(cd?.dailyLogs?.length)STATE.dailyLogs=cd.dailyLogs;
     // Load dedicated QA cache (survives logout, keyed by email)
     const cachedQA=loadQACache(email);if(cachedQA&&cachedQA.length>(STATE.qaHistory||[]).length)STATE.qaHistory=cachedQA;
@@ -1671,6 +1671,13 @@ function renderLog(){
   const today=new Date().toLocaleDateString('es-CL',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
   const log=STATE.todayLog;
   if(!log.mealPhotos)log.mealPhotos={};
+  // Always sync photos from localStorage — ensures photos survive navigation
+  if(STATE.user&&STATE.user.email){
+    const fresh=loadTodayPhotos();
+    Object.keys(fresh).forEach(function(k){
+      if(fresh[k]&&!log.mealPhotos[k])log.mealPhotos[k]=fresh[k];
+    });
+  }
   const SLOTS=[{key:'desayuno',label:'🌅 Desayuno',color:'#fbbf24'},{key:'colacion_am',label:'🍎 Colación AM',color:'#34d399'},{key:'almuerzo',label:'☀️ Almuerzo',color:'#fb923c'},{key:'merienda',label:'🥤 Merienda PM',color:'#a78bfa'},{key:'cena',label:'🌙 Cena',color:'#60a5fa'}];
   const pc=Object.keys(log.mealPhotos).length;
   if(!log.mealMacros)log.mealMacros={};if(!log.mealAnalyzing)log.mealAnalyzing={};
