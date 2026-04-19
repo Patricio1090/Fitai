@@ -614,8 +614,8 @@ function save(){
   try{localStorage.setItem('fitai_core',JSON.stringify({user:STATE.user,profile:STATE.profile,dailyLogs:STATE.dailyLogs,planGeneratedAt:STATE.planGeneratedAt,programStartDate:STATE.programStartDate}));}catch(e){}
   // SECONDARY: plan+nutrition can fail without breaking app
   try{localStorage.setItem('fitai_plan',JSON.stringify({plan:STATE.plan,nutrition:STATE.nutrition,chat:STATE.chat,qaHistory:STATE.qaHistory}));}catch(e){}
-  // TODAY LOG: embed _date so future loads can validate it belongs to today
-  try{var tl=Object.assign({},STATE.todayLog,{mealPhotos:{},mealAnalyzing:{},_date:getTodayStr()});localStorage.setItem('fitai_today',JSON.stringify({log:tl,date:getTodayStr()}));}catch(e){}
+  // TODAY LOG: macros only, no photos, no internal fields
+  try{var tl=Object.assign({},STATE.todayLog,{mealPhotos:{},mealAnalyzing:{},_date:undefined});localStorage.setItem('fitai_today',JSON.stringify({log:tl,date:getTodayStr()}));}catch(e){}
   // PHOTOS: already saved per-meal via saveOnePhoto() — just refresh keys
   try{saveTodayPhotos();}catch(e){}
   // UserCache for compatibility
@@ -666,7 +666,7 @@ function checkDayReset(){
   // 1. Save yesterday's data to daily_logs with YESTERDAY's date (not today)
   if(STATE.user&&STATE.user.email){
     var tl=Object.assign({},STATE.todayLog,{mealPhotos:{},mealAnalyzing:{}});
-    if(parseInt(tl.calories)>0||parseFloat(tl.weight)>0||Object.keys(tl.mealMacros||{}).length>0){
+    if(parseInt(tl.calories)>0||parseFloat(tl.weight)>0||Object.keys(tl.mealMacros||{}).length>0||parseFloat(tl.sleep)>0||(tl.training&&tl.training!=='no')){
       dbSaveDailyLog(STATE.user.email,Object.assign({},tl,{date:yesterday}));
     }
     // 2. Wipe today_log in Supabase so login doesn't restore yesterday's food
@@ -781,13 +781,11 @@ async function processPayment(){STATE.payLoading=true;STATE.payError='';render()
 function profileIsComplete(p){return p&&p.weight&&p.height&&p.age&&p.activityLevel&&p.goal;}
 function getGoalType(){const g=(STATE.profile?.goal||'').toLowerCase();if(g.includes('aumento')||g.includes('ganar masa'))return'gain';if(g.includes('recomp'))return'recomp';return'loss';}
 function getActiveLogs(){
-  // Returns all logs, merging today's partial log at the front if it has data
   const todayStr=getTodayStr();
   const tl=STATE.todayLog;
-  const hasTodayData=parseFloat(tl.weight)>0||parseInt(tl.calories)>0;
+  const hasTodayData=parseFloat(tl.weight)>0||parseInt(tl.calories)>0||parseFloat(tl.sleep)>0||(tl.training&&tl.training!=='no')||Object.keys(tl.mealMacros||{}).length>0;
   if(!hasTodayData)return STATE.dailyLogs;
   const todayEntry={date:todayStr,weight:tl.weight,calories:tl.calories,protein:tl.protein,carbs:tl.carbs,fats:tl.fats,sleep:tl.sleep,water:tl.water,training:tl.training,energy:tl.energy,notes:tl.notes};
-  // Replace today's entry if already saved, otherwise prepend
   return[todayEntry,...STATE.dailyLogs.filter(l=>l.date!==todayStr)];
 }
 function getDaysActive(){if(STATE.programStartDate){const s=new Date(STATE.programStartDate);s.setHours(0,0,0,0);const t=new Date();t.setHours(0,0,0,0);const d=Math.floor((t-s)/(864e5))+1;return Math.max(1,Math.min(d,(parseInt(STATE.profile?.weeksGoal)||16)*7+14));}if(STATE.dailyLogs.length>0){const GAP=14;const ld=STATE.dailyLogs.map(l=>{if(!l.date)return null;let d;if(l.date.includes('/')){const p=l.date.split('/');d=new Date(+p[2],+p[1]-1,+p[0]);}else if(l.date.includes('-')){const p=l.date.split('-');d=+p[0]>31?new Date(+p[0],+p[1]-1,+p[2]):new Date(+p[2],+p[1]-1,+p[0]);}else{d=new Date(l.date);}if(!d||isNaN(d.getTime())||d.getFullYear()<2025)return null;return d;}).filter(d=>d!==null).sort((a,b)=>a-b);if(ld.length>0){let ps=ld[0];for(let i=ld.length-1;i>0;i--){const g=(ld[i]-ld[i-1])/864e5;if(!isNaN(g)&&g>GAP){ps=ld[i];break;}}ps.setHours(0,0,0,0);const t=new Date();t.setHours(0,0,0,0);const d=Math.floor((t-ps)/864e5)+1;return Math.max(1,Math.min(d,(parseInt(STATE.profile?.weeksGoal)||16)*7+14));}}if(STATE.planGeneratedAt){const s=new Date(STATE.planGeneratedAt);s.setHours(0,0,0,0);const t=new Date();t.setHours(0,0,0,0);return Math.floor((t-s)/864e5)+1;}return STATE.dailyLogs.length;}
@@ -1586,7 +1584,18 @@ var _todaySaveTimer=null;
 function autoSaveTodayLog(){
   clearTimeout(_todaySaveTimer);
   _todaySaveTimer=setTimeout(function(){
-    if(STATE.user&&STATE.user.email)dbSaveTodayLog(STATE.user.email);
+    if(STATE.user&&STATE.user.email){
+      dbSaveTodayLog(STATE.user.email);
+      // Also keep dailyLogs in sync so Progreso shows live data
+      const ts=getTodayStr();
+      const tl=STATE.todayLog;
+      const hasData=parseFloat(tl.weight)>0||parseInt(tl.calories)>0||parseFloat(tl.sleep)>0||(tl.training&&tl.training!=='no');
+      if(hasData){
+        const existing=STATE.dailyLogs.find(l=>l.date===ts);
+        if(existing){Object.assign(existing,{weight:tl.weight,calories:tl.calories,protein:tl.protein,carbs:tl.carbs,fats:tl.fats,sleep:tl.sleep,water:tl.water,training:tl.training,energy:tl.energy});}
+        else{STATE.dailyLogs=[{date:ts,weight:tl.weight,calories:tl.calories,protein:tl.protein,carbs:tl.carbs,fats:tl.fats,sleep:tl.sleep,water:tl.water,training:tl.training,energy:tl.energy},...STATE.dailyLogs].slice(0,90);}
+      }
+    }
   },800);
 }
 
@@ -1883,7 +1892,7 @@ function renderLog(){
     }
   });
 
-  div.querySelector('#btn-save').onclick=async()=>{const ts=new Date().toLocaleDateString('es-CL');const nl={date:ts,...STATE.todayLog};const lDB={...nl};delete lDB.mealPhotos;delete lDB.photoAnalysis;STATE.dailyLogs=[nl,...STATE.dailyLogs.filter(l=>l.date!==ts)].slice(0,90);save();dbSaveDailyLog(STATE.user?.email,lDB);if(STATE.user?.email)dbSaveTodayLog(STATE.user.email);STATE.aiLoading=true;render();const prog=calcProgress();const p=STATE.profile;const ctx=prog.retroceso?`⚠️ ALERTA: subió ${Math.abs(prog.lost)}kg desde inicio.`:'';const r=await claude([{role:'user',content:`Análisis de hoy de ${p.name} (máx 200 palabras):\n${ctx}\nPeso ${nl.weight||'-'}kg, cal ${nl.calories||'-'}kcal, proteína ${nl.protein||'-'}g, carbos ${nl.carbs||'-'}g, grasas ${nl.fats||'-'}g, sueño ${nl.sleep||'-'}h, agua ${nl.water||'-'}L, energía ${nl.energy||'-'}/5, entrenamiento: ${nl.training}.\nProgreso: ${prog.lost}kg en ${prog.days} días. Objetivo: ${p.goal}, meta ${p.targetWeight}kg.`}]);STATE.aiMsg=r;STATE.aiLoading=false;render();};
+  div.querySelector('#btn-save').onclick=async()=>{const ts=new Date().toLocaleDateString('es-CL');const nl={date:ts,...STATE.todayLog};const lDB={date:nl.date,weight:nl.weight,calories:nl.calories,protein:nl.protein,carbs:nl.carbs,fats:nl.fats,sleep:nl.sleep,water:nl.water,training:nl.training,energy:nl.energy,notes:nl.notes};STATE.dailyLogs=[nl,...STATE.dailyLogs.filter(l=>l.date!==ts)].slice(0,90);save();dbSaveDailyLog(STATE.user?.email,lDB);if(STATE.user?.email)dbSaveTodayLog(STATE.user.email);STATE.aiLoading=true;render();const prog=calcProgress();const p=STATE.profile;const ctx=prog.retroceso?`⚠️ ALERTA: subió ${Math.abs(prog.lost)}kg desde inicio.`:'';const r=await claude([{role:'user',content:`Análisis de hoy de ${p.name} (máx 200 palabras):\n${ctx}\nPeso ${nl.weight||'-'}kg, cal ${nl.calories||'-'}kcal, proteína ${nl.protein||'-'}g, carbos ${nl.carbs||'-'}g, grasas ${nl.fats||'-'}g, sueño ${nl.sleep||'-'}h, agua ${nl.water||'-'}L, energía ${nl.energy||'-'}/5, entrenamiento: ${nl.training}.\nProgreso: ${prog.lost}kg en ${prog.days} días. Objetivo: ${p.goal}, meta ${p.targetWeight}kg.`}]);STATE.aiMsg=r;STATE.aiLoading=false;render();};
   return div;
 }
 function parseDateLog(d){if(!d)return new Date(0);if(d.includes('/')){const[dy,mo,yr]=d.split('/');return new Date(+yr,+mo-1,+dy);}if(d.includes('-')){const p=d.split('-');return +p[0]>31?new Date(+p[0],+p[1]-1,+p[2]):new Date(+p[2],+p[1]-1,+p[0]);}return new Date(d);}
