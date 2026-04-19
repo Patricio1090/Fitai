@@ -733,13 +733,10 @@ async function loadProfileFromSupabase(email){initSupabase();if(!supa)return;try
           // Merge mealMacros: local entry overrides Supabase for same meal
           const curMacros=(STATE.todayLog&&STATE.todayLog.mealMacros)||{};
           const supaMacros=tl.mealMacros||{};
-          // Local wins: for every meal in Supabase, only use if local doesn't have it
           const merged=Object.assign({},supaMacros,curMacros);
           STATE.todayLog.mealMacros=merged;
-          // Fill in extraFood/extraMacros only if local is empty
           if(tl.extraFood&&!STATE.todayLog.extraFood)STATE.todayLog.extraFood=tl.extraFood;
           if(tl.extraMacros&&tl.extraMacros.ok&&!STATE.todayLog.extraMacros)STATE.todayLog.extraMacros=tl.extraMacros;
-          // Weight, sleep, water, training — fill if missing locally
           if(tl.weight&&!STATE.todayLog.weight)STATE.todayLog.weight=tl.weight;
           if(tl.sleep&&!STATE.todayLog.sleep)STATE.todayLog.sleep=tl.sleep;
           if(tl.water&&!STATE.todayLog.water)STATE.todayLog.water=tl.water;
@@ -747,6 +744,26 @@ async function loadProfileFromSupabase(email){initSupabase();if(!supa)return;try
           recalcTotals();
         }
       }catch(e){}}
+      // ── RECOVERY: if today_log_date is from a PREVIOUS day, save it to daily_logs ──
+      // This handles the case where the app was closed at midnight (checkDayReset never ran)
+      if(u.today_log_data&&u.today_log_date&&u.today_log_date!==getTodayStr()){try{
+        const tl=JSON.parse(u.today_log_data);
+        if(tl&&(parseFloat(tl.weight)>0||parseInt(tl.calories)>0)){
+          const pastDate=u.today_log_date;
+          // Save to daily_logs with the correct past date
+          await supa.from('daily_logs').upsert({
+            user_email:email,date:pastDate,
+            weight:parseFloat(tl.weight)||null,calories:parseInt(tl.calories)||null,
+            protein:parseInt(tl.protein)||null,carbs:parseInt(tl.carbs)||null,
+            fats:parseInt(tl.fats)||null,sleep:parseFloat(tl.sleep)||null,
+            water:parseFloat(tl.water)||null,training:tl.training||'no',
+            energy:parseInt(tl.energy)||null,notes:tl.notes||null
+          },{onConflict:'user_email,date'});
+          // Wipe the stale today_log so it's not processed again
+          await supa.from('users').update({today_log_data:null,today_log_date:null}).eq('email',email);
+          console.log('[Recovery] Saved past today_log to daily_logs:',pastDate);
+        }
+      }catch(e){console.warn('[Recovery] Failed:',e);}}
       // Restore chat history from Supabase
       if(u.chat_history){try{const ch=JSON.parse(u.chat_history);if(Array.isArray(ch)&&ch.length>STATE.chat.length)STATE.chat=ch;}catch(e){}}
       }const{data:logs}=await supa.from('daily_logs').select('*').eq('user_email',email).order('date',{ascending:false}).limit(90);if(logs?.length>0){
@@ -1362,7 +1379,7 @@ function renderDashboard(){
     <div style="font-size:11px;color:var(--muted);margin-top:6px">🏁 Inicio: ${prog.pesoInicial}kg · Actual: ${prog.lw}kg · Meta: ${STATE.profile.targetWeight}kg</div>
   </div>
 
-  ${prog.trend.length>1?`<div class="card"><div class="card-sh">📉 Tendencia de peso</div><div class="mini-chart">${prog.trend.map(t=>{const weights=prog.trend.map(x=>x.w);const mn=Math.min(...weights)-1,mx=Math.max(...weights)+1;const h=Math.round(((t.w-mn)/(mx-mn))*40+8);return`<div class="bar-wrap"><div class="bar" style="height:${h}px"></div><div class="bar-lbl">${(t.date||'').slice(0,5)}</div></div>`;}).join('')}</div></div>`:''}
+  ${prog.trend.length>1?`<div class="card"><div class="card-sh">📉 Tendencia de peso</div><div style="display:flex;align-items:flex-end;gap:3px;height:60px;padding:0 2px">${prog.trend.map(t=>{const weights=prog.trend.map(x=>x.w);const mn=Math.min(...weights),mx=Math.max(...weights);const range=mx-mn||1;const barH=Math.round(((t.w-mn)/range)*36)+14;const lbl=(t.date||'').slice(0,5).replace('-','<br>');return`<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:2px;height:60px"><div style="width:100%;height:${barH}px;background:linear-gradient(180deg,var(--blue),rgba(77,184,255,.28));border-radius:4px 4px 0 0;transform-origin:bottom;animation:barGrow .55s cubic-bezier(.34,1.56,.64,1) both"></div><div style="font-size:7px;color:rgba(255,255,255,.25);line-height:1.2;text-align:center">${lbl}</div></div>`;}).join('')}</div></div>`:''}
   ${STATE.aiMsg?`<div class="card card-green"><div class="card-sh">🧠 Análisis de hoy</div><div class="ai-text">${STATE.aiMsg}</div></div>`:''}
   `;
 
@@ -1850,7 +1867,21 @@ function renderLog(){
   div.querySelectorAll('textarea').forEach(el=>el.addEventListener('input',e=>{STATE.todayLog.notes=e.target.value;}));
   div.querySelectorAll('.energy-btn').forEach(b=>b.addEventListener('click',()=>{STATE.todayLog.energy=b.dataset.e;autoSaveTodayLog();render();}));
   // Weight quick-save button
-  div.querySelector('#btn-save-weight')?.addEventListener('click',()=>{const wi=div.querySelector('input[data-key="weight"]');if(wi&&wi.value){STATE.todayLog.weight=wi.value;autoSaveTodayLog();render();}});
+  div.querySelector('#btn-save-weight')?.addEventListener('click',()=>{
+    const wi=div.querySelector('input[data-key="weight"]');
+    if(wi&&wi.value){
+      STATE.todayLog.weight=wi.value;
+      autoSaveTodayLog();
+      // Also update dailyLogs in memory and Supabase so it shows in Progreso immediately
+      const ts=getTodayStr();
+      const existing=STATE.dailyLogs.find(l=>l.date===ts);
+      if(existing){existing.weight=wi.value;}
+      else{STATE.dailyLogs=[{date:ts,weight:wi.value,calories:STATE.todayLog.calories,protein:STATE.todayLog.protein,carbs:STATE.todayLog.carbs,fats:STATE.todayLog.fats,sleep:STATE.todayLog.sleep,water:STATE.todayLog.water,training:STATE.todayLog.training,energy:STATE.todayLog.energy},...STATE.dailyLogs].slice(0,90);}
+      save();
+      dbSaveDailyLog(STATE.user?.email,Object.assign({date:ts},{...STATE.todayLog,mealPhotos:undefined,mealAnalyzing:undefined,photoAnalysis:undefined,mealMacros:undefined,extraMacros:undefined,extraFood:undefined}));
+      render();
+    }
+  });
 
   div.querySelector('#btn-save').onclick=async()=>{const ts=new Date().toLocaleDateString('es-CL');const nl={date:ts,...STATE.todayLog};const lDB={...nl};delete lDB.mealPhotos;delete lDB.photoAnalysis;STATE.dailyLogs=[nl,...STATE.dailyLogs.filter(l=>l.date!==ts)].slice(0,90);save();dbSaveDailyLog(STATE.user?.email,lDB);if(STATE.user?.email)dbSaveTodayLog(STATE.user.email);STATE.aiLoading=true;render();const prog=calcProgress();const p=STATE.profile;const ctx=prog.retroceso?`⚠️ ALERTA: subió ${Math.abs(prog.lost)}kg desde inicio.`:'';const r=await claude([{role:'user',content:`Análisis de hoy de ${p.name} (máx 200 palabras):\n${ctx}\nPeso ${nl.weight||'-'}kg, cal ${nl.calories||'-'}kcal, proteína ${nl.protein||'-'}g, carbos ${nl.carbs||'-'}g, grasas ${nl.fats||'-'}g, sueño ${nl.sleep||'-'}h, agua ${nl.water||'-'}L, energía ${nl.energy||'-'}/5, entrenamiento: ${nl.training}.\nProgreso: ${prog.lost}kg en ${prog.days} días. Objetivo: ${p.goal}, meta ${p.targetWeight}kg.`}]);STATE.aiMsg=r;STATE.aiLoading=false;render();};
   return div;
