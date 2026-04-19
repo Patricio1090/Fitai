@@ -1202,9 +1202,9 @@ function renderSetupName(){
 
 function renderSetupGoal(){
   const opts=[
-    {v:'⚖️ Bajar de peso (quema de grasa)',img:'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?ixlib=rb-4.0.3&auto=format&fit=crop&w=180&h=90&q=80',title:'Bajar de peso',desc:'Quema grasa y define tu cuerpo'},
-    {v:'🔄 Recomposición corporal (mantener peso, bajar grasa y ganar músculo)',img:'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?ixlib=rb-4.0.3&auto=format&fit=crop&w=180&h=90&q=80',title:'Recomposición',desc:'Mantén el peso, mejora composición'},
-    {v:'💪 Aumento de peso (ganar masa muscular)',img:'https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?ixlib=rb-4.0.3&auto=format&fit=crop&w=180&h=90&q=80',title:'Ganar músculo',desc:'Aumenta masa y fuerza muscular'},
+    {v:'⚖️ Bajar de peso (quema de grasa)',img:'https://images.unsplash.com/photo-1476480862126-209bfaa8edc8?ixlib=rb-4.0.3&auto=format&fit=crop&w=180&h=90&q=80',title:'Bajar de peso',desc:'Quema grasa y define tu cuerpo'},
+    {v:'🔄 Recomposición corporal (mantener peso, bajar grasa y ganar músculo)',img:'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?ixlib=rb-4.0.3&auto=format&fit=crop&w=180&h=90&q=80',title:'Recomposición',desc:'Mantén el peso, mejora composición'},
+    {v:'💪 Aumento de peso (ganar masa muscular)',img:'https://images.unsplash.com/photo-1583454110551-21f2fa2afe61?ixlib=rb-4.0.3&auto=format&fit=crop&w=180&h=90&q=80',title:'Ganar músculo',desc:'Aumenta masa y fuerza muscular'},
   ];
   const cur=STATE.setupData['goal']||'';
   const wrap=document.createElement('div');wrap.className='sv2';
@@ -1418,11 +1418,11 @@ function renderSetupWeeks(){
 
 function renderSetupLevel(){
   const opts=[
-    {v:'Sedentario (sin ejercicio)',img:'https://images.unsplash.com/photo-1499750310107-5fef28a66643?ixlib=rb-4.0.3&auto=format&fit=crop&w=80&h=80&q=80',name:'Sedentario',desc:'Sin ejercicio regular actualmente'},
-    {v:'Ligero (1-2 días/sem)',img:'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?ixlib=rb-4.0.3&auto=format&fit=crop&w=80&h=80&q=80',name:'Principiante',desc:'1–2 días de ejercicio por semana'},
+    {v:'Sedentario (sin ejercicio)',img:'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?ixlib=rb-4.0.3&auto=format&fit=crop&w=80&h=80&q=80',name:'Sedentario',desc:'Sin ejercicio regular actualmente'},
+    {v:'Ligero (1-2 días/sem)',img:'https://images.unsplash.com/photo-1486218119243-13301702cb63?ixlib=rb-4.0.3&auto=format&fit=crop&w=80&h=80&q=80',name:'Principiante',desc:'1–2 días de ejercicio por semana'},
     {v:'Moderado (3-4 días/sem)',img:'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?ixlib=rb-4.0.3&auto=format&fit=crop&w=80&h=80&q=80',name:'Intermedio',desc:'3–4 días de ejercicio por semana'},
-    {v:'Activo (5+ días/sem)',img:'https://images.unsplash.com/photo-1526506118085-60ce8714f8c5?ixlib=rb-4.0.3&auto=format&fit=crop&w=80&h=80&q=80',name:'Avanzado',desc:'5 o más días de ejercicio activo'},
-    {v:'Atleta (2x/día)',img:'https://images.unsplash.com/photo-1546519638-68e109498ffc?ixlib=rb-4.0.3&auto=format&fit=crop&w=80&h=80&q=80',name:'Atleta',desc:'Entrenamiento doble o competencia'},
+    {v:'Activo (5+ días/sem)',img:'https://images.unsplash.com/photo-1548690312-e3b507d8c110?ixlib=rb-4.0.3&auto=format&fit=crop&w=80&h=80&q=80',name:'Avanzado',desc:'5 o más días de ejercicio activo'},
+    {v:'Atleta (2x/día)',img:'https://images.unsplash.com/photo-1541534741688-6078c6bfb5c5?ixlib=rb-4.0.3&auto=format&fit=crop&w=80&h=80&q=80',name:'Atleta',desc:'Entrenamiento doble o competencia'},
   ];
   const cur=STATE.setupData['activityLevel']||'';
   const wrap=document.createElement('div');wrap.className='sv2';
@@ -1535,21 +1535,40 @@ function renderMealSelect(){
   return wrap;
 }
 function renderReferralStep(){
-  const OPT=[{key:'redes',label:'Redes Sociales (TikTok, IG, etc.)',icon:'📱'},{key:'amigos',label:'Amigos / Familiares',icon:'👥'},{key:'influencer',label:'Influencer',icon:'⭐'},{key:'publicidad',label:'Publicidad',icon:'📢'},{key:'google',label:'Google / Buscador',icon:'🔍'},{key:'ia',label:'Chat de IA (ChatGPT, etc.)',icon:'🤖'},{key:'otro',label:'Otro',icon:'💬'}];
+  const OPT=[
+    {key:'redes',label:'Redes Sociales',sub:'TikTok, Instagram, etc.',color:'#e1306c',bg:'rgba(225,48,108,.12)',svg:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1.2" fill="currentColor" stroke="none"/></svg>'},
+    {key:'amigos',label:'Amigos / Familiares',sub:'Me lo recomendaron',color:'#4db8ff',bg:'rgba(77,184,255,.12)',svg:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="7" r="3"/><circle cx="16" cy="8" r="2.5"/><path d="M2 21c0-4 3-6 7-6s7 2 7 6"/><path d="M16 14c2.5 0 5 1.5 5 4"/></svg>'},
+    {key:'influencer',label:'Influencer / Youtuber',sub:'Vi un review o contenido',color:'#ffcc44',bg:'rgba(255,204,68,.12)',svg:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>'},
+    {key:'publicidad',label:'Publicidad online',sub:'Anuncio en internet',color:'#9d71ff',bg:'rgba(157,113,255,.12)',svg:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2H3v16h5v4l4-4h9V2z"/><path d="M7 8h10M7 12h6"/></svg>'},
+    {key:'google',label:'Google / Buscador',sub:'Busqué en internet',color:'#2eef9a',bg:'rgba(46,239,154,.12)',svg:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.35-4.35"/></svg>'},
+    {key:'ia',label:'Chat de IA',sub:'ChatGPT, Gemini, etc.',color:'#22d3ee',bg:'rgba(34,211,238,.12)',svg:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a8 8 0 0 0-8 8v1a4 4 0 0 0 4 4h1l2 3 2-3h1a4 4 0 0 0 4-4v-1a8 8 0 0 0-8-8z"/><circle cx="9" cy="10" r="1" fill="currentColor" stroke="none"/><circle cx="15" cy="10" r="1" fill="currentColor" stroke="none"/></svg>'},
+    {key:'otro',label:'Otro',sub:'Otra forma',color:'#69699a',bg:'rgba(255,255,255,.06)',svg:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>'},
+  ];
   const cur=STATE.setupData['referralSource']||'';
-  const wrap=document.createElement('div');wrap.className='setup-wrap';
-  const pct=(STATE.setupStep/STEPS.length)*100;const isLast=STATE.setupStep===STEPS.length-1;
-  wrap.innerHTML=`<div style="width:100%;max-width:440px;margin-top:16px"><div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="font-size:11px;color:var(--muted)">Configuración inicial</span><span style="font-size:11px;color:var(--purple)">${STATE.setupStep+1}/${STEPS.length}</span></div><div class="prog-wrap"><div class="prog-fill" style="width:${pct}%;background:linear-gradient(90deg,var(--purple),#7c3aed)"></div></div></div>
-  <div style="width:100%;max-width:440px;margin-top:28px"><div style="font-family:Syne,sans-serif;font-size:21px;font-weight:800;text-align:center;margin-bottom:6px">¿Cómo te enteraste de FitAI Pro?</div><div style="font-size:13px;color:var(--muted);text-align:center;margin-bottom:24px">Nos ayuda a mejorar y llegar a más personas 💪</div>
-  ${OPT.map(o=>`<div class="referral-opt" data-ref="${o.key}" style="display:flex;align-items:center;gap:14px;padding:15px 18px;border-radius:14px;border:1.5px solid ${cur===o.key?'var(--purple)':'var(--border)'};background:${cur===o.key?'#a78bfa18':'var(--surface2)'};cursor:pointer;transition:all .15s;margin-bottom:9px"><span style="font-size:22px;width:32px;text-align:center">${o.icon}</span><span style="font-size:14px;font-weight:${cur===o.key?700:400};color:${cur===o.key?'var(--purple)':'var(--text)'};flex:1">${o.label}</span>${cur===o.key?'<span style="color:var(--purple);font-weight:800">✓</span>':''}</div>`).join('')}
-  <button class="btn btn-lime" id="btn-next-ref" style="margin-top:8px">${isLast?'🚀 Generar mi plan':'Continuar →'}</button>
-  <button class="btn btn-ghost" id="btn-skip-ref" style="margin-top:6px">Omitir</button>
-  <button class="btn btn-ghost" id="btn-back-ref" style="margin-top:6px">← Atrás</button></div>`;
+  const wrap=document.createElement('div');wrap.className='sv2';
+  const isLast=STATE.setupStep===STEPS.length-1;
+  wrap.innerHTML=`${sv2Header(STATE.setupStep,STEPS.length)}
+  <div class="sv2-body">
+    <div class="sv2-q">¿Cómo nos conociste?</div>
+    <div class="sv2-sub">Nos ayuda a mejorar y llegar a más personas 💪</div>
+    ${OPT.map(o=>`<div class="referral-opt" data-ref="${o.key}" style="display:flex;align-items:center;gap:14px;padding:13px 16px;border-radius:16px;border:1.5px solid ${cur===o.key?o.color:'rgba(255,255,255,.07)'};background:${cur===o.key?o.bg:'rgba(255,255,255,.03)'};cursor:pointer;transition:all .15s;margin-bottom:8px">
+      <div style="width:44px;height:44px;border-radius:12px;background:${o.bg};display:flex;align-items:center;justify-content:center;color:${o.color};flex-shrink:0">${o.svg}</div>
+      <div style="flex:1">
+        <div style="font-size:14px;font-weight:${cur===o.key?700:500};color:${cur===o.key?o.color:'var(--text)'}">${o.label}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:1px">${o.sub}</div>
+      </div>
+      ${cur===o.key?`<div style="width:22px;height:22px;border-radius:50%;background:${o.color};display:flex;align-items:center;justify-content:center;flex-shrink:0"><span style="color:#000;font-size:11px;font-weight:900">✓</span></div>`:''}
+    </div>`).join('')}
+  </div>
+  <div class="sv2-footer" style="display:flex;flex-direction:column;gap:8px">
+    <button class="sv2-btn lime" id="btn-next-ref">${isLast?'🚀 Generar mi plan':'Continuar →'}</button>
+    <button class="sv2-btn" id="btn-skip-ref" style="background:rgba(255,255,255,.05);box-shadow:none;color:var(--muted);font-size:14px">Omitir</button>
+  </div>`;
+  wrap.querySelector('#sv2-back')?.addEventListener('click',()=>{STATE.setupStep--;render();});
   wrap.querySelectorAll('.referral-opt').forEach(opt=>{opt.onclick=()=>{STATE.setupData['referralSource']=opt.dataset.ref;render();};});
   const adv=async()=>{if(STATE.setupStep<STEPS.length-1){STATE.setupStep++;render();}else{await finalizarSetup();}};
   wrap.querySelector('#btn-next-ref').onclick=adv;
   wrap.querySelector('#btn-skip-ref').onclick=async()=>{STATE.setupData['referralSource']='';await adv();};
-  wrap.querySelector('#btn-back-ref').onclick=()=>{STATE.setupStep--;render();};
   return wrap;
 }
 function renderFoodChips(key,question,color){
