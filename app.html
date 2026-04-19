@@ -370,6 +370,90 @@ textarea{resize:none;height:80px;}
 .photo-sheet-btn .ps-icon{font-size:24px;width:44px;height:44px;background:rgba(255,255,255,.07);border-radius:12px;display:flex;align-items:center;justify-content:center}
 .photo-sheet-cancel{width:100%;margin-top:4px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:14px;color:var(--muted);font-size:14px;font-weight:600;cursor:pointer}
 
+/* ─── PREMIUM SETUP V2 ─── */
+.sv2{min-height:100vh;background:var(--bg);display:flex;flex-direction:column;position:relative;overflow:hidden;}
+.sv2-header{display:flex;align-items:center;justify-content:space-between;padding:16px 20px 8px;position:relative;z-index:2;}
+.sv2-back{width:38px;height:38px;border-radius:50%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:var(--text);font-size:18px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;}
+.sv2-dots{display:flex;gap:5px;align-items:center;}
+.sv2-dot{height:4px;border-radius:2px;transition:all .3s cubic-bezier(.4,0,.2,1);}
+.sv2-dot.done{background:var(--purple);width:18px;}
+.sv2-dot.active{background:var(--lime);width:22px;}
+.sv2-dot.pending{background:rgba(255,255,255,.12);width:8px;}
+.sv2-body{flex:1;display:flex;flex-direction:column;padding:8px 20px 100px;overflow-y:auto;}
+.sv2-q{font-family:'Syne',sans-serif;font-size:24px;font-weight:800;line-height:1.25;margin-bottom:6px;letter-spacing:-.3px;}
+.sv2-sub{font-size:13px;color:var(--muted);margin-bottom:28px;line-height:1.6;}
+.sv2-footer{position:fixed;bottom:0;left:0;right:0;background:linear-gradient(0deg,var(--bg) 70%,transparent);padding:16px 20px 28px;}
+.sv2-btn{width:100%;padding:17px;border:none;border-radius:16px;font-family:'Syne',sans-serif;font-size:16px;font-weight:800;letter-spacing:.5px;cursor:pointer;transition:transform .12s,opacity .2s;background:linear-gradient(135deg,var(--purple),#7c3aed);color:#fff;box-shadow:0 8px 32px rgba(157,113,255,.35);}
+.sv2-btn:active{transform:scale(.97);}
+.sv2-btn:disabled{opacity:.4;cursor:not-allowed;}
+.sv2-btn.lime{background:linear-gradient(135deg,var(--lime),#84cc16);color:#000;box-shadow:0 8px 32px rgba(184,255,87,.3);}
+
+/* Goal cards */
+.sv2-goal-card{display:flex;align-items:center;gap:16px;padding:18px 20px;border-radius:20px;border:2px solid rgba(255,255,255,.08);background:var(--surface2);cursor:pointer;margin-bottom:12px;transition:all .2s;position:relative;overflow:hidden;}
+.sv2-goal-card.sel{border-color:var(--purple);background:rgba(157,113,255,.12);}
+.sv2-goal-card.sel::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(157,113,255,.08),transparent);pointer-events:none;}
+.sv2-goal-icon{width:56px;height:56px;border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:28px;flex-shrink:0;}
+.sv2-goal-text{flex:1;}
+.sv2-goal-title{font-family:'Syne',sans-serif;font-size:16px;font-weight:700;margin-bottom:3px;}
+.sv2-goal-desc{font-size:12px;color:var(--muted);line-height:1.4;}
+.sv2-check{width:24px;height:24px;border-radius:50%;border:2px solid rgba(255,255,255,.2);background:transparent;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all .2s;}
+.sv2-goal-card.sel .sv2-check{background:var(--purple);border-color:var(--purple);}
+
+/* Gender cards */
+.sv2-gender-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.sv2-gender-card{padding:24px 16px;border-radius:20px;border:2px solid rgba(255,255,255,.08);background:var(--surface2);cursor:pointer;text-align:center;transition:all .2s;}
+.sv2-gender-card.sel{border-color:var(--purple);background:rgba(157,113,255,.12);}
+.sv2-gender-icon{font-size:48px;margin-bottom:10px;display:block;}
+.sv2-gender-label{font-family:'Syne',sans-serif;font-size:15px;font-weight:700;}
+
+/* Drum roll age picker */
+.sv2-drum{height:220px;overflow:hidden;position:relative;margin:0 -4px;}
+.sv2-drum-list{overflow-y:scroll;height:100%;scroll-snap-type:y mandatory;-webkit-overflow-scrolling:touch;padding:88px 0;scrollbar-width:none;}
+.sv2-drum-list::-webkit-scrollbar{display:none;}
+.sv2-drum-item{height:44px;display:flex;align-items:center;justify-content:center;scroll-snap-align:center;font-family:'Syne',sans-serif;font-size:22px;font-weight:700;color:rgba(255,255,255,.2);transition:color .1s,font-size .1s;}
+.sv2-drum-item.active{color:var(--text);font-size:40px;}
+.sv2-drum-item.near{color:rgba(255,255,255,.55);font-size:28px;}
+.sv2-drum-center{position:absolute;top:50%;left:0;right:0;height:48px;transform:translateY(-50%);border-top:1.5px solid var(--purple);border-bottom:1.5px solid var(--purple);pointer-events:none;border-radius:12px;background:rgba(157,113,255,.06);}
+
+/* Ruler slider */
+.sv2-ruler-val{text-align:center;margin-bottom:20px;}
+.sv2-ruler-num{font-family:'Syne',sans-serif;font-size:72px;font-weight:900;line-height:1;color:var(--text);}
+.sv2-ruler-unit{font-size:22px;color:var(--muted);font-weight:600;margin-left:4px;}
+.sv2-ruler-wrap{position:relative;height:80px;overflow:hidden;cursor:ew-resize;user-select:none;-webkit-user-select:none;}
+.sv2-ruler-track{display:flex;align-items:flex-end;position:absolute;top:0;bottom:0;left:50%;gap:0;transition:transform .05s;}
+.sv2-ruler-tick{width:2px;margin:0 3px;border-radius:1px;background:rgba(255,255,255,.18);flex-shrink:0;}
+.sv2-ruler-tick.major{height:36px;background:rgba(255,255,255,.4);}
+.sv2-ruler-tick.medium{height:22px;}
+.sv2-ruler-tick.minor{height:14px;}
+.sv2-ruler-center{position:absolute;left:50%;top:0;bottom:0;width:2px;margin-left:-1px;background:var(--amber);border-radius:1px;box-shadow:0 0 12px rgba(255,204,68,.8);}
+.sv2-ruler-label{font-size:10px;color:var(--muted);position:absolute;bottom:2px;transform:translateX(-50%);}
+.sv2-toggle{display:flex;background:rgba(255,255,255,.06);border-radius:30px;padding:3px;width:fit-content;margin:0 auto 20px;}
+.sv2-toggle-btn{padding:7px 20px;border-radius:26px;border:none;background:transparent;color:var(--muted);font-size:14px;font-weight:700;cursor:pointer;transition:all .2s;font-family:'DM Sans',sans-serif;}
+.sv2-toggle-btn.on{background:var(--amber);color:#000;box-shadow:0 4px 16px rgba(255,204,68,.3);}
+
+/* Level cards */
+.sv2-level-card{display:flex;align-items:center;gap:16px;padding:16px 20px;border-radius:18px;border:2px solid rgba(255,255,255,.08);background:var(--surface2);cursor:pointer;margin-bottom:10px;transition:all .2s;}
+.sv2-level-card.sel{border-color:var(--green);background:rgba(46,239,154,.08);}
+.sv2-level-badge{width:48px;height:48px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;}
+.sv2-level-info{flex:1;}
+.sv2-level-name{font-family:'Syne',sans-serif;font-size:15px;font-weight:700;margin-bottom:2px;}
+.sv2-level-desc{font-size:12px;color:var(--muted);}
+
+/* Equipment cards */
+.sv2-equip-grid{display:flex;flex-direction:column;gap:10px;}
+.sv2-equip-card{display:flex;align-items:center;gap:16px;padding:16px 20px;border-radius:18px;border:2px solid rgba(255,255,255,.08);background:var(--surface2);cursor:pointer;transition:all .2s;}
+.sv2-equip-card.sel{border-color:var(--blue);background:rgba(77,184,255,.08);}
+
+/* IMC bar */
+.sv2-imc{background:var(--surface2);border:1px solid var(--border);border-radius:16px;padding:14px 16px;margin-top:16px;}
+.sv2-imc-bar{height:10px;border-radius:6px;background:linear-gradient(90deg,#60a5fa 0%,#2eef9a 35%,#ffcc44 65%,#f87171 100%);position:relative;margin:10px 0 6px;}
+.sv2-imc-cursor{position:absolute;top:-3px;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.5);transform:translateX(-50%);}
+
+/* Weeks slider */
+.sv2-weeks-display{text-align:center;margin:16px 0;}
+.sv2-range{-webkit-appearance:none;width:100%;height:6px;border-radius:3px;background:rgba(255,255,255,.1);outline:none;margin:12px 0;}
+.sv2-range::-webkit-slider-thumb{-webkit-appearance:none;width:28px;height:28px;border-radius:50%;background:var(--purple);cursor:pointer;box-shadow:0 0 16px rgba(157,113,255,.6);}
+
 </style>
 </head>
 <body>
@@ -1066,21 +1150,363 @@ function renderPaywall(){
   return div;
 }
 const STEPS=[
-  {key:'name',q:'¿Cuál es tu nombre?',type:'text',ph:'Tu nombre'},
-  {key:'age',q:'¿Cuántos años tienes?',type:'number',ph:'Ej: 28'},
-  {key:'gender',q:'¿Cuál es tu sexo biológico?',type:'select',opts:['Masculino','Femenino']},
-  {key:'weight',q:'¿Cuál es tu peso actual? (kg)',type:'number',ph:'Ej: 82'},
-  {key:'height',q:'¿Cuál es tu altura? (cm)',type:'number',ph:'Ej: 175'},
-  {key:'goal',q:'¿Cuál es tu objetivo principal?',type:'select',opts:['⚖️ Bajar de peso (quema de grasa)','🔄 Recomposición corporal (mantener peso, bajar grasa y ganar músculo)','💪 Aumento de peso (ganar masa muscular)']},
-  {key:'targetWeight',q:'__dynamic__',type:'number',ph:'Ej: 72'},
-  {key:'weeksGoal',q:'¿En cuántas semanas quieres lograrlo?',type:'number',ph:'Ej: 12'},
-  {key:'activityLevel',q:'¿Cuál es tu nivel de actividad actual?',type:'select',opts:['Sedentario (sin ejercicio)','Ligero (1-2 días/sem)','Moderado (3-4 días/sem)','Activo (5+ días/sem)','Atleta (2x/día)']},
-  {key:'trainingPlace',q:'¿Dónde entrenas habitualmente?',type:'select',opts:['🏋️ En el gimnasio (con equipamiento completo)','🏠 En casa (con equipamiento limitado o sin equipamiento)','🏋️🏠 Ambos (gimnasio y casa)']},
-  {key:'mealsPerDay',q:'¿Cuántas comidas al día deseas?',type:'meal-select'},
-  {key:'foodLikes',q:'¿Qué alimentos te gustan?',type:'food-prefs',optional:true},
-  {key:'foodDislikes',q:'¿Qué alimentos NO comes o no te gustan?',type:'food-exclude',optional:true},
-  {key:'referralSource',q:'¿Cómo te enteraste de FitAI Pro?',type:'referral',optional:true},
+  {key:'name',      type:'sv2-name'},
+  {key:'goal',      type:'sv2-goal'},
+  {key:'gender',    type:'sv2-gender'},
+  {key:'age',       type:'sv2-age'},
+  {key:'height',    type:'sv2-ruler', min:140, max:210, unit:'cm', title:'Tu altura', sub:'Arrastra para ajustar'},
+  {key:'weight',    type:'sv2-ruler', min:40,  max:180, unit:'kg', title:'Tu peso actual', sub:'Arrastra para ajustar', bmi:true},
+  {key:'targetWeight', type:'sv2-ruler-target'},
+  {key:'weeksGoal', type:'sv2-weeks'},
+  {key:'activityLevel', type:'sv2-level'},
+  {key:'trainingPlace', type:'sv2-equip'},
+  {key:'mealsPerDay',   type:'meal-select'},
+  {key:'foodLikes',     type:'food-prefs',    q:'¿Qué alimentos te gustan?',   optional:true},
+  {key:'foodDislikes',  type:'food-exclude',  q:'¿Qué alimentos NO te gustan?',optional:true},
+  {key:'referralSource',type:'referral',      optional:true},
 ];
+
+// ── Setup V2 helpers ──────────────────────────────────────────────
+function sv2Header(step,total,backFn){
+  const dots=Array.from({length:Math.min(total,10)},(_,i)=>{
+    const cls=i<step?'done':i===step?'active':'pending';
+    return`<div class="sv2-dot ${cls}"></div>`;
+  }).join('');
+  return`<div class="sv2-header">
+    ${step>0?`<button class="sv2-back" id="sv2-back">←</button>`:'<div style="width:38px"></div>'}
+    <div style="font-family:Syne,sans-serif;font-size:13px;font-weight:700;color:var(--purple)">⚡ FitAI Pro</div>
+    <div style="width:38px;text-align:right;font-size:11px;color:var(--muted)">${step+1}/${total}</div>
+  </div>
+  <div style="padding:0 20px 12px;display:flex;gap:4px;justify-content:center">${dots}</div>`;
+}
+
+function renderSetupName(){
+  const wrap=document.createElement('div');wrap.className='sv2';
+  const val=STATE.setupData['name']||'';
+  wrap.innerHTML=`${sv2Header(0,STEPS.length)}
+  <div class="sv2-body" style="justify-content:center;padding-top:40px">
+    <div style="font-size:64px;text-align:center;margin-bottom:20px;animation:floatLogo 3s ease-in-out infinite">👋</div>
+    <div class="sv2-q" style="text-align:center">¡Hola! ¿Cómo te llamas?</div>
+    <div class="sv2-sub" style="text-align:center">Tu nombre personaliza toda la experiencia</div>
+    <input id="sv2-name-inp" type="text" placeholder="Tu nombre" value="${val}" autocomplete="given-name"
+      style="width:100%;background:var(--surface2);border:2px solid ${val?'var(--purple)':'rgba(255,255,255,.1)'};border-radius:16px;padding:18px 20px;color:var(--text);font-size:20px;font-family:'Syne',sans-serif;font-weight:700;outline:none;text-align:center;transition:border-color .2s"/>
+  </div>
+  <div class="sv2-footer"><button class="sv2-btn" id="sv2-next" ${!val?'disabled':''}>Continuar →</button></div>`;
+  const inp=wrap.querySelector('#sv2-name-inp');
+  inp.addEventListener('input',e=>{STATE.setupData['name']=e.target.value;wrap.querySelector('#sv2-next').disabled=!e.target.value.trim();wrap.querySelector('#sv2-name-inp').style.borderColor=e.target.value?'var(--purple)':'rgba(255,255,255,.1)';});
+  inp.addEventListener('keydown',e=>{if(e.key==='Enter'&&inp.value.trim())wrap.querySelector('#sv2-next').click();});
+  wrap.querySelector('#sv2-next').onclick=()=>{STATE.setupData['name']=inp.value.trim();if(!STATE.setupData['name'])return;STATE.setupStep++;render();};
+  setTimeout(()=>inp.focus(),200);
+  return wrap;
+}
+
+function renderSetupGoal(){
+  const opts=[
+    {v:'⚖️ Bajar de peso (quema de grasa)',img:'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?ixlib=rb-4.0.3&auto=format&fit=crop&w=180&h=90&q=80',title:'Bajar de peso',desc:'Quema grasa y define tu cuerpo'},
+    {v:'🔄 Recomposición corporal (mantener peso, bajar grasa y ganar músculo)',img:'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?ixlib=rb-4.0.3&auto=format&fit=crop&w=180&h=90&q=80',title:'Recomposición',desc:'Mantén el peso, mejora composición'},
+    {v:'💪 Aumento de peso (ganar masa muscular)',img:'https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?ixlib=rb-4.0.3&auto=format&fit=crop&w=180&h=90&q=80',title:'Ganar músculo',desc:'Aumenta masa y fuerza muscular'},
+  ];
+  const cur=STATE.setupData['goal']||'';
+  const wrap=document.createElement('div');wrap.className='sv2';
+  wrap.innerHTML=`${sv2Header(1,STEPS.length)}
+  <div class="sv2-body">
+    <div class="sv2-q">¿Cuál es tu objetivo?</div>
+    <div class="sv2-sub">Tu objetivo define todo tu plan personalizado</div>
+    ${opts.map(o=>`<div class="sv2-goal-card${cur===o.v?' sel':''}" data-val="${o.v}" style="overflow:hidden;padding:0;display:flex;align-items:stretch;min-height:90px">
+      <img src="${o.img}" style="width:110px;height:90px;object-fit:cover;flex-shrink:0;display:block" loading="lazy"/>
+      <div style="flex:1;padding:14px 14px 14px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px">
+        <div>
+          <div class="sv2-goal-title">${o.title}</div>
+          <div class="sv2-goal-desc">${o.desc}</div>
+        </div>
+        <div class="sv2-check">${cur===o.v?'<span style="color:#fff;font-size:12px">✓</span>':''}</div>
+      </div>
+    </div>`).join('')}
+  </div>
+  <div class="sv2-footer"><button class="sv2-btn" id="sv2-next" ${!cur?'disabled':''}>Continuar →</button></div>`;
+  wrap.querySelector('#sv2-back')?.addEventListener('click',()=>{STATE.setupStep--;render();});
+  wrap.querySelectorAll('.sv2-goal-card').forEach(c=>c.addEventListener('click',()=>{STATE.setupData['goal']=c.dataset.val;render();}));
+  wrap.querySelector('#sv2-next').onclick=()=>{if(STATE.setupData['goal']){STATE.setupStep++;render();}};
+  return wrap;
+}
+
+function renderSetupGender(){
+  const opts=[
+    {v:'Masculino',img:'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&h=320&q=80',label:'Masculino'},
+    {v:'Femenino',img:'https://images.unsplash.com/photo-1518310383802-640c2de311b2?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&h=320&q=80',label:'Femenino'},
+  ];
+  const cur=STATE.setupData['gender']||'';
+  const wrap=document.createElement('div');wrap.className='sv2';
+  wrap.innerHTML=`${sv2Header(2,STEPS.length)}
+  <div class="sv2-body">
+    <div class="sv2-q">¿Cuál es tu sexo biológico?</div>
+    <div class="sv2-sub">Necesario para calcular tus requerimientos calóricos con precisión</div>
+    <div class="sv2-gender-grid">
+      ${opts.map(o=>`<div class="sv2-gender-card${cur===o.v?' sel':''}" data-val="${o.v}" style="padding:0;overflow:hidden;min-height:200px;position:relative">
+        <img src="${o.img}" style="width:100%;height:170px;object-fit:cover;display:block" loading="lazy"/>
+        <div style="padding:12px;text-align:center;position:relative">
+          <div class="sv2-gender-label" style="color:${cur===o.v?'var(--purple)':'var(--text)'}">${o.label}</div>
+          ${cur===o.v?'<div style="color:var(--purple);font-size:16px;margin-top:4px">✓</div>':''}
+        </div>
+      </div>`).join('')}
+    </div>
+  </div>
+  <div class="sv2-footer"><button class="sv2-btn" id="sv2-next" ${!cur?'disabled':''}>Continuar →</button></div>`;
+  wrap.querySelector('#sv2-back')?.addEventListener('click',()=>{STATE.setupStep--;render();});
+  wrap.querySelectorAll('.sv2-gender-card').forEach(c=>c.addEventListener('click',()=>{STATE.setupData['gender']=c.dataset.val;render();}));
+  wrap.querySelector('#sv2-next').onclick=()=>{if(STATE.setupData['gender']){STATE.setupStep++;render();}};
+  return wrap;
+}
+
+function renderSetupAge(){
+  const cur=parseInt(STATE.setupData['age'])||30;
+  const ages=Array.from({length:83},(_,i)=>i+18);
+  const wrap=document.createElement('div');wrap.className='sv2';
+  wrap.innerHTML=`${sv2Header(3,STEPS.length)}
+  <div class="sv2-body">
+    <div class="sv2-q">Tu edad</div>
+    <div class="sv2-sub">Optimizamos tu plan metabólico según tu etapa de vida</div>
+    <div class="sv2-drum" id="drum-wrap">
+      <div class="sv2-drum-center"></div>
+      <div class="sv2-drum-list" id="drum-list">
+        ${ages.map(a=>`<div class="sv2-drum-item${a===cur?' active':Math.abs(a-cur)===1?' near':''}" data-age="${a}">${a}</div>`).join('')}
+      </div>
+    </div>
+    <div style="text-align:center;margin-top:16px;font-size:14px;color:var(--muted)">Desliza para seleccionar tu edad</div>
+  </div>
+  <div class="sv2-footer"><button class="sv2-btn" id="sv2-next">Continuar →</button></div>`;
+  wrap.querySelector('#sv2-back')?.addEventListener('click',()=>{STATE.setupStep--;render();});
+  const list=wrap.querySelector('#drum-list');
+  // Scroll to current age
+  const idx=ages.indexOf(cur);
+  setTimeout(()=>{if(idx>=0)list.scrollTop=idx*44;},50);
+  list.addEventListener('scroll',()=>{
+    const idx=Math.round(list.scrollTop/44);
+    const age=ages[Math.max(0,Math.min(idx,ages.length-1))];
+    STATE.setupData['age']=String(age);
+    list.querySelectorAll('.sv2-drum-item').forEach((el,i)=>{
+      el.className='sv2-drum-item'+(i===idx?' active':Math.abs(i-idx)===1?' near':'');
+    });
+  },{passive:true});
+  wrap.querySelector('#sv2-next').onclick=()=>{STATE.setupData['age']=STATE.setupData['age']||'30';STATE.setupStep++;render();};
+  return wrap;
+}
+
+function renderSetupRuler(stepIdx,key,title,sub,minV,maxV,unit,bmi){
+  const cur=parseFloat(STATE.setupData[key])||Math.round((minV+maxV)/2);
+  const wrap=document.createElement('div');wrap.className='sv2';
+  const bmcHTML=()=>{
+    if(!bmi)return'';
+    const h=parseFloat(STATE.setupData['height'])||170;
+    const w=parseFloat(STATE.setupData[key])||70;
+    const v=Math.round((w/(h/100)**2)*10)/10;
+    const pct=Math.min(100,Math.max(0,((v-15)/(40-15))*100));
+    const cat=v<18.5?'Bajo peso':v<25?'Normal':v<30?'Sobrepeso':'Obesidad';
+    const col=v<18.5?'#60a5fa':v<25?'#2eef9a':v<30?'#ffcc44':'#f87171';
+    return`<div class="sv2-imc"><div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:13px;font-weight:700;color:var(--muted)">IMC actual</span><span style="font-family:Syne,sans-serif;font-size:18px;font-weight:800;color:${col}">${v}</span></div>
+    <div class="sv2-imc-bar"><div class="sv2-imc-cursor" style="left:${pct}%;background:${col}"></div></div>
+    <div style="font-size:12px;color:${col};font-weight:600">${cat}</div></div>`;
+  };
+  wrap.innerHTML=`${sv2Header(stepIdx,STEPS.length)}
+  <div class="sv2-body">
+    <div class="sv2-q">${title}</div>
+    <div class="sv2-sub">${sub}</div>
+    <div class="sv2-ruler-val">
+      <span class="sv2-ruler-num" id="ruler-display">${cur}</span>
+      <span class="sv2-ruler-unit">${unit}</span>
+    </div>
+    <div class="sv2-ruler-wrap" id="ruler-wrap">
+      <div class="sv2-ruler-center"></div>
+      <div class="sv2-ruler-track" id="ruler-track"></div>
+    </div>
+    <div id="bmi-block">${bmcHTML()}</div>
+  </div>
+  <div class="sv2-footer"><button class="sv2-btn" id="sv2-next">Continuar →</button></div>`;
+  wrap.querySelector('#sv2-back')?.addEventListener('click',()=>{STATE.setupStep--;render();});
+
+  // Build ruler ticks
+  const track=wrap.querySelector('#ruler-track');
+  const totalTicks=(maxV-minV)*2+60;
+  for(let i=0;i<totalTicks;i++){
+    const v2=minV+(i-30)/2;
+    const tick=document.createElement('div');
+    const isMain=i%10===0&&v2===Math.round(v2);
+    const isMid=i%5===0;
+    tick.className='sv2-ruler-tick '+(isMain?'major':isMid?'medium':'minor');
+    tick.style.height=(isMain?'40px':isMid?'26px':'16px');
+    if(isMain&&v2>=minV&&v2<=maxV){
+      const lbl=document.createElement('div');
+      lbl.className='sv2-ruler-label';
+      lbl.textContent=Math.round(v2);
+      lbl.style.left=`${i*10}px`;
+      track.appendChild(lbl);
+    }
+    track.appendChild(tick);
+  }
+
+  let val=cur;
+  const px2val=(px)=>Math.max(minV,Math.min(maxV,Math.round((px/10)*2)/2+minV));
+  const setVal=(v)=>{
+    val=Math.max(minV,Math.min(maxV,Math.round(v*2)/2));
+    STATE.setupData[key]=String(val);
+    wrap.querySelector('#ruler-display').textContent=val;
+    const offset=((val-minV)*2)*10;
+    track.style.transform=`translateX(${-offset}px)`;
+    if(bmi)wrap.querySelector('#bmi-block').innerHTML=bmcHTML();
+  };
+  setVal(val);
+
+  let startX=0,startVal=val,dragging=false;
+  const rw=wrap.querySelector('#ruler-wrap');
+  rw.addEventListener('touchstart',e=>{startX=e.touches[0].clientX;startVal=val;dragging=true;},{passive:true});
+  rw.addEventListener('touchmove',e=>{if(!dragging)return;const dx=startX-e.touches[0].clientX;setVal(startVal+dx/10*0.5);},{passive:true});
+  rw.addEventListener('touchend',()=>{dragging=false;});
+  rw.addEventListener('mousedown',e=>{startX=e.clientX;startVal=val;dragging=true;});
+  window.addEventListener('mousemove',e=>{if(!dragging)return;const dx=startX-e.clientX;setVal(startVal+dx/10*0.5);});
+  window.addEventListener('mouseup',()=>{dragging=false;});
+
+  wrap.querySelector('#sv2-next').onclick=()=>{STATE.setupStep++;render();};
+  return wrap;
+}
+
+function renderSetupTargetRuler(){
+  const w=parseFloat(STATE.setupData['weight'])||75;
+  const g=(STATE.setupData.goal||'').toLowerCase();
+  let minV,maxV,title,sub;
+  if(g.includes('bajar')||g.includes('grasa')){minV=Math.max(40,Math.round(w*0.7));maxV=Math.round(w-1);title='Tu peso objetivo';sub='¿Hasta dónde quieres llegar?';}
+  else if(g.includes('recomp')){minV=Math.round(w-5);maxV=Math.round(w+5);title='Tu peso objetivo';sub='Puede ser similar a tu peso actual';}
+  else{minV=Math.round(w+1);maxV=Math.round(w*1.3);title='Tu peso objetivo';sub='¿Cuánto quieres ganar?';}
+  const cur=parseFloat(STATE.setupData['targetWeight'])||(g.includes('bajar')?Math.round(w*0.9):g.includes('recomp')?w:Math.round(w*1.08));
+  const wrap=renderSetupRuler(6,'targetWeight',title,sub,minV,maxV,'kg',false);
+  // Add progress hint
+  const body=wrap.querySelector('.sv2-body');
+  const diff=Math.abs(cur-w);
+  const hint=document.createElement('div');
+  hint.style.cssText='background:rgba(157,113,255,.08);border:1px solid rgba(157,113,255,.2);border-radius:14px;padding:14px;margin-top:16px;text-align:center;font-size:13px;color:var(--muted)';
+  hint.innerHTML=`<span style="color:var(--purple);font-weight:700">${Math.round((diff/w)*100)}%</span> de diferencia respecto a tu peso actual`;
+  body.appendChild(hint);
+  return wrap;
+}
+
+function renderSetupWeeks(){
+  const cur=parseInt(STATE.setupData['weeksGoal'])||12;
+  const wrap=document.createElement('div');wrap.className='sv2';
+  wrap.innerHTML=`${sv2Header(7,STEPS.length)}
+  <div class="sv2-body">
+    <div class="sv2-q">¿En cuántas semanas?</div>
+    <div class="sv2-sub">Elige un plazo realista. Un ritmo sostenible es 0.5–1kg por semana.</div>
+    <div class="sv2-weeks-display">
+      <div style="font-family:Syne,sans-serif;font-size:72px;font-weight:900;color:var(--text);line-height:1"><span id="weeks-num">${cur}</span></div>
+      <div style="font-size:16px;color:var(--muted);font-weight:600;margin-top:4px">semanas</div>
+      <div style="font-size:13px;color:var(--purple);margin-top:8px;font-weight:600" id="weeks-hint">${Math.round(cur/4.3)} meses aproximadamente</div>
+    </div>
+    <input type="range" class="sv2-range" id="weeks-range" min="4" max="52" step="1" value="${cur}"/>
+    <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:4px;font-weight:600"><span>4 semanas</span><span>52 semanas</span></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:24px">
+      ${[[8,'2 meses'],[12,'3 meses'],[24,'6 meses']].map(([w,l])=>`<button class="sv2-weeks-quick" data-w="${w}" style="padding:12px 8px;border-radius:12px;border:1.5px solid ${cur===w?'var(--purple)':'rgba(255,255,255,.1)'};background:${cur===w?'rgba(157,113,255,.12)':'var(--surface2)'};color:${cur===w?'var(--purple)':'var(--muted)'};font-size:12px;font-weight:700;cursor:pointer"><div style="font-family:Syne,sans-serif;font-size:18px;font-weight:800;color:${cur===w?'var(--purple)':'var(--text)'}">${w}</div><div>${l}</div></button>`).join('')}
+    </div>
+  </div>
+  <div class="sv2-footer"><button class="sv2-btn" id="sv2-next">Continuar →</button></div>`;
+  wrap.querySelector('#sv2-back')?.addEventListener('click',()=>{STATE.setupStep--;render();});
+  const rng=wrap.querySelector('#weeks-range');
+  const upd=(v)=>{STATE.setupData['weeksGoal']=String(v);wrap.querySelector('#weeks-num').textContent=v;wrap.querySelector('#weeks-hint').textContent=Math.round(v/4.3)+' meses aproximadamente';rng.value=v;wrap.querySelectorAll('.sv2-weeks-quick').forEach(b=>{const sel=parseInt(b.dataset.w)===parseInt(v);b.style.borderColor=sel?'var(--purple)':'rgba(255,255,255,.1)';b.style.background=sel?'rgba(157,113,255,.12)':'var(--surface2)';b.style.color=sel?'var(--purple)':'var(--muted)';b.querySelector('div').style.color=sel?'var(--purple)':'var(--text)';});};
+  rng.addEventListener('input',e=>upd(e.target.value));
+  wrap.querySelectorAll('.sv2-weeks-quick').forEach(b=>b.addEventListener('click',()=>upd(parseInt(b.dataset.w))));
+  wrap.querySelector('#sv2-next').onclick=()=>{STATE.setupStep++;render();};
+  return wrap;
+}
+
+function renderSetupLevel(){
+  const opts=[
+    {v:'Sedentario (sin ejercicio)',img:'https://images.unsplash.com/photo-1499750310107-5fef28a66643?ixlib=rb-4.0.3&auto=format&fit=crop&w=80&h=80&q=80',name:'Sedentario',desc:'Sin ejercicio regular actualmente'},
+    {v:'Ligero (1-2 días/sem)',img:'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?ixlib=rb-4.0.3&auto=format&fit=crop&w=80&h=80&q=80',name:'Principiante',desc:'1–2 días de ejercicio por semana'},
+    {v:'Moderado (3-4 días/sem)',img:'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?ixlib=rb-4.0.3&auto=format&fit=crop&w=80&h=80&q=80',name:'Intermedio',desc:'3–4 días de ejercicio por semana'},
+    {v:'Activo (5+ días/sem)',img:'https://images.unsplash.com/photo-1526506118085-60ce8714f8c5?ixlib=rb-4.0.3&auto=format&fit=crop&w=80&h=80&q=80',name:'Avanzado',desc:'5 o más días de ejercicio activo'},
+    {v:'Atleta (2x/día)',img:'https://images.unsplash.com/photo-1546519638-68e109498ffc?ixlib=rb-4.0.3&auto=format&fit=crop&w=80&h=80&q=80',name:'Atleta',desc:'Entrenamiento doble o competencia'},
+  ];
+  const cur=STATE.setupData['activityLevel']||'';
+  const wrap=document.createElement('div');wrap.className='sv2';
+  wrap.innerHTML=`${sv2Header(8,STEPS.length)}
+  <div class="sv2-body">
+    <div class="sv2-q">Nivel de actividad</div>
+    <div class="sv2-sub">¿Cómo describirías tu condición física actual?</div>
+    ${opts.map(o=>`<div class="sv2-level-card${cur===o.v?' sel':''}" data-val="${o.v}">
+      <img src="${o.img}" style="width:56px;height:56px;border-radius:14px;object-fit:cover;flex-shrink:0" loading="lazy"/>
+      <div class="sv2-level-info">
+        <div class="sv2-level-name" style="color:${cur===o.v?'var(--green)':'var(--text)'}">${o.name}</div>
+        <div class="sv2-level-desc">${o.desc}</div>
+      </div>
+      ${cur===o.v?'<span style="color:var(--green);font-size:20px">✓</span>':''}
+    </div>`).join('')}
+  </div>
+  <div class="sv2-footer"><button class="sv2-btn" id="sv2-next" ${!cur?'disabled':''}>Continuar →</button></div>`;
+  wrap.querySelector('#sv2-back')?.addEventListener('click',()=>{STATE.setupStep--;render();});
+  wrap.querySelectorAll('.sv2-level-card').forEach(c=>c.addEventListener('click',()=>{STATE.setupData['activityLevel']=c.dataset.val;render();}));
+  wrap.querySelector('#sv2-next').onclick=()=>{if(STATE.setupData['activityLevel']){STATE.setupStep++;render();}};
+  return wrap;
+}
+
+function renderSetupEquipment(){
+  const opts=[
+    {v:'🏠 En casa (con equipamiento limitado o sin equipamiento)',img:'https://images.unsplash.com/photo-1601422407692-ec4eeec1d9b3?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&h=140&q=80',name:'Sin equipamiento',desc:'Entrenamiento con peso corporal en casa'},
+    {v:'🏋️ En el gimnasio (con equipamiento completo)',img:'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&h=140&q=80',name:'Gimnasio completo',desc:'Máquinas, barras, mancuernas disponibles'},
+    {v:'🏋️🏠 Ambos (gimnasio y casa)',img:'https://images.unsplash.com/photo-1549060279-7e168fcee0c2?ixlib=rb-4.0.3&auto=format&fit=crop&w=300&h=140&q=80',name:'Ambos',desc:'Combino gym y entrenamiento en casa'},
+  ];
+  const cur=STATE.setupData['trainingPlace']||'';
+  const wrap=document.createElement('div');wrap.className='sv2';
+  wrap.innerHTML=`${sv2Header(9,STEPS.length)}
+  <div class="sv2-body">
+    <div class="sv2-q">¿Dónde entrenas?</div>
+    <div class="sv2-sub">Adaptamos cada ejercicio a tu equipamiento disponible</div>
+    <div class="sv2-equip-grid">
+      ${opts.map(o=>`<div class="sv2-equip-card${cur===o.v?' sel':''}" data-val="${o.v}" style="padding:0;overflow:hidden;flex-direction:column;align-items:stretch">
+        <img src="${o.img}" style="width:100%;height:110px;object-fit:cover;display:block" loading="lazy"/>
+        <div style="padding:14px 16px;display:flex;align-items:center;gap:12px">
+          <div style="flex:1">
+            <div style="font-family:Syne,sans-serif;font-size:15px;font-weight:700;color:${cur===o.v?'var(--blue)':'var(--text)'}">${o.name}</div>
+            <div style="font-size:12px;color:var(--muted);margin-top:2px">${o.desc}</div>
+          </div>
+          ${cur===o.v?'<span style="color:var(--blue);font-size:22px;flex-shrink:0">✓</span>':''}
+        </div>
+      </div>`).join('')}
+    </div>
+  </div>
+  <div class="sv2-footer"><button class="sv2-btn" id="sv2-next" ${!cur?'disabled':''}>Continuar →</button></div>`;
+  wrap.querySelector('#sv2-back')?.addEventListener('click',()=>{STATE.setupStep--;render();});
+  wrap.querySelectorAll('.sv2-equip-card').forEach(c=>c.addEventListener('click',()=>{STATE.setupData['trainingPlace']=c.dataset.val;render();}));
+  wrap.querySelector('#sv2-next').onclick=()=>{if(STATE.setupData['trainingPlace']){STATE.setupStep++;render();}};
+  return wrap;
+}
+
+function renderSetup(){
+  const wrap=document.createElement('div');wrap.className='setup-wrap';
+  if(STATE.aiLoading){
+    wrap.innerHTML=`<div style="text-align:center;padding-top:60px">
+      <div style="font-size:56px;margin-bottom:16px;animation:floatLogo 2s ease-in-out infinite">🧠</div>
+      <div style="font-family:Syne,sans-serif;font-size:22px;font-weight:800;color:var(--purple)">Creando tu plan…</div>
+      <div style="color:var(--muted);font-size:13px;margin-top:8px;line-height:1.7">Analizando tu perfil con IA<br>basada en principios de Harvard</div>
+      <div style="display:flex;justify-content:center;gap:8px;margin-top:28px"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+    </div>`;
+    return wrap;
+  }
+  const step=STEPS[STATE.setupStep];
+  if(!step)return wrap;
+  const t=step.type;
+  if(t==='sv2-name') return renderSetupName();
+  if(t==='sv2-goal') return renderSetupGoal();
+  if(t==='sv2-gender') return renderSetupGender();
+  if(t==='sv2-age') return renderSetupAge();
+  if(t==='sv2-ruler') return renderSetupRuler(STATE.setupStep,step.key,step.title,step.sub,step.min,step.max,step.unit,step.bmi);
+  if(t==='sv2-ruler-target') return renderSetupTargetRuler();
+  if(t==='sv2-weeks') return renderSetupWeeks();
+  if(t==='sv2-level') return renderSetupLevel();
+  if(t==='sv2-equip') return renderSetupEquipment();
+  if(t==='meal-select') return renderMealSelect();
+  if(t==='food-prefs') return renderFoodChips('foodLikes',step.q,'var(--green)');
+  if(t==='food-exclude') return renderFoodChips('foodDislikes',step.q,'#f87171');
+  if(t==='referral') return renderReferralStep();
+  return wrap;
+}
 const FOOD_PREFS_CATS=[
   {cat:'🥩 Proteínas',items:['Pollo','Pechuga de pavo','Carne de vacuno','Cerdo','Salmón','Atún','Merluza','Huevos','Camarones']},
   {cat:'🫘 Legumbres',items:['Lentejas','Garbanzos','Porotos negros','Porotos rojos','Arvejas','Tofu']},
@@ -1153,25 +1579,6 @@ function getNutritionPrompt(p){
   const comidas=p.mealsPerDay?'ESTRUCTURA EXACTAMENTE CON: '+p.mealsPerDay+'.':'';
   const prefs=[gustos,excluir,comidas].filter(Boolean).join(' ');
   return{desc,prefs};
-}
-function renderSetup(){
-  const wrap=document.createElement('div');wrap.className='setup-wrap';
-  if(STATE.aiLoading){wrap.innerHTML=`<div style="text-align:center;padding-top:60px"><div style="font-size:56px;margin-bottom:16px">🧠</div><div style="font-family:Syne,sans-serif;font-size:22px;font-weight:800;color:var(--purple)">Generando tu plan…</div><div style="color:var(--muted);font-size:13px;margin-top:8px">Analizando con principios de Harvard</div><div style="display:flex;justify-content:center;gap:8px;margin-top:24px"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div></div>`;return wrap;}
-  const step=STEPS[STATE.setupStep];
-  if(step.type==='meal-select')return renderMealSelect();
-  if(step.type==='food-prefs')return renderFoodChips('foodLikes',step.q,'var(--green)');
-  if(step.type==='food-exclude')return renderFoodChips('foodDislikes',step.q,'#f87171');
-  if(step.type==='referral')return renderReferralStep();
-  let stepQ=step.q,stepPh=step.ph;
-  if(step.key==='targetWeight'){const g=(STATE.setupData.goal||'').toLowerCase();if(g.includes('bajar')||g.includes('grasa')){stepQ='¿Cuál es tu peso objetivo? (kg) — debe ser menor a tu peso actual';stepPh='Ej: '+Math.round((parseFloat(STATE.setupData.weight)||80)*.9)+' kg';}else if(g.includes('recomp')){stepQ='¿Cuál es tu peso objetivo? (kg) — puede ser igual o similar';stepPh='Ej: '+(STATE.setupData.weight||'80')+' kg';}else{stepQ='¿Cuánto quieres pesar al final? (kg) — debe ser mayor';stepPh='Ej: '+Math.round((parseFloat(STATE.setupData.weight)||80)*1.08)+' kg';}}
-  const pct=(STATE.setupStep/STEPS.length)*100;
-  wrap.innerHTML=`<div class="screen-logo">🏋️</div><div class="screen-title">Configura tu plan</div><div class="screen-sub">Hola ${STATE.user?.name}! Cuéntanos sobre ti.</div><div style="width:100%;max-width:440px;margin-top:20px"><div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="font-size:11px;color:var(--muted)">Configuración inicial</span><span style="font-size:11px;color:var(--purple)">${STATE.setupStep+1}/${STEPS.length}</span></div><div class="prog-wrap"><div class="prog-fill" style="width:${pct}%;background:linear-gradient(90deg,var(--purple),#7c3aed)"></div></div></div><div class="setup-card"><div style="font-size:12px;color:var(--purple);font-weight:700;margin-bottom:14px">Paso ${STATE.setupStep+1}</div><div style="font-family:Syne,sans-serif;font-size:17px;font-weight:700;margin-bottom:20px;line-height:1.4">${stepQ}</div><div id="step-inp"></div><button class="btn btn-purple" id="btn-next" style="margin-top:16px">${STATE.setupStep===STEPS.length-1?'🚀 Generar mi plan':'Continuar →'}</button>${STATE.setupStep>0?`<button class="btn btn-ghost" id="btn-back">← Atrás</button>`:''}</div>`;
-  const inp=wrap.querySelector('#step-inp');
-  if(step.type==='select'){step.opts.forEach(o=>{const b=document.createElement('button');b.className='option-btn'+(STATE.setupData[step.key]===o?' selected':'');b.textContent=o;b.onclick=()=>{STATE.setupData[step.key]=o;render();};inp.appendChild(b);});}
-  else{const el=document.createElement('input');el.type=step.type;el.placeholder=stepPh;el.value=STATE.setupData[step.key]||'';el.style.cssText='width:100%';el.oninput=e=>STATE.setupData[step.key]=e.target.value;el.onkeydown=e=>{if(e.key==='Enter')wrap.querySelector('#btn-next')?.click();};inp.appendChild(el);setTimeout(()=>el.focus(),100);}
-  wrap.querySelector('#btn-next').onclick=async()=>{const val=STATE.setupData[step.key];if(!step.optional&&!val){inp.querySelector('input,select')?.focus();return;}if(STATE.setupStep<STEPS.length-1){STATE.setupStep++;render();}else{await finalizarSetup();}};
-  wrap.querySelector('#btn-back')?.addEventListener('click',()=>{STATE.setupStep--;render();});
-  return wrap;
 }
 function renderHeader(){
   const p=STATE.profile;const tabNames=['Dashboard','Entrenamiento','Nutrición','Registro','Progreso'];
