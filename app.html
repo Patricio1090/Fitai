@@ -464,31 +464,30 @@ textarea{resize:none;height:80px;}
 // OFFLINE SYNC QUEUE
 // Guarda operaciones pendientes y las reenvía al reconectar
 // ══════════════════════════════════════════
+function _syncKey(){return'fitai_sync_q_'+(STATE.user?.email?btoa(STATE.user.email).slice(0,8):'_anon_');}
 function queueSync(type, data){
   try{
-    var q=JSON.parse(localStorage.getItem('fitai_sync_q')||'[]');
-    // Dedup: replace existing entry of same type+key
+    var q=JSON.parse(localStorage.getItem(_syncKey())||'[]');
     var key=type+':'+(data.date||data.email||'');
     q=q.filter(function(i){return(i.type+':'+(i.data.date||i.data.email||''))!==key;});
     q.push({type:type,data:data,ts:Date.now()});
-    // Keep max 200 entries
     if(q.length>200)q=q.slice(-200);
-    localStorage.setItem('fitai_sync_q',JSON.stringify(q));
+    localStorage.setItem(_syncKey(),JSON.stringify(q));
   }catch(e){}
 }
 function dequeueSync(type, key){
   try{
-    var q=JSON.parse(localStorage.getItem('fitai_sync_q')||'[]');
+    var q=JSON.parse(localStorage.getItem(_syncKey())||'[]');
     var k=type+':'+key;
     q=q.filter(function(i){return(i.type+':'+(i.data.date||i.data.email||''))!==k;});
-    localStorage.setItem('fitai_sync_q',JSON.stringify(q));
+    localStorage.setItem(_syncKey(),JSON.stringify(q));
   }catch(e){}
 }
 async function flushSyncQueue(){
   if(!navigator.onLine)return;
   initSupabase();if(!supa)return;
   var q=[];
-  try{q=JSON.parse(localStorage.getItem('fitai_sync_q')||'[]');}catch(e){return;}
+  try{q=JSON.parse(localStorage.getItem(_syncKey())||'[]');}catch(e){return;}
   if(!q.length)return;
   var failed=[];
   for(var i=0;i<q.length;i++){
@@ -520,8 +519,7 @@ async function flushSyncQueue(){
       }
     }catch(e){failed.push(item);}
   }
-  // Keep only failed items
-  try{localStorage.setItem('fitai_sync_q',JSON.stringify(failed));}catch(e){}
+  try{localStorage.setItem(_syncKey(),JSON.stringify(failed));}catch(e){}
   if(q.length-failed.length>0)console.log('[Sync] Flushed '+(q.length-failed.length)+' pending ops');
 }
 // Auto-flush on reconnect
@@ -587,13 +585,26 @@ function saveUserCache(e,d){try{localStorage.setItem('fitai_ucache_'+btoa(e),JSO
 function loadUserCache(e){try{const d=localStorage.getItem('fitai_ucache_'+btoa(e));return d?JSON.parse(d):null;}catch(x){return null;}}
 function saveQACache(e,qa){try{if(e&&qa?.length)localStorage.setItem('fitai_qa_'+btoa(e),JSON.stringify(qa));}catch(x){}}
 function loadQACache(e){try{const d=localStorage.getItem('fitai_qa_'+btoa(e));return d?JSON.parse(d):null;}catch(x){return null;}}
+// Merge multiple QA arrays, deduplicating by question text, keeping newest
+function mergeQA(...arrays){
+  const map=new Map();
+  for(const arr of arrays){
+    if(!Array.isArray(arr))continue;
+    for(const item of arr){
+      if(!item||!item.q)continue;
+      const key=item.q.trim().slice(0,80);
+      if(!map.has(key))map.set(key,item);
+    }
+  }
+  return Array.from(map.values()).slice(-200);
+}
 let STATE={lang:'es',authMode:'login',user:null,authLoading:false,authError:'',screen:'auth',payLoading:false,payError:'',profile:null,dailyLogs:[],plan:null,nutrition:null,chat:[],setupStep:0,setupData:{},tab:0,aiLoading:false,aiMsg:'',todayLog:{weight:'',calories:'',protein:'',carbs:'',fats:'',sleep:'',water:'',training:'no',energy:'3',notes:'',mealPhotos:{},mealMacros:{},mealAnalyzing:{},photoAnalysis:'',extraFood:'',extraMacros:null,extraAnalyzing:false},showUserMenu:false,showSideMenu:false,showModeMenu:false,showPlaceMenu:false,sideSection:null,qaHistory:[],couponApplied:false,couponCode:'',couponData:null,couponDiscount:0,couponFinalAmount:CONFIG.AMOUNT,needsAIPlan:false,planGeneratedAt:null,programStartDate:null};
 function clearUserState(){
   var email=STATE.user&&STATE.user.email?STATE.user.email:null;
   var todayStr=getTodayStr();
   // Only persist today's data — check the stored fitai_today date matches actual today
   var storedDate=null;
-  try{storedDate=JSON.parse(localStorage.getItem('fitai_today')||'{}').date;}catch(e){}
+  try{storedDate=JSON.parse(localStorage.getItem(_userKey('fitai_today'))||'{}').date;}catch(e){}
   // Data is valid for today if: stored date = today, OR no stored date but weight/data just entered
   var dataIsToday=storedDate===todayStr||(storedDate===null&&parseFloat(STATE.todayLog.weight)>0);
   if(dataIsToday){
@@ -608,7 +619,7 @@ function clearUserState(){
     try{
       var tl=Object.assign({},STATE.todayLog,{mealPhotos:{},mealAnalyzing:{}});
       if(parseInt(tl.calories)>0||parseFloat(tl.weight)>0||Object.keys(tl.mealMacros||{}).length>0||tl.extraMacros?.ok){
-        localStorage.setItem('fitai_today',JSON.stringify({log:tl,date:todayStr}));
+        localStorage.setItem(_userKey('fitai_today'),JSON.stringify({log:tl,date:todayStr}));
         if(email)dbSaveTodayLog(email);
       }
     }catch(e){}
@@ -693,28 +704,31 @@ function saveOnePhoto(meal,dataUrl){
     console.warn('[Photo] saveOnePhoto failed for',meal);
   }
 }
+// ── User-scoped storage keys ──────────────────────────────────────
+function _userKey(base){
+  // All critical keys scoped to logged-in user's email
+  var e=STATE.user&&STATE.user.email?btoa(STATE.user.email).slice(0,12):'_anon_';
+  return base+'_'+e;
+}
 function save(){
-  // CRITICAL: profile+user+logs saved first in protected key
-  try{localStorage.setItem('fitai_core',JSON.stringify({user:STATE.user,profile:STATE.profile,dailyLogs:STATE.dailyLogs,planGeneratedAt:STATE.planGeneratedAt,programStartDate:STATE.programStartDate}));}catch(e){}
-  // SECONDARY: plan+nutrition can fail without breaking app
-  try{localStorage.setItem('fitai_plan',JSON.stringify({plan:STATE.plan,nutrition:STATE.nutrition,chat:STATE.chat,qaHistory:STATE.qaHistory}));}catch(e){}
-  // TODAY LOG: macros only, no photos, no internal fields
-  try{var tl=Object.assign({},STATE.todayLog,{mealPhotos:{},mealAnalyzing:{},_date:undefined});localStorage.setItem('fitai_today',JSON.stringify({log:tl,date:getTodayStr()}));}catch(e){}
-  // PHOTOS: already saved per-meal via saveOnePhoto() — just refresh keys
+  var ck=_userKey('fitai_core');
+  var pk=_userKey('fitai_plan');
+  var tk=_userKey('fitai_today');
+  try{localStorage.setItem(ck,JSON.stringify({user:STATE.user,profile:STATE.profile,dailyLogs:STATE.dailyLogs,planGeneratedAt:STATE.planGeneratedAt,programStartDate:STATE.programStartDate}));}catch(e){}
+  try{localStorage.setItem(pk,JSON.stringify({plan:STATE.plan,nutrition:STATE.nutrition,chat:STATE.chat,qaHistory:STATE.qaHistory}));}catch(e){}
+  try{var tl=Object.assign({},STATE.todayLog,{mealPhotos:{},mealAnalyzing:{},_date:undefined});localStorage.setItem(tk,JSON.stringify({log:tl,date:getTodayStr()}));}catch(e){}
   try{saveTodayPhotos();}catch(e){}
-  // UserCache for compatibility
   try{if(STATE.user&&STATE.user.email){saveUserCache(STATE.user.email,{plan:STATE.plan,nutrition:STATE.nutrition,qaHistory:STATE.qaHistory,planGeneratedAt:STATE.planGeneratedAt,programStartDate:STATE.programStartDate,dailyLogs:STATE.dailyLogs});}}catch(e){}
 }
 function loadSaved(){
-  // 1. Critical data
-  try{var core=JSON.parse(localStorage.getItem('fitai_core')||'{}');if(core.user)STATE.user=core.user;if(core.profile)STATE.profile=core.profile;if(core.dailyLogs)STATE.dailyLogs=core.dailyLogs;if(core.planGeneratedAt)STATE.planGeneratedAt=core.planGeneratedAt;if(core.programStartDate)STATE.programStartDate=core.programStartDate;}catch(e){}
-  // 2. Plan data
-  try{var pl=JSON.parse(localStorage.getItem('fitai_plan')||'{}');if(pl.plan)STATE.plan=pl.plan;if(pl.nutrition)STATE.nutrition=pl.nutrition;if(pl.chat)STATE.chat=pl.chat;if(pl.qaHistory)STATE.qaHistory=pl.qaHistory;}catch(e){}
-  // 3. Today log (only if same day)
-  try{var td=JSON.parse(localStorage.getItem('fitai_today')||'{}');if(td.log&&td.date===getTodayStr()){STATE.todayLog=Object.assign({},td.log,{mealPhotos:{},mealAnalyzing:{}});STATE.todayLog.mealPhotos=loadTodayPhotos();if(!STATE.todayLog.mealMacros)STATE.todayLog.mealMacros={};}}catch(e){}
-  // 4. Legacy fallback: old fitai_v3 — ALWAYS try to fill gaps
-  try{var d=JSON.parse(localStorage.getItem(STORAGE_KEY)||'{}');if(d.user&&!STATE.user)STATE.user=d.user;if(d.profile&&!STATE.profile)STATE.profile=d.profile;if(d.dailyLogs&&d.dailyLogs.length>STATE.dailyLogs.length)STATE.dailyLogs=d.dailyLogs;if(d.plan&&!STATE.plan)STATE.plan=d.plan;if(d.nutrition&&!STATE.nutrition)STATE.nutrition=d.nutrition;if(d.planGeneratedAt&&!STATE.planGeneratedAt)STATE.planGeneratedAt=d.planGeneratedAt;if(d.programStartDate&&!STATE.programStartDate)STATE.programStartDate=d.programStartDate;if(d.qaHistory&&d.qaHistory.length>(STATE.qaHistory||[]).length)STATE.qaHistory=d.qaHistory;}catch(e){}
-  // 5. Also try userCache as last resort for dailyLogs
+  var ck=_userKey('fitai_core');
+  var pk=_userKey('fitai_plan');
+  var tk=_userKey('fitai_today');
+  try{var core=JSON.parse(localStorage.getItem(ck)||'{}');if(core.user)STATE.user=core.user;if(core.profile)STATE.profile=core.profile;if(core.dailyLogs)STATE.dailyLogs=core.dailyLogs;if(core.planGeneratedAt)STATE.planGeneratedAt=core.planGeneratedAt;if(core.programStartDate)STATE.programStartDate=core.programStartDate;}catch(e){}
+  try{var pl=JSON.parse(localStorage.getItem(pk)||'{}');if(pl.plan)STATE.plan=pl.plan;if(pl.nutrition)STATE.nutrition=pl.nutrition;if(pl.chat)STATE.chat=pl.chat;if(pl.qaHistory)STATE.qaHistory=pl.qaHistory;}catch(e){}
+  try{var td=JSON.parse(localStorage.getItem(tk)||'{}');if(td.log&&td.date===getTodayStr()){STATE.todayLog=Object.assign({},td.log,{mealPhotos:{},mealAnalyzing:{}});STATE.todayLog.mealPhotos=loadTodayPhotos();if(!STATE.todayLog.mealMacros)STATE.todayLog.mealMacros={};}}catch(e){}
+  // Legacy fitai_v3 key — only use if email matches to avoid cross-user contamination
+  try{var d=JSON.parse(localStorage.getItem(STORAGE_KEY)||'{}');if(d.user&&d.user.email===STATE.user?.email){if(d.profile&&!STATE.profile)STATE.profile=d.profile;if(d.dailyLogs&&d.dailyLogs.length>STATE.dailyLogs.length)STATE.dailyLogs=d.dailyLogs;if(d.plan&&!STATE.plan)STATE.plan=d.plan;if(d.nutrition&&!STATE.nutrition)STATE.nutrition=d.nutrition;if(d.planGeneratedAt&&!STATE.planGeneratedAt)STATE.planGeneratedAt=d.planGeneratedAt;if(d.programStartDate&&!STATE.programStartDate)STATE.programStartDate=d.programStartDate;if(d.qaHistory&&d.qaHistory.length>(STATE.qaHistory||[]).length)STATE.qaHistory=d.qaHistory;}}catch(e){}
   try{if(STATE.user&&STATE.user.email&&!STATE.dailyLogs.length){var uc=loadUserCache(STATE.user.email);if(uc&&uc.dailyLogs&&uc.dailyLogs.length)STATE.dailyLogs=uc.dailyLogs;if(uc&&uc.plan&&!STATE.plan)STATE.plan=uc.plan;if(uc&&uc.nutrition&&!STATE.nutrition)STATE.nutrition=uc.nutrition;if(uc&&uc.planGeneratedAt&&!STATE.planGeneratedAt)STATE.planGeneratedAt=uc.planGeneratedAt;if(uc&&uc.programStartDate&&!STATE.programStartDate)STATE.programStartDate=uc.programStartDate;}}catch(e){}
   cleanOldPhotos();
 }
@@ -723,9 +737,10 @@ loadSaved();
 (function cleanStaleStorage(){
   try{
     var today=new Date().toLocaleDateString('es-CL');
-    var td=JSON.parse(localStorage.getItem('fitai_today')||'{}');
+    var _staleKey=_userKey('fitai_today');
+    var td=JSON.parse(localStorage.getItem(_staleKey)||'{}');
     if(td.date&&td.date!==today){
-      localStorage.removeItem('fitai_today');
+      localStorage.removeItem(_staleKey);
       Object.keys(localStorage).forEach(function(k){
         if(k.startsWith('fitai_mm_')&&k.endsWith('_'+today))localStorage.removeItem(k);
       });
@@ -760,7 +775,7 @@ function checkDayReset(){
   // 3. Reset STATE and localStorage
   STATE.todayLog={weight:'',calories:'',protein:'',carbs:'',fats:'',sleep:'',water:'',training:'no',energy:'3',notes:'',mealPhotos:{},mealMacros:{},mealAnalyzing:{},photoAnalysis:'',extraFood:'',extraMacros:null,extraAnalyzing:false};
   STATE.aiMsg='';
-  localStorage.removeItem('fitai_today');
+  localStorage.removeItem(_userKey('fitai_today'));
   // Explicitly remove today's mm key (prevents stale data from clearUserState being picked up)
   if(STATE.user&&STATE.user.email){
     try{localStorage.removeItem('fitai_mm_'+STATE.user.email+'_'+today);}catch(e){}
@@ -799,16 +814,16 @@ STATE.screen=getInitialScreen();
 if(window.location.hash==='#login'){STATE.authMode='login';STATE.screen='auth';window.history.replaceState({},'',window.location.pathname);}
 const LANG_SYS={es:'Responde siempre en español.',en:'Always respond in English.'};
 function getSYS(){return`Eres un experto en ciencias del deporte, nutrición y metabolismo. Basa tus respuestas en estudios de Harvard Medical School. Sé preciso pero accesible. Usa emojis estratégicamente. ${LANG_SYS[STATE.lang]||LANG_SYS.es}`;}
-async function claude(messages,max=1000){const today=new Date().toLocaleDateString('es-CL');const uk='fitai_usage_'+today;const usage=parseInt(localStorage.getItem(uk)||'0');if(usage>=30)return'⚠️ Límite de 30 consultas diarias alcanzado. Vuelve mañana 💪';localStorage.setItem(uk,usage+1);try{const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':['sk-ant-api03-EneV_RhMnIgQ0Cld0vq2-eGUDOozaDlRxRFpPljFOoTAJbSUfu-G0hhMTl5IdrVPG97uUlE0z881_Z-','tHnI74A-h3O5eQAA'].join(''),'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:max,system:getSYS(),messages})});const d=await res.json();if(d.error)return'⚠️ Error: '+d.error.message;return d.content?.map(b=>b.text||'').join('')||'⚠️ Sin respuesta';}catch(e){return'⚠️ Error de conexión: '+e.message;}}
+async function claude(messages,max=1000){const today=new Date().toLocaleDateString('es-CL');const uk='fitai_usage_'+(STATE.user?.email?btoa(STATE.user.email).slice(0,8):'_')+'_'+today;const usage=parseInt(localStorage.getItem(uk)||'0');if(usage>=30)return'⚠️ Límite de 30 consultas diarias alcanzado. Vuelve mañana 💪';localStorage.setItem(uk,usage+1);try{const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':['sk-ant-api03-EneV_RhMnIgQ0Cld0vq2-eGUDOozaDlRxRFpPljFOoTAJbSUfu-G0hhMTl5IdrVPG97uUlE0z881_Z-','tHnI74A-h3O5eQAA'].join(''),'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:max,system:getSYS(),messages})});const d=await res.json();if(d.error)return'⚠️ Error: '+d.error.message;return d.content?.map(b=>b.text||'').join('')||'⚠️ Sin respuesta';}catch(e){return'⚠️ Error de conexión: '+e.message;}}
 async function claudeVision(content,max=1000){try{const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':['sk-ant-api03-EneV_RhMnIgQ0Cld0vq2-eGUDOozaDlRxRFpPljFOoTAJbSUfu-G0hhMTl5IdrVPG97uUlE0z881_Z-','tHnI74A-h3O5eQAA'].join(''),'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:max,system:getSYS(),messages:[{role:'user',content}]})});const d=await res.json();if(d.error)throw new Error(d.error.message);return d.content?.map(b=>b.text||'').join('')||'⚠️ Sin respuesta';}catch(e){return'⚠️ Error: '+e.message;}}
 async function authRegister(email,password,name,phone=''){if(email==='admin@fitai.cl')throw new Error('Email reservado.');initSupabase();if(!supa)throw new Error('Error de conexión.');const{data:ex}=await supa.from('users').select('email').eq('email',email).single();if(ex)throw new Error('Este email ya está registrado.');const{error}=await supa.from('users').insert({email,name,password_hash:btoa(password),paid:false,setup_done:false,created_at:new Date().toISOString()});if(error)throw new Error('Error al registrar: '+error.message);const{data:nr}=await supa.from('users').select('id').eq('email',email).single();const user={id:nr?.id||null,email,name,paid:false,token:btoa(email+':'+Date.now())};const users=JSON.parse(localStorage.getItem('fitai_users')||'{}');users[email]={...user,passwordHash:btoa(password)};localStorage.setItem('fitai_users',JSON.stringify(users));return user;}
 async function authLogin(email,password){if(email==='admin@fitai.cl'&&password==='fitai2024admin')return{id:null,email:'admin@fitai.cl',name:'Admin',paid:true,token:'admin-token'};const TU={'test1@fitai.cl':{name:'Test 1',pass:'fitai_test_1'},'test2@fitai.cl':{name:'Test 2',pass:'fitai_test_2'},'test3@fitai.cl':{name:'Test 3',pass:'fitai_test_3'},'test4@fitai.cl':{name:'Test 4',pass:'fitai_test_4'},'test5@fitai.cl':{name:'Test 5',pass:'fitai_test_5'},'test6@fitai.cl':{name:'Test 6',pass:'fitai_test_6'},'test7@fitai.cl':{name:'Test 7',pass:'fitai_test_7'},'test8@fitai.cl':{name:'Test 8',pass:'fitai_test_8'},'test9@fitai.cl':{name:'Test 9',pass:'fitai_test_9'},'test10@fitai.cl':{name:'Test 10',pass:'fitai_test_10'},'test11@fitai.cl':{name:'Test 11',pass:'fitai_test_11'},'test12@fitai.cl':{name:'Test 12',pass:'fitai_test_12'},'test13@fitai.cl':{name:'Test 13',pass:'fitai_test_13'},'test14@fitai.cl':{name:'Test 14',pass:'fitai_test_14'},'test15@fitai.cl':{name:'Test 15',pass:'fitai_test_15'}};if(TU[email]&&TU[email].pass===password)return{id:null,email,name:TU[email].name,paid:true,token:'test-token-'+email};initSupabase();if(!supa){const users=JSON.parse(localStorage.getItem('fitai_users')||'{}');const u=users[email];if(!u)throw new Error('Email no encontrado.');if(u.passwordHash!==btoa(password))throw new Error('Contraseña incorrecta.');return{id:u.id||null,email:u.email,name:u.name,paid:u.paid,token:u.token};}const{data:u,error}=await supa.from('users').select('*').eq('email',email).single();if(error||!u)throw new Error('Email no encontrado.');if(u.password_hash!==btoa(password))throw new Error('Contraseña incorrecta.');const users=JSON.parse(localStorage.getItem('fitai_users')||'{}');users[email]={id:u.id,email:u.email,name:u.name,paid:u.paid,passwordHash:u.password_hash,token:btoa(email+':'+Date.now())};localStorage.setItem('fitai_users',JSON.stringify(users));return{id:u.id,email:u.email,name:u.name,paid:u.paid,token:btoa(email+':'+Date.now())};}
 async function loadProfileFromSupabase(email){initSupabase();if(!supa)return;try{const{data:u}=await supa.from('users').select('*').eq('email',email).single();if(u){const ex=STATE.profile||loadProfileCache(email)||{};const ts=u.setup_done||u.setup_completed||(u.goal&&u.height&&u.weight)||ex.goal;if(ts){const p={name:u.name||u.full_name||STATE.user?.name||ex.name||'',goal:u.goal||ex.goal||'',age:u.age||ex.age,gender:u.gender||ex.gender,weight:u.weight_initial||u.weight||ex.weight,height:u.height||ex.height,targetWeight:u.target_weight||ex.targetWeight,weeksGoal:u.weeks_goal||ex.weeksGoal,activityLevel:u.activity_level||ex.activityLevel,trainingPlace:u.training_place||ex.trainingPlace,mealsPerDay:u.meals_per_day||ex.mealsPerDay||'Desayuno,Almuerzo,Cena',foodLikes:u.food_likes||ex.foodLikes||'',foodDislikes:u.food_dislikes||ex.foodDislikes||'',referralSource:u.referral_source||ex.referralSource||'',setup:true};STATE.profile=p;saveProfileCache(email,p);}if(u.paid)STATE.user.paid=true;if(u.id&&STATE.user)STATE.user.id=u.id;if(u.current_plan)STATE.plan=u.current_plan;if(u.current_nutrition)STATE.nutrition=u.current_nutrition;if(u.plan_generated_at)STATE.planGeneratedAt=u.plan_generated_at;
       // Load programStartDate from Supabase — never lost even if localStorage clears
       if(u.program_start_date&&!STATE.programStartDate)STATE.programStartDate=u.program_start_date;
-      if(u.qa_history?.length&&u.qa_history.length>=(STATE.qaHistory?.length||0))STATE.qaHistory=u.qa_history;
+      if(u.qa_history?.length)STATE.qaHistory=mergeQA(STATE.qaHistory,u.qa_history);
       // QA dedicated cache fallback (in case Supabase column missing)
-      if(!STATE.qaHistory?.length&&email){const qc=loadQACache(email);if(qc?.length)STATE.qaHistory=qc;}
+      if(email){const qc=loadQACache(email);if(qc?.length)STATE.qaHistory=mergeQA(STATE.qaHistory,qc);}
       // Restore from Supabase: LOCAL ALWAYS WINS — only fill gaps
       if(u.today_log_data&&u.today_log_date===getTodayStr()){try{
         const tl=JSON.parse(u.today_log_data);
@@ -1031,7 +1046,45 @@ Sé específico con los números que aparecen en el InBody. Si algún dato no es
     const studies=[{title:'"Surprising findings about metabolism and age"',detail:"2021. Estudio con 6,421 sujetos revela 4 fases metabólicas distintas.",link:"www.health.harvard.edu/blog/surprising-findings-about-metabolism-and-age-202110082613",icon:"🧬",color:"#a78bfa"},{title:'"HIIT vs cardio continuo"',detail:"HIIT es más efectivo para reducir grasa corporal.",link:"nutritionsource.hsph.harvard.edu/high-intensity-interval-training/",icon:"🏃",color:"#f43f5e"},{title:'"Muscle loss and protein needs"',detail:"2024. La sarcopenia afecta al 50% de adultos mayores de 80 años.",link:"www.health.harvard.edu/staying-healthy/muscle-loss-and-protein-needs-in-older-adults",icon:"🥩",color:"#f87171"},{title:'"How sleep deprivation can harm your health"',detail:"Dormir menos de 7h daña casi todos los sistemas del cuerpo.",link:"www.health.harvard.edu/healthy-aging-and-longevity/how-sleep-deprivation-can-harm-your-health",icon:"😴",color:"#60a5fa"},{title:'"Added Sugar in the Diet"',detail:"2023. El azúcar añadido es factor principal de obesidad y diabetes.",link:"nutritionsource.hsph.harvard.edu/carbohydrates/added-sugar-in-the-diet/",icon:"🍬",color:"#fb923c"},{title:'"Exercise treats depression"',detail:"2021. El ejercicio libera endorfinas y factores neurotróficos.",link:"www.health.harvard.edu/mind-and-mood/exercise-is-an-all-natural-treatment-to-fight-depression",icon:"🧠",color:"#34d399"},{title:'"The Microbiome"',detail:"2022. La microbiota intestinal regula el metabolismo energético.",link:"nutritionsource.hsph.harvard.edu/microbiome/",icon:"🦠",color:"#2dd4bf"},{title:'"Intermittent fasting for weight loss"',detail:"2022. El ayuno intermitente mejora sensibilidad a la insulina.",link:"www.health.harvard.edu/blog/should-you-try-intermittent-fasting-for-weight-loss-202207282790",icon:"⏰",color:"#fbbf24"},{title:'"Add strength training"',detail:"El entrenamiento de fuerza mejora sensibilidad a la insulina.",link:"www.health.harvard.edu/staying-healthy/add-strength-training-to-your-fitness-plan",icon:"💪",color:"#e879f9"},{title:'"How much water should you drink?"',detail:"El agua transporta nutrientes y normaliza la presión arterial.",link:"www.health.harvard.edu/staying-healthy/how-much-water-should-you-drink",icon:"💧",color:"#38bdf8"}];
     div.innerHTML=`<div class="content fade-in"><div style="display:flex;align-items:center;gap:10px;margin-bottom:16px"><button onclick="STATE.sideSection=null;render()" style="background:none;border:none;color:var(--purple);font-size:20px;cursor:pointer">←</button><div style="font-family:Syne,sans-serif;font-size:18px;font-weight:800">🔬 Estudios Harvard</div></div>${studies.map((s,i)=>`<div class="meal-card" style="border-color:${s.color}20"><div class="meal-card-header" style="cursor:default"><div class="meal-card-icon">${s.icon}</div><div class="meal-card-title"><div class="meal-card-name" style="color:${s.color}">${i+1}. ${s.title}</div></div></div><div class="meal-card-items"><div class="meal-card-item" style="line-height:1.6"><div class="meal-card-dot" style="background:${s.color}"></div>${s.detail}</div><div class="meal-card-item" style="font-size:11px"><div class="meal-card-dot" style="background:${s.color}40"></div><a href="https://${s.link}" target="_blank" rel="noopener" style="color:${s.color};text-decoration:none">🔗 ${s.link}</a></div></div></div>`).join('')}</div>`;
   } else if(s==='qa'){
-    div.innerHTML=`<div class="content fade-in"><div style="display:flex;align-items:center;gap:10px;margin-bottom:16px"><button onclick="STATE.sideSection=null;render()" style="background:none;border:none;color:var(--purple);font-size:20px;cursor:pointer">←</button><div style="font-family:Syne,sans-serif;font-size:18px;font-weight:800">💬 Mis Preguntas</div></div>${STATE.qaHistory.length===0?'<div class="card"><div style="color:var(--muted);text-align:center;padding:20px">Aún no tienes preguntas guardadas.</div></div>':STATE.qaHistory.slice().reverse().map(qa=>`<div class="qa-item"><div class="qa-date">${qa.date}</div><div class="qa-q">❓ ${qa.q}</div><div class="qa-a">🤖 ${qa.a}</div></div>`).join('')}</div>`;
+    const qa=STATE.qaHistory||[];
+    const grouped={};
+    qa.slice().reverse().forEach(item=>{
+      const d=item.date||'Sin fecha';
+      if(!grouped[d])grouped[d]=[];
+      grouped[d].push(item);
+    });
+    const entries=Object.entries(grouped);
+    div.innerHTML=`<div class="content fade-in">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+        <button onclick="STATE.sideSection=null;render()" style="background:none;border:none;color:var(--purple);font-size:20px;cursor:pointer">←</button>
+        <div style="font-family:Syne,sans-serif;font-size:18px;font-weight:800">💬 Mis Preguntas</div>
+        <div style="margin-left:auto;background:rgba(157,113,255,.15);border-radius:20px;padding:3px 12px;font-size:12px;font-weight:700;color:var(--purple)">${qa.length}</div>
+      </div>
+      ${qa.length===0
+        ?`<div style="text-align:center;padding:40px 20px">
+            <div style="font-size:48px;margin-bottom:12px">💬</div>
+            <div style="font-family:Syne,sans-serif;font-size:16px;font-weight:700;margin-bottom:6px">Aún no hay preguntas</div>
+            <div style="font-size:13px;color:var(--muted)">Usa el chat en Entrenamiento o Nutrición para hacer preguntas a la IA</div>
+          </div>`
+        :entries.map(([date,items])=>`
+          <div style="margin-bottom:20px">
+            <div style="font-size:11px;color:var(--purple);font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;padding:4px 0;border-bottom:1px solid rgba(157,113,255,.15)">${date}</div>
+            ${items.map(item=>`
+              <div style="background:var(--surface2);border:1px solid var(--border);border-radius:16px;padding:14px;margin-bottom:10px">
+                <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:10px">
+                  <div style="width:28px;height:28px;border-radius:50%;background:rgba(157,113,255,.15);display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0">❓</div>
+                  <div style="flex:1">
+                    <div style="font-size:13px;font-weight:600;line-height:1.5;color:var(--text)">${item.q}</div>
+                    ${item.time?`<div style="font-size:10px;color:var(--muted);margin-top:3px">${item.time}</div>`:''}
+                  </div>
+                </div>
+                <div style="display:flex;align-items:flex-start;gap:10px">
+                  <div style="width:28px;height:28px;border-radius:50%;background:rgba(46,239,154,.1);display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0">🤖</div>
+                  <div style="flex:1;font-size:12px;color:#c4c4e0;line-height:1.65">${item.a}</div>
+                </div>
+              </div>`).join('')}
+          </div>`).join('')}
+    </div>`;
   } else if(s==='feedback'){
     div.innerHTML=`<div class="content fade-in"><div style="display:flex;align-items:center;gap:10px;margin-bottom:16px"><button onclick="STATE.sideSection=null;render()" style="background:none;border:none;color:var(--purple);font-size:20px;cursor:pointer">←</button><div style="font-family:Syne,sans-serif;font-size:18px;font-weight:800">💡 Tu opinión</div></div><div class="card card-purple" style="margin-bottom:14px"><div style="font-size:28px;text-align:center;margin-bottom:8px">🙌</div><div style="font-family:Syne,sans-serif;font-size:16px;font-weight:700;text-align:center;margin-bottom:6px">¿Cómo podríamos mejorar FitAI Pro?</div><div style="font-size:13px;color:var(--muted);text-align:center;line-height:1.6">Tu comentario llega directo al equipo.</div></div><div id="feedback-msg" style="display:none;background:#34d39915;border:1px solid #34d39930;border-radius:12px;padding:12px 16px;font-size:13px;color:var(--green);margin-bottom:12px;text-align:center">✅ ¡Gracias! Lo leeremos con atención 💚</div><div class="field"><label style="font-size:13px;color:var(--muted);margin-bottom:6px;display:block">Tu comentario</label><textarea id="feedback-text" placeholder="Ej: Me gustaría ver recetas con fotos…" style="height:130px;width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:12px;color:var(--text);font-size:14px;font-family:'DM Sans',sans-serif;resize:none;outline:none"></textarea></div><button class="btn btn-purple" id="btn-send-feedback">💡 Enviar sugerencia</button></div>`;
     div.querySelector('#btn-send-feedback').onclick=async()=>{const txt=div.querySelector('#feedback-text').value.trim();if(!txt)return;const btn=div.querySelector('#btn-send-feedback');btn.disabled=true;btn.textContent='⏳ Enviando…';await dbSaveFeedback(STATE.user?.email,STATE.user?.name||STATE.profile?.name,txt);div.querySelector('#feedback-msg').style.display='block';div.querySelector('#feedback-text').value='';btn.textContent='✅ Enviado';};
@@ -1104,24 +1157,28 @@ function renderAuth(){const div=document.createElement('div');div.className='scr
   div.querySelector('#tab-reg').onclick=()=>{STATE.authMode='register';STATE.authError='';render();};
   div.querySelector('#to-reg')?.addEventListener('click',()=>{STATE.authMode='register';STATE.authError='';render();});
   div.querySelector('#to-login')?.addEventListener('click',()=>{STATE.authMode='login';STATE.authError='';render();});
-  div.querySelector('#btn-auth').onclick=async()=>{const email=div.querySelector('#auth-email')?.value?.trim();const pass=div.querySelector('#auth-pass')?.value;const name=div.querySelector('#auth-name')?.value?.trim();const phone=div.querySelector('#auth-phone')?.value?.trim()||'';if(!email||!pass){STATE.authError='Completa todos los campos.';render();return;}STATE.authLoading=true;STATE.authError='';render();try{if(STATE.authMode==='register'){if(!name)throw new Error('Ingresa tu nombre.');STATE.user=await authRegister(email,pass,name,phone);}else STATE.user=await authLogin(email,pass);// Preserve today's data BEFORE clearUserState() overwrites fitai_today
-    var _preservedToday=localStorage.getItem('fitai_today');
+  div.querySelector('#btn-auth').onclick=async()=>{const email=div.querySelector('#auth-email')?.value?.trim();const pass=div.querySelector('#auth-pass')?.value;const name=div.querySelector('#auth-name')?.value?.trim();const phone=div.querySelector('#auth-phone')?.value?.trim()||'';if(!email||!pass){STATE.authError='Completa todos los campos.';render();return;}STATE.authLoading=true;STATE.authError='';render();try{if(STATE.authMode==='register'){if(!name)throw new Error('Ingresa tu nombre.');STATE.user=await authRegister(email,pass,name,phone);}else STATE.user=await authLogin(email,pass);
+    // Clear previous user's state (does NOT touch the new user's keys)
     clearUserState();
-    // Immediately restore the preserved data (clearUserState saves empty STATE)
-    if(_preservedToday){try{localStorage.setItem('fitai_today',_preservedToday);}catch(e){}}
-    // Now restore to STATE
-    try{var _td=JSON.parse(_preservedToday||'{}');if(_td.log&&_td.date===getTodayStr()){STATE.todayLog=Object.assign({},_td.log,{mealPhotos:{},mealAnalyzing:{}});STATE.todayLog.mealPhotos=loadTodayPhotos();if(!STATE.todayLog.mealMacros)STATE.todayLog.mealMacros={};if(!STATE.todayLog.extraMacros)STATE.todayLog.extraMacros=null;if(STATE.todayLog.extraFood===undefined)STATE.todayLog.extraFood='';}}catch(e){}
-    const cp=loadProfileCache(email);const cd=loadUserCache(email);if(cp)STATE.profile=cp;if(cd?.plan)STATE.plan=cd.plan;if(cd?.nutrition)STATE.nutrition=cd.nutrition;if(cd?.qaHistory)STATE.qaHistory=cd.qaHistory;if(cd?.planGeneratedAt)STATE.planGeneratedAt=cd.planGeneratedAt;if(cd?.programStartDate)STATE.programStartDate=cd.programStartDate;if(cd?.dailyLogs?.length)STATE.dailyLogs=cd.dailyLogs;
-    // Load dedicated QA cache (survives logout, keyed by email)
-    const cachedQA=loadQACache(email);if(cachedQA&&cachedQA.length>(STATE.qaHistory||[]).length)STATE.qaHistory=cachedQA;
-    STATE.user.email=email; // ensure email is set before loading photos
+    // Now STATE.user is the new user — set email so _userKey() works correctly
+    STATE.user.email=email;
+    // Load new user's scoped data from localStorage
+    var _newTodayKey=_userKey('fitai_today');
+    var _newCoreKey=_userKey('fitai_core');
+    var _newPlanKey=_userKey('fitai_plan');
+    try{var _nc=JSON.parse(localStorage.getItem(_newCoreKey)||'{}');if(_nc.profile)STATE.profile=_nc.profile;if(_nc.dailyLogs?.length)STATE.dailyLogs=_nc.dailyLogs;if(_nc.planGeneratedAt)STATE.planGeneratedAt=_nc.planGeneratedAt;if(_nc.programStartDate)STATE.programStartDate=_nc.programStartDate;}catch(e){}
+    try{var _np=JSON.parse(localStorage.getItem(_newPlanKey)||'{}');if(_np.plan)STATE.plan=_np.plan;if(_np.nutrition)STATE.nutrition=_np.nutrition;if(_np.chat)STATE.chat=_np.chat;if(_np.qaHistory)STATE.qaHistory=_np.qaHistory;}catch(e){}
+    try{var _td=JSON.parse(localStorage.getItem(_newTodayKey)||'{}');if(_td.log&&_td.date===getTodayStr()){STATE.todayLog=Object.assign({},_td.log,{mealPhotos:{},mealAnalyzing:{}});if(!STATE.todayLog.mealMacros)STATE.todayLog.mealMacros={};if(!STATE.todayLog.extraMacros)STATE.todayLog.extraMacros=null;if(STATE.todayLog.extraFood===undefined)STATE.todayLog.extraFood='';}}catch(e){}
+    // Fill gaps from per-email caches
+    const cp=loadProfileCache(email);const cd=loadUserCache(email);if(cp&&!STATE.profile)STATE.profile=cp;if(cd?.plan&&!STATE.plan)STATE.plan=cd.plan;if(cd?.nutrition&&!STATE.nutrition)STATE.nutrition=cd.nutrition;if(cd?.qaHistory)STATE.qaHistory=cd.qaHistory;if(cd?.planGeneratedAt&&!STATE.planGeneratedAt)STATE.planGeneratedAt=cd.planGeneratedAt;if(cd?.programStartDate&&!STATE.programStartDate)STATE.programStartDate=cd.programStartDate;if(cd?.dailyLogs?.length&&!STATE.dailyLogs.length)STATE.dailyLogs=cd.dailyLogs;
+    const cachedQA=loadQACache(email);
+    // Merge QA from all sources (plan key, userCache, dedicated cache) — take all unique questions
+    STATE.qaHistory=mergeQA(STATE.qaHistory,cachedQA,cd?.qaHistory);
+    // Load today's photos (already user+date scoped)
     STATE.todayLog.mealPhotos=loadTodayPhotos();
-    // Ensure weight is restored from fitai_today if present
-    try{var _tw=JSON.parse(localStorage.getItem('fitai_today')||'{}');if(_tw.log&&_tw.date===getTodayStr()){if(_tw.log.weight&&!STATE.todayLog.weight)STATE.todayLog.weight=_tw.log.weight;if(_tw.log.sleep&&!STATE.todayLog.sleep)STATE.todayLog.sleep=_tw.log.sleep;if(_tw.log.water&&!STATE.todayLog.water)STATE.todayLog.water=_tw.log.water;if(_tw.log.training&&STATE.todayLog.training==='no')STATE.todayLog.training=_tw.log.training;if(_tw.log.energy&&STATE.todayLog.energy==='3')STATE.todayLog.energy=_tw.log.energy;}}catch(e){}
-    // Merge from protected mealMacros key (ONLY if fitai_today is from today — prevents stale day data)
-    var _todayCheck=null;try{_todayCheck=JSON.parse(localStorage.getItem('fitai_today')||'{}');}catch(e){}
-    var _todayIsValid=_todayCheck&&_todayCheck.date===getTodayStr()&&_todayCheck.log;
-    var _pmm=_todayIsValid?loadMealMacros():null;
+    // Load mealMacros from user-scoped mm key
+    var _todayIsValid=STATE.todayLog&&Object.keys(STATE.todayLog.mealMacros||{}).length===0;
+    var _pmm=loadMealMacros();
     if(_pmm){
       STATE.todayLog.mealMacros=Object.assign({},_pmm.mealMacros||{},STATE.todayLog.mealMacros||{});
       if(_pmm.extraMacros&&_pmm.extraMacros.ok&&!STATE.todayLog.extraMacros)STATE.todayLog.extraMacros=_pmm.extraMacros;
@@ -1846,7 +1903,7 @@ function renderWorkout(){
   <div class="card" style="margin-top:12px"><div class="card-h">💬 Coach de entrenamiento</div><div id="chat-w" style="max-height:400px;overflow-y:auto"></div><div class="chat-row"><input type="text" id="ci-w" placeholder="Preguntame lo que quieras para entrenar mejor"/><button id="cs-w">→</button></div></div>`;
   STATE.chat.slice(-4).forEach(m=>{const el=document.createElement('div');el.className='chat-msg '+(m.role==='user'?'chat-user':'chat-ai');el.innerHTML=`<strong>${m.role==='user'?'Tú:':'🤖 '}</strong> ${m.content}`;div.querySelector('#chat-w').appendChild(el);});
   div.querySelector('#btn-newplan').onclick=async()=>{STATE.aiLoading=true;render();const p=STATE.profile;const r=await claude([{role:'user',content:`Plan entrenamiento semanal para ${p.name}, objetivo:${p.goal}, nivel:${p.activityLevel}, lugar:${p.trainingPlace||'gimnasio'}, semana ${wn}. ${getTrainingPrompt(p.trainingPlace)}\nFORMATO:\n## DÍA 1 - LUNES: Grupo\n- Ejercicio (series x reps - descanso)\nMáx 700 palabras.`}]);STATE.plan=r;STATE.planGeneratedAt=new Date().toISOString();STATE.aiLoading=false;save();dbSavePlanNutrition(STATE.user?.email,STATE.plan,STATE.nutrition);render();};
-  const send=async()=>{const inp=div.querySelector('#ci-w');const txt=inp?.value.trim();if(!txt)return;STATE.chat.push({role:'user',content:txt});inp.value='';STATE.aiLoading=true;render();const msgs=STATE.chat.slice(-6).map(m=>({role:m.role,content:m.content}));msgs[0]={...msgs[0],content:`${STATE.profile.name},${STATE.profile.goal}\n${msgs[0].content}`};const r=await claude(msgs);STATE.chat.push({role:'assistant',content:r});STATE.qaHistory.push({date:new Date().toLocaleDateString('es-CL'),q:txt,a:r});STATE.qaHistory=STATE.qaHistory.slice(-100);STATE.aiLoading=false;save();saveQACache(STATE.user?.email,STATE.qaHistory);dbSaveQAHistory(STATE.user?.email,STATE.qaHistory);queueSync('chat_history',{email:STATE.user?.email,chat:STATE.chat});render();};
+  const send=async()=>{const inp=div.querySelector('#ci-w');const txt=inp?.value.trim();if(!txt)return;STATE.chat.push({role:'user',content:txt});inp.value='';STATE.aiLoading=true;render();const msgs=STATE.chat.slice(-6).map(m=>({role:m.role,content:m.content}));msgs[0]={...msgs[0],content:`${STATE.profile.name},${STATE.profile.goal}\n${msgs[0].content}`};const r=await claude(msgs);STATE.chat.push({role:'assistant',content:r});const _qts=new Date();STATE.qaHistory.push({date:_qts.toLocaleDateString('es-CL'),time:_qts.toLocaleTimeString('es-CL',{hour:'2-digit',minute:'2-digit'}),q:txt,a:r});STATE.qaHistory=STATE.qaHistory.slice(-200);STATE.aiLoading=false;save();saveQACache(STATE.user?.email,STATE.qaHistory);dbSaveQAHistory(STATE.user?.email,STATE.qaHistory);queueSync('chat_history',{email:STATE.user?.email,chat:STATE.chat});render();};
   div.querySelector('#cs-w').onclick=send;div.querySelector('#ci-w').onkeydown=e=>{if(e.key==='Enter')send();};
   return div;
 }
@@ -1890,7 +1947,7 @@ function renderNutrition(){
   <div class="card" style="margin-top:12px"><div class="card-h">💬 Consulta nutricional</div><div id="chat-n" style="max-height:400px;overflow-y:auto"></div><div class="chat-row"><input type="text" id="ci-n" placeholder="Preguntame lo que quieras para mejorar tu dieta"/><button id="cs-n" style="background:var(--green)">→</button></div></div>`;
   STATE.chat.slice(-2).forEach(m=>{const el=document.createElement('div');el.className='chat-msg '+(m.role==='user'?'chat-user':'chat-ai');el.style.color=m.role==='assistant'?'#6ee7b7':'';el.innerHTML=`<strong>${m.role==='user'?'Tú:':'🤖 '}</strong> ${m.content}`;div.querySelector('#chat-n').appendChild(el);});
   div.querySelector('#btn-newnut').onclick=async()=>{STATE.aiLoading=true;render();const p=STATE.profile;const{desc,prefs}=getNutritionPrompt(p);const r=await claude([{role:'user',content:`Plan alimentación VARIADO para ${p.name},${p.goal},${calcProgress().lw}kg,${p.height}cm,${p.gender},${p.age}años. ${prefs} FORMATO OBLIGATORIO (respeta exactamente):\n## 📊 Calorías y Macros\nCalorías: XXXX kcal | Proteína: XXXg | Carbohidratos: XXXg | Grasas: XXg\n## 🌅 Desayuno\n- alimento (cantidad)\n## 🍎 Colación AM\n- alimento (cantidad)\n## ☀️ Almuerzo\n- alimento (cantidad)\n## 🥤 Merienda PM\n- alimento (cantidad)\n## 🌙 Cena\n- alimento (cantidad)\nSolo alimentos con cantidades. Máx 300 palabras.`}]);STATE.nutrition=r;STATE.aiLoading=false;save();dbSavePlanNutrition(STATE.user?.email,STATE.plan,STATE.nutrition);render();};
-  const send=async()=>{const inp=div.querySelector('#ci-n');const txt=inp?.value.trim();if(!txt)return;STATE.chat.push({role:'user',content:txt});inp.value='';STATE.aiLoading=true;render();const msgs=STATE.chat.slice(-4).map(m=>({role:m.role,content:m.content}));msgs[0]={...msgs[0],content:`${STATE.profile.name},${STATE.profile.goal}\n${msgs[0].content}`};const r=await claude(msgs);STATE.chat.push({role:'assistant',content:r});STATE.qaHistory.push({date:new Date().toLocaleDateString('es-CL'),q:txt,a:r});STATE.qaHistory=STATE.qaHistory.slice(-100);STATE.aiLoading=false;save();saveQACache(STATE.user?.email,STATE.qaHistory);dbSaveQAHistory(STATE.user?.email,STATE.qaHistory);queueSync('chat_history',{email:STATE.user?.email,chat:STATE.chat});render();};
+  const send=async()=>{const inp=div.querySelector('#ci-n');const txt=inp?.value.trim();if(!txt)return;STATE.chat.push({role:'user',content:txt});inp.value='';STATE.aiLoading=true;render();const msgs=STATE.chat.slice(-4).map(m=>({role:m.role,content:m.content}));msgs[0]={...msgs[0],content:`${STATE.profile.name},${STATE.profile.goal}\n${msgs[0].content}`};const r=await claude(msgs);STATE.chat.push({role:'assistant',content:r});const _qts=new Date();STATE.qaHistory.push({date:_qts.toLocaleDateString('es-CL'),time:_qts.toLocaleTimeString('es-CL',{hour:'2-digit',minute:'2-digit'}),q:txt,a:r});STATE.qaHistory=STATE.qaHistory.slice(-200);STATE.aiLoading=false;save();saveQACache(STATE.user?.email,STATE.qaHistory);dbSaveQAHistory(STATE.user?.email,STATE.qaHistory);queueSync('chat_history',{email:STATE.user?.email,chat:STATE.chat});render();};
   div.querySelector('#cs-n').onclick=send;div.querySelector('#ci-n').onkeydown=e=>{if(e.key==='Enter')send();};
   return div;
 }
