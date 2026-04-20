@@ -1157,11 +1157,20 @@ function renderAuth(){const div=document.createElement('div');div.className='scr
   div.querySelector('#tab-reg').onclick=()=>{STATE.authMode='register';STATE.authError='';render();};
   div.querySelector('#to-reg')?.addEventListener('click',()=>{STATE.authMode='register';STATE.authError='';render();});
   div.querySelector('#to-login')?.addEventListener('click',()=>{STATE.authMode='login';STATE.authError='';render();});
-  div.querySelector('#btn-auth').onclick=async()=>{const email=div.querySelector('#auth-email')?.value?.trim();const pass=div.querySelector('#auth-pass')?.value;const name=div.querySelector('#auth-name')?.value?.trim();const phone=div.querySelector('#auth-phone')?.value?.trim()||'';if(!email||!pass){STATE.authError='Completa todos los campos.';render();return;}STATE.authLoading=true;STATE.authError='';render();try{if(STATE.authMode==='register'){if(!name)throw new Error('Ingresa tu nombre.');STATE.user=await authRegister(email,pass,name,phone);}else STATE.user=await authLogin(email,pass);
-    // Clear previous user's state (does NOT touch the new user's keys)
-    clearUserState();
-    // Now STATE.user is the new user — set email so _userKey() works correctly
-    STATE.user.email=email;
+  div.querySelector('#btn-auth').onclick=async()=>{const email=div.querySelector('#auth-email')?.value?.trim();const pass=div.querySelector('#auth-pass')?.value;const name=div.querySelector('#auth-name')?.value?.trim();const phone=div.querySelector('#auth-phone')?.value?.trim()||'';if(!email||!pass){STATE.authError='Completa todos los campos.';render();return;}STATE.authLoading=true;STATE.authError='';render();try{
+    // ── STEP 1: Save PREVIOUS user's data before anything changes ──
+    if(STATE.user&&STATE.user.email){save();saveQACache(STATE.user.email,STATE.qaHistory);}
+    // ── STEP 2: Authenticate new user ──
+    var newUser;
+    if(STATE.authMode==='register'){if(!name)throw new Error('Ingresa tu nombre.');newUser=await authRegister(email,pass,name,phone);}
+    else newUser=await authLogin(email,pass);
+    // ── STEP 3: FULLY reset STATE (previous user is already saved above) ──
+    STATE.user=null;
+    STATE.profile=null;STATE.dailyLogs=[];STATE.plan=null;STATE.nutrition=null;STATE.chat=[];STATE.qaHistory=[];STATE.aiMsg='';
+    STATE.todayLog={weight:'',calories:'',protein:'',carbs:'',fats:'',sleep:'',water:'',training:'no',energy:'3',notes:'',mealPhotos:{},mealMacros:{},mealAnalyzing:{},photoAnalysis:'',extraFood:'',extraMacros:null,extraAnalyzing:false};
+    STATE.planGeneratedAt=null;STATE.programStartDate=null;STATE.setupStep=0;STATE.setupData={};STATE.tab=0;STATE.needsAIPlan=false;STATE.couponApplied=false;STATE.couponCode='';STATE.couponData=null;STATE.couponDiscount=0;STATE.couponFinalAmount=CONFIG.AMOUNT;
+    // ── STEP 4: Set new user and load THEIR data ──
+    STATE.user=newUser;STATE.user.email=email;
     // Load new user's scoped data from localStorage
     var _newTodayKey=_userKey('fitai_today');
     var _newCoreKey=_userKey('fitai_core');
@@ -1170,28 +1179,20 @@ function renderAuth(){const div=document.createElement('div');div.className='scr
     try{var _np=JSON.parse(localStorage.getItem(_newPlanKey)||'{}');if(_np.plan)STATE.plan=_np.plan;if(_np.nutrition)STATE.nutrition=_np.nutrition;if(_np.chat)STATE.chat=_np.chat;if(_np.qaHistory)STATE.qaHistory=_np.qaHistory;}catch(e){}
     try{var _td=JSON.parse(localStorage.getItem(_newTodayKey)||'{}');if(_td.log&&_td.date===getTodayStr()){STATE.todayLog=Object.assign({},_td.log,{mealPhotos:{},mealAnalyzing:{}});if(!STATE.todayLog.mealMacros)STATE.todayLog.mealMacros={};if(!STATE.todayLog.extraMacros)STATE.todayLog.extraMacros=null;if(STATE.todayLog.extraFood===undefined)STATE.todayLog.extraFood='';}}catch(e){}
     // Fill gaps from per-email caches
-    const cp=loadProfileCache(email);const cd=loadUserCache(email);if(cp&&!STATE.profile)STATE.profile=cp;if(cd?.plan&&!STATE.plan)STATE.plan=cd.plan;if(cd?.nutrition&&!STATE.nutrition)STATE.nutrition=cd.nutrition;if(cd?.qaHistory)STATE.qaHistory=cd.qaHistory;if(cd?.planGeneratedAt&&!STATE.planGeneratedAt)STATE.planGeneratedAt=cd.planGeneratedAt;if(cd?.programStartDate&&!STATE.programStartDate)STATE.programStartDate=cd.programStartDate;if(cd?.dailyLogs?.length&&!STATE.dailyLogs.length)STATE.dailyLogs=cd.dailyLogs;
+    const cp=loadProfileCache(email);const cd=loadUserCache(email);if(cp&&!STATE.profile)STATE.profile=cp;if(cd?.plan&&!STATE.plan)STATE.plan=cd.plan;if(cd?.nutrition&&!STATE.nutrition)STATE.nutrition=cd.nutrition;if(cd?.planGeneratedAt&&!STATE.planGeneratedAt)STATE.planGeneratedAt=cd.planGeneratedAt;if(cd?.programStartDate&&!STATE.programStartDate)STATE.programStartDate=cd.programStartDate;if(cd?.dailyLogs?.length&&!STATE.dailyLogs.length)STATE.dailyLogs=cd.dailyLogs;
     const cachedQA=loadQACache(email);
-    // Merge QA from all sources (plan key, userCache, dedicated cache) — take all unique questions
     STATE.qaHistory=mergeQA(STATE.qaHistory,cachedQA,cd?.qaHistory);
-    // Load today's photos (already user+date scoped)
+    // Load today's photos and macros (already user+date scoped)
     STATE.todayLog.mealPhotos=loadTodayPhotos();
-    // Load mealMacros from user-scoped mm key
-    var _todayIsValid=STATE.todayLog&&Object.keys(STATE.todayLog.mealMacros||{}).length===0;
     var _pmm=loadMealMacros();
     if(_pmm){
       STATE.todayLog.mealMacros=Object.assign({},_pmm.mealMacros||{},STATE.todayLog.mealMacros||{});
       if(_pmm.extraMacros&&_pmm.extraMacros.ok&&!STATE.todayLog.extraMacros)STATE.todayLog.extraMacros=_pmm.extraMacros;
       if(_pmm.extraFood&&!STATE.todayLog.extraFood)STATE.todayLog.extraFood=_pmm.extraFood;
     }
-    recalcTotals();
-    saveMealMacros();
-    save();
+    recalcTotals();saveMealMacros();save();
     await loadProfileFromSupabase(STATE.user.email);
-    recalcTotals();
-    save();
-    cleanOldMealMacros();
-    cleanOldPhotos();
+    recalcTotals();save();cleanOldMealMacros();cleanOldPhotos();
     STATE.screen=!STATE.profile?'setup':!STATE.user.paid?'paywall':'app';}catch(e){STATE.authError=e.message;}STATE.authLoading=false;render();};
   div.querySelector('#auth-pass')?.addEventListener('keydown',e=>{if(e.key==='Enter')div.querySelector('#btn-auth')?.click();});
   return div;
